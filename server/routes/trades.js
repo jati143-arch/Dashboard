@@ -8,18 +8,24 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // GET /api/trades
 router.get('/', (req, res) => {
-  const { date, symbol, pattern_tag, direction, from, to } = req.query;
+  const { date, symbol, pattern_tag, direction, from, to, status, result, sort } = req.query;
   let sql = 'SELECT * FROM trades WHERE 1=1';
   const params = [];
 
-  if (date) { sql += ' AND date = ?'; params.push(date); }
-  if (symbol) { sql += ' AND UPPER(symbol) = UPPER(?)'; params.push(symbol); }
-  if (pattern_tag) { sql += ' AND pattern_tag = ?'; params.push(pattern_tag); }
-  if (direction) { sql += ' AND direction = ?'; params.push(direction); }
-  if (from) { sql += ' AND date >= ?'; params.push(from); }
-  if (to) { sql += ' AND date <= ?'; params.push(to); }
+  if (date)        { sql += ' AND date = ?';                    params.push(date); }
+  if (symbol)      { sql += ' AND UPPER(symbol) = UPPER(?)';   params.push(symbol); }
+  if (pattern_tag) { sql += ' AND pattern_tag = ?';            params.push(pattern_tag); }
+  if (direction)   { sql += ' AND direction = ?';              params.push(direction); }
+  if (from)        { sql += ' AND date >= ?';                  params.push(from); }
+  if (to)          { sql += ' AND date <= ?';                  params.push(to); }
+  if (status)      { sql += ' AND status = ?';                 params.push(status); }
+  if (result === 'win')  { sql += ' AND pnl_dollar > 0'; }
+  if (result === 'loss') { sql += ' AND pnl_dollar <= 0 AND pnl_dollar IS NOT NULL'; }
 
-  sql += ' ORDER BY date DESC, created_at DESC';
+  if (sort === 'pnl_desc') sql += ' ORDER BY pnl_dollar DESC NULLS LAST';
+  else if (sort === 'pnl_asc') sql += ' ORDER BY pnl_dollar ASC NULLS LAST';
+  else sql += ' ORDER BY date DESC, created_at DESC';
+
   res.json(db.prepare(sql).all(...params));
 });
 
@@ -32,18 +38,37 @@ router.get('/:id', (req, res) => {
 
 // POST /api/trades
 router.post('/', (req, res) => {
-  const { date, entry_time, exit_time, symbol, instrument_type, direction,
-          entry_price, exit_price, size, pnl_dollar, pnl_percent,
-          pattern_tag, notes, is_best_trade } = req.body;
+  const {
+    date, entry_time, exit_time, exit_date, symbol, instrument_type, direction,
+    entry_price, exit_price, size, pnl_dollar, pnl_percent,
+    pattern_tag, notes, is_best_trade, status = 'closed',
+  } = req.body;
+
+  const isOpen = status === 'open';
 
   const result = db.prepare(`
-    INSERT INTO trades (date, entry_time, exit_time, symbol, instrument_type, direction,
-      entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, is_best_trade)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(date, entry_time || null, exit_time || null, symbol.toUpperCase(),
-         instrument_type, direction, entry_price, exit_price, size,
-         pnl_dollar, pnl_percent, pattern_tag || null, notes || null,
-         is_best_trade ? 1 : 0);
+    INSERT INTO trades (date, entry_time, exit_time, exit_date, symbol, instrument_type,
+      direction, entry_price, exit_price, size, pnl_dollar, pnl_percent,
+      pattern_tag, notes, status, is_best_trade)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    date,
+    entry_time || null,
+    exit_time || null,
+    exit_date || null,
+    symbol.toUpperCase(),
+    instrument_type,
+    direction,
+    entry_price,
+    isOpen ? null : (exit_price ?? null),
+    size,
+    isOpen ? null : (pnl_dollar ?? null),
+    isOpen ? null : (pnl_percent ?? null),
+    pattern_tag || null,
+    notes || null,
+    status,
+    is_best_trade ? 1 : 0,
+  );
 
   res.status(201).json(db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid));
 });
@@ -53,19 +78,38 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Trade not found' });
 
-  const { date, entry_time, exit_time, symbol, instrument_type, direction,
-          entry_price, exit_price, size, pnl_dollar, pnl_percent,
-          pattern_tag, notes, is_best_trade } = req.body;
+  const {
+    date, entry_time, exit_time, exit_date, symbol, instrument_type, direction,
+    entry_price, exit_price, size, pnl_dollar, pnl_percent,
+    pattern_tag, notes, is_best_trade, status = existing.status,
+  } = req.body;
+
+  const isOpen = status === 'open';
 
   db.prepare(`
-    UPDATE trades SET date=?, entry_time=?, exit_time=?, symbol=?, instrument_type=?,
-      direction=?, entry_price=?, exit_price=?, size=?, pnl_dollar=?, pnl_percent=?,
-      pattern_tag=?, notes=?, is_best_trade=?
+    UPDATE trades SET date=?, entry_time=?, exit_time=?, exit_date=?, symbol=?,
+      instrument_type=?, direction=?, entry_price=?, exit_price=?, size=?,
+      pnl_dollar=?, pnl_percent=?, pattern_tag=?, notes=?, status=?, is_best_trade=?
     WHERE id=?
-  `).run(date, entry_time || null, exit_time || null, symbol.toUpperCase(),
-         instrument_type, direction, entry_price, exit_price, size,
-         pnl_dollar, pnl_percent, pattern_tag || null, notes || null,
-         is_best_trade ? 1 : 0, req.params.id);
+  `).run(
+    date,
+    entry_time || null,
+    exit_time || null,
+    exit_date || null,
+    symbol.toUpperCase(),
+    instrument_type,
+    direction,
+    entry_price,
+    isOpen ? null : (exit_price ?? null),
+    size,
+    isOpen ? null : (pnl_dollar ?? null),
+    isOpen ? null : (pnl_percent ?? null),
+    pattern_tag || null,
+    notes || null,
+    status,
+    is_best_trade ? 1 : 0,
+    req.params.id,
+  );
 
   res.json(db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id));
 });
@@ -92,13 +136,12 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
 
   const { confirmed, rows } = req.body;
 
-  // Second step: confirm and insert
   if (confirmed === 'true' && rows) {
     const parsed = JSON.parse(rows);
     const insert = db.prepare(`
       INSERT INTO trades (date, entry_time, exit_time, symbol, instrument_type, direction,
-        entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, is_best_trade)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, status, is_best_trade)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', 0)
     `);
     const insertMany = db.transaction((trades) => {
       for (const t of trades) {
@@ -111,7 +154,6 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
     return res.json({ imported: parsed.length });
   }
 
-  // First step: parse and return preview
   try {
     const result = parseCSV(req.file.buffer);
     res.json(result);

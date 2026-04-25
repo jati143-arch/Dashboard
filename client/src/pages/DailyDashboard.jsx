@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tradesApi, dailyApi } from '../api/client.js';
+import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
 import TodayTradeTable from '../components/dashboard/TodayTradeTable.jsx';
@@ -26,12 +27,16 @@ export default function DailyDashboard() {
     queryFn: () => dailyApi.get(selectedDate),
   });
 
+  // Only show closed trades in day stats — open positions have their own panel
+  const closedTrades = trades.filter(t => t.status === 'closed');
   const bestTrade = trades.find(t => t.is_best_trade);
-
   const isLoading = tradesLoading || dailyLoading;
 
   return (
     <div>
+      {/* Open positions — always visible regardless of selected date */}
+      <OpenPositions />
+
       {/* Date picker + Add Trade */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -43,9 +48,14 @@ export default function DailyDashboard() {
           />
           <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelectedDate(todayStr())}>Today</button>
         </div>
-        <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
-          + Add Trade
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
+            ◉ Open Position
+          </button>
+          <button className="btn-primary" onClick={() => { setEditingTrade({ status: 'closed' }); setShowForm(true); }}>
+            + Add Closed Trade
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -53,7 +63,7 @@ export default function DailyDashboard() {
       ) : (
         <>
           <HeroCard trade={bestTrade} date={selectedDate} />
-          <PnlSummary trades={trades} />
+          <PnlSummary trades={closedTrades} />
           <TodayTradeTable
             trades={trades}
             date={selectedDate}
@@ -79,13 +89,14 @@ export default function DailyDashboard() {
 
       {showForm && (
         <Modal
-          title={editingTrade ? 'Edit Trade' : 'Add Trade'}
+          title={editingTrade?.id ? 'Edit Trade' : editingTrade?.status === 'closed' ? 'Add Closed Trade' : 'Open New Position'}
           onClose={() => { setShowForm(false); setEditingTrade(null); }}
           width={580}
         >
           <TradeForm
-            trade={editingTrade}
+            trade={editingTrade?.id ? editingTrade : null}
             defaultDate={selectedDate}
+            defaultStatus={editingTrade?.status || 'closed'}
             onClose={() => { setShowForm(false); setEditingTrade(null); }}
           />
         </Modal>

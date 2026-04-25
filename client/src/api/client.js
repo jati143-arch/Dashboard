@@ -36,3 +36,11 @@ export const aiApi = {
   dailyAnalysis: (date) => api.post('/ai/daily-analysis', { date }).then(r => r.data),
   explainPattern: (slug) => api.post('/ai/explain-pattern', { slug }).then(r => r.data),
 };
+
+export const searchApi = {
+  search: (q) => api.get('/search', { params: { q } }).then(r => r.data),
+};
+
+export const pricesApi = {
+  get: (symbols) => api.get('/prices', { params: { symbols: symbols.join(',') } }).then(r => r.data),
+};

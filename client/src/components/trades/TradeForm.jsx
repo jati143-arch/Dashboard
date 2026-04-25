@@ -1,76 +1,106 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, patternsApi } from '../../api/client.js';
+import TickerInput from './TickerInput.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = {
   date: today(), symbol: '', instrument_type: 'stock', direction: 'long',
-  entry_price: '', exit_price: '', size: '', pnl_dollar: '', pnl_percent: '',
-  pattern_tag: '', entry_time: '', exit_time: '', notes: '', is_best_trade: false,
+  entry_price: '', exit_price: '', exit_date: '', size: '',
+  pnl_dollar: '', pnl_percent: '',
+  pattern_tag: '', entry_time: '', exit_time: '', notes: '',
+  is_best_trade: false, status: 'closed',
 };
 
-export default function TradeForm({ trade, onClose, defaultDate }) {
+export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState(trade ? { ...trade, is_best_trade: !!trade.is_best_trade } : { ...EMPTY, date: defaultDate || today() });
+  const initStatus = trade?.status || defaultStatus || 'closed';
+  const [form, setForm] = useState(
+    trade
+      ? { ...EMPTY, ...trade, is_best_trade: !!trade.is_best_trade }
+      : { ...EMPTY, date: defaultDate || today(), status: initStatus }
+  );
   const [autoCalc, setAutoCalc] = useState(!trade);
 
   const { data: patterns = [] } = useQuery({ queryKey: ['patterns'], queryFn: patternsApi.list });
 
   const { mutate, isPending } = useMutation({
     mutationFn: trade ? (data) => tradesApi.update(trade.id, data) : (data) => tradesApi.create(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['trades'] });
-      onClose();
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['trades'] }); onClose(); },
   });
 
-  function set(field, val) {
-    setForm(f => ({ ...f, [field]: val }));
-  }
+  function set(field, val) { setForm(f => ({ ...f, [field]: val })); }
+
+  const isOpen = form.status === 'open';
 
   useEffect(() => {
-    if (!autoCalc) return;
+    if (!autoCalc || isOpen) return;
     const entry = parseFloat(form.entry_price);
-    const exit = parseFloat(form.exit_price);
-    const size = parseFloat(form.size);
+    const exit  = parseFloat(form.exit_price);
+    const size  = parseFloat(form.size);
     if (!isNaN(entry) && !isNaN(exit) && !isNaN(size) && size > 0) {
-      const pnlD = form.direction === 'short'
-        ? (entry - exit) * size
-        : (exit - entry) * size;
+      const pnlD = form.direction === 'short' ? (entry - exit) * size : (exit - entry) * size;
       const cost = entry * size;
-      const pnlP = cost !== 0 ? (pnlD / cost) * 100 : 0;
       setForm(f => ({
         ...f,
-        pnl_dollar: pnlD.toFixed(2),
-        pnl_percent: pnlP.toFixed(2),
+        pnl_dollar:  pnlD.toFixed(2),
+        pnl_percent: cost !== 0 ? ((pnlD / cost) * 100).toFixed(2) : '0',
       }));
     }
-  }, [form.entry_price, form.exit_price, form.size, form.direction, autoCalc]);
+  }, [form.entry_price, form.exit_price, form.size, form.direction, autoCalc, isOpen]);
 
   function handleSubmit(e) {
     e.preventDefault();
     const payload = {
       ...form,
       entry_price: parseFloat(form.entry_price),
-      exit_price: parseFloat(form.exit_price),
-      size: parseFloat(form.size),
-      pnl_dollar: parseFloat(form.pnl_dollar),
-      pnl_percent: parseFloat(form.pnl_percent),
+      exit_price:  isOpen ? null : parseFloat(form.exit_price) || null,
+      size:        parseFloat(form.size),
+      pnl_dollar:  isOpen ? null : parseFloat(form.pnl_dollar) || null,
+      pnl_percent: isOpen ? null : parseFloat(form.pnl_percent) || null,
     };
     mutate(payload);
   }
 
-  const row = { display: 'grid', gap: 12, marginBottom: 14 };
-  const row2 = { ...row, gridTemplateColumns: '1fr 1fr' };
-  const row3 = { ...row, gridTemplateColumns: '1fr 1fr 1fr' };
+  const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 };
+  const row3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 };
 
   return (
     <form onSubmit={handleSubmit}>
+      {/* Status toggle */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {['closed', 'open'].map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => set('status', s)}
+            style={{
+              flex: 1, padding: '8px 0', borderRadius: 'var(--radius)',
+              border: form.status === s ? 'none' : '1px solid var(--border)',
+              background: form.status === s
+                ? (s === 'open' ? 'var(--yellow)' : 'var(--green)')
+                : 'transparent',
+              color: form.status === s ? '#000' : 'var(--text-secondary)',
+              fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            {s === 'open' ? '◉ Open Position' : '✓ Closed Trade'}
+          </button>
+        ))}
+      </div>
+
       <div style={row2}>
-        <div><label>Date</label><input type="date" value={form.date} onChange={e => set('date', e.target.value)} required /></div>
+        <div>
+          <label>Entry Date</label>
+          <input type="date" value={form.date} onChange={e => set('date', e.target.value)} required />
+        </div>
         <div>
           <label>Symbol</label>
-          <input value={form.symbol} onChange={e => set('symbol', e.target.value.toUpperCase())} placeholder="AAPL, BTC..." required />
+          <TickerInput
+            value={form.symbol}
+            onChange={v => set('symbol', v)}
+            onSelect={(sym, type) => setForm(f => ({ ...f, symbol: sym, instrument_type: type }))}
+          />
         </div>
       </div>
 
@@ -96,64 +126,80 @@ export default function TradeForm({ trade, onClose, defaultDate }) {
       </div>
 
       <div style={row3}>
-        <div><label>Entry Price $</label><input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required /></div>
-        <div><label>Exit Price $</label><input type="number" step="any" value={form.exit_price} onChange={e => set('exit_price', e.target.value)} placeholder="0.00" /></div>
+        <div>
+          <label>Entry Price $</label>
+          <input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required />
+        </div>
         <div>
           <label>Entry Time</label>
-          <input type="time" value={form.entry_time} onChange={e => set('entry_time', e.target.value)} />
+          <input type="time" value={form.entry_time || ''} onChange={e => set('entry_time', e.target.value)} />
         </div>
-      </div>
-
-      <div style={row3}>
-        <div>
-          <label>P&L $ {autoCalc && <span style={{ color: 'var(--accent)', fontWeight: 400 }}>(auto)</span>}</label>
-          <input type="number" step="any" value={form.pnl_dollar}
-            onChange={e => { setAutoCalc(false); set('pnl_dollar', e.target.value); }}
-            placeholder="Auto-calculated" />
-        </div>
-        <div>
-          <label>P&L %</label>
-          <input type="number" step="any" value={form.pnl_percent}
-            onChange={e => { setAutoCalc(false); set('pnl_percent', e.target.value); }}
-            placeholder="Auto-calculated" />
-        </div>
-        <div>
-          <label>Exit Time</label>
-          <input type="time" value={form.exit_time} onChange={e => set('exit_time', e.target.value)} />
-        </div>
-      </div>
-
-      <div style={row2}>
         <div>
           <label>Pattern / Setup</label>
-          <select value={form.pattern_tag} onChange={e => set('pattern_tag', e.target.value)}>
+          <select value={form.pattern_tag || ''} onChange={e => set('pattern_tag', e.target.value)}>
             <option value="">— None —</option>
             {patterns.map(p => <option key={p.slug} value={p.slug}>{p.name}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0, fontSize: 13, color: 'var(--text-primary)', marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={!!form.is_best_trade}
-              onChange={e => set('is_best_trade', e.target.checked)}
-              style={{ width: 16, height: 16, accentColor: 'var(--yellow)' }}
-            />
-            ★ Mark as best trade
-          </label>
-        </div>
+      </div>
+
+      {/* Exit fields — only shown for closed trades */}
+      {!isOpen && (
+        <>
+          <div style={row3}>
+            <div>
+              <label>Exit Price $</label>
+              <input type="number" step="any" value={form.exit_price || ''} onChange={e => { setAutoCalc(false); set('exit_price', e.target.value); }} placeholder="0.00" />
+            </div>
+            <div>
+              <label>Exit Date <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(if different)</span></label>
+              <input type="date" value={form.exit_date || ''} onChange={e => set('exit_date', e.target.value)} />
+            </div>
+            <div>
+              <label>Exit Time</label>
+              <input type="time" value={form.exit_time || ''} onChange={e => set('exit_time', e.target.value)} />
+            </div>
+          </div>
+
+          <div style={row2}>
+            <div>
+              <label>P&L $ {autoCalc && <span style={{ color: 'var(--accent)', fontWeight: 400 }}>(auto)</span>}</label>
+              <input type="number" step="any" value={form.pnl_dollar}
+                onChange={e => { setAutoCalc(false); set('pnl_dollar', e.target.value); }}
+                placeholder="Auto-calculated" />
+            </div>
+            <div>
+              <label>P&L %</label>
+              <input type="number" step="any" value={form.pnl_percent}
+                onChange={e => { setAutoCalc(false); set('pnl_percent', e.target.value); }}
+                placeholder="Auto-calculated" />
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0, fontSize: 13, color: 'var(--text-primary)', marginBottom: 0 }}>
+          <input
+            type="checkbox"
+            checked={!!form.is_best_trade}
+            onChange={e => set('is_best_trade', e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: 'var(--yellow)' }}
+          />
+          ★ Mark as best trade
+        </label>
       </div>
 
       <div style={{ marginBottom: 18 }}>
         <label>Notes / Lesson</label>
-        <textarea rows={3} value={form.notes} onChange={e => set('notes', e.target.value)}
+        <textarea rows={3} value={form.notes || ''} onChange={e => set('notes', e.target.value)}
           placeholder="What happened? What did you learn?" style={{ resize: 'vertical' }} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn-primary" disabled={isPending}>
-          {isPending ? 'Saving...' : trade ? 'Update Trade' : 'Add Trade'}
+          {isPending ? 'Saving...' : trade ? 'Update Trade' : (isOpen ? 'Open Position' : 'Add Trade')}
         </button>
       </div>
     </form>
