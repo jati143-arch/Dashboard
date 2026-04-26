@@ -8,6 +8,7 @@ import TodayTradeTable from '../components/dashboard/TodayTradeTable.jsx';
 import BestSetups from '../components/dashboard/BestSetups.jsx';
 import Modal from '../components/shared/Modal.jsx';
 import TradeForm from '../components/trades/TradeForm.jsx';
+import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -15,6 +16,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 export default function DailyDashboard() {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
 
   const { data: trades = [], isLoading: tradesLoading } = useQuery({
@@ -54,9 +56,12 @@ export default function DailyDashboard() {
           />
           <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelectedDate(todayStr())}>Today</button>
         </div>
-        <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
-          ◉ Open Position
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => setShowImport(true)}>↑ Import CSV</button>
+          <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
+            ◉ Open Position
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -86,6 +91,12 @@ export default function DailyDashboard() {
             </div>
           )}
         </>
+      )}
+
+      {showImport && (
+        <Modal title="Import from CSV" onClose={() => setShowImport(false)} width={680}>
+          <CsvImport onClose={() => { setShowImport(false); }} />
+        </Modal>
       )}
 
       {showForm && (

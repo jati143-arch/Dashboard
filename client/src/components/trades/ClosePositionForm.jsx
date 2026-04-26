@@ -1,12 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradesApi } from '../../api/client.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function detectRegion(symbol, instrumentType) {
+  if (instrumentType === 'crypto') return 'crypto';
+  if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) return 'indian';
+  return 'us';
+}
+
 export default function ClosePositionForm({ trade, currentPrice, onClose }) {
   const qc = useQueryClient();
   const maxQty = trade.remaining_size ?? trade.size;
+
+  const region = detectRegion(trade.symbol, trade.instrument_type);
+  const native = region === 'indian' ? 'INR' : 'USD';
+  const cs = native === 'INR' ? '₹' : '$';
 
   const [qty, setQty] = useState(String(maxQty));
   const [exitPrice, setExitPrice] = useState(currentPrice ? String(currentPrice) : '');
@@ -78,11 +88,11 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
               Position Fully Closed
             </div>
             <div style={{ fontFamily: 'var(--text-mono)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              {qtyNum} shares @ ${exitNum.toFixed(2)}
+              {qtyNum} shares @ {cs}{exitNum.toFixed(2)}
             </div>
             {pnl != null && (
               <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 20, color: pnlColor }}>
-                {pnl >= 0 ? '+' : ''}${Math.abs(pnl).toFixed(2)}
+                {pnl >= 0 ? '+' : ''}{cs}{Math.abs(pnl).toFixed(2)}
                 {pnlP != null && (
                   <span style={{ fontSize: 13, marginLeft: 8, opacity: 0.8 }}>
                     ({pnlP >= 0 ? '+' : ''}{pnlP.toFixed(1)}%)
@@ -98,14 +108,14 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
               Partial Close Recorded
             </div>
             <div style={{ fontFamily: 'var(--text-mono)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>{qtyNum}</strong> shares sold @ <strong style={{ color: 'var(--text-primary)' }}>${exitNum.toFixed(2)}</strong>
+              <strong style={{ color: 'var(--text-primary)' }}>{qtyNum}</strong> shares sold @ <strong style={{ color: 'var(--text-primary)' }}>{cs}{exitNum.toFixed(2)}</strong>
             </div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
               <strong style={{ color: 'var(--yellow)' }}>{remaining}</strong> shares remain open
             </div>
             {pnl != null && (
               <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 18, color: pnlColor }}>
-                {pnl >= 0 ? '+' : ''}${Math.abs(pnl).toFixed(2)}
+                {pnl >= 0 ? '+' : ''}{cs}{Math.abs(pnl).toFixed(2)}
               </div>
             )}
           </>
@@ -126,7 +136,7 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
           Symbol: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--text-mono)' }}>{trade.symbol}</strong>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          Entry: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--text-mono)' }}>${entryPrice}</strong>
+          Entry: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--text-mono)' }}>{cs}{entryPrice}</strong>
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
           Remaining: <strong style={{ color: 'var(--yellow)', fontFamily: 'var(--text-mono)' }}>{maxQty}</strong>
@@ -145,7 +155,7 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
           </div>
         </div>
         <div>
-          <label>Exit Price $</label>
+          <label>Exit Price {native}</label>
           <input
             type="number" step="any" value={exitPrice}
             onChange={e => setExitPrice(e.target.value)} placeholder="0.00" required
@@ -163,7 +173,7 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
           <input
             readOnly
             value={pnlD != null
-              ? `${pnlD >= 0 ? '+' : ''}$${Math.abs(pnlD).toFixed(2)} (${pnlP >= 0 ? '+' : ''}${pnlP?.toFixed(1)}%)`
+              ? `${pnlD >= 0 ? '+' : ''}${cs}${Math.abs(pnlD).toFixed(2)} (${pnlP >= 0 ? '+' : ''}${pnlP?.toFixed(1)}%)`
               : ''}
             style={{ color: pnlD == null ? 'var(--text-dim)' : pnlD >= 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'var(--text-mono)' }}
             placeholder="Enter qty and exit price"

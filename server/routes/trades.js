@@ -211,14 +211,16 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
     const parsed = JSON.parse(rows);
     const insert = db.prepare(`
       INSERT INTO trades (date, entry_time, exit_time, symbol, instrument_type, direction,
-        entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, status, is_best_trade)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', 0)
+        entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, status, is_best_trade, remaining_size)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     `);
     const insertMany = db.transaction((trades) => {
       for (const t of trades) {
+        const tradeStatus = t.status || 'closed';
         insert.run(t.date, t.entry_time || null, t.exit_time || null, t.symbol,
                    t.instrument_type, t.direction, t.entry_price, t.exit_price,
-                   t.size, t.pnl_dollar, t.pnl_percent, t.pattern_tag || null, t.notes || null);
+                   t.size, t.pnl_dollar, t.pnl_percent, t.pattern_tag || null, t.notes || null,
+                   tradeStatus, tradeStatus === 'open' ? t.size : null);
       }
     });
     insertMany(parsed);
