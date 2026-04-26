@@ -1,16 +1,43 @@
+function nativeCs(symbol, instrumentType) {
+  if (instrumentType !== 'crypto' && (symbol.endsWith('.NS') || symbol.endsWith('.BO'))) return '₹';
+  return '$';
+}
+
+function fmtPnl(value, cs) {
+  if (value === 0) return '—';
+  return `${value > 0 ? '+' : ''}${cs}${Math.abs(value).toFixed(2)}`;
+}
+
 export default function PnlSummary({ trades, allTimePnl }) {
-  const totalPnl = trades.reduce((sum, t) => sum + t.pnl_dollar, 0);
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
-  const pnlColor = totalPnl > 0 ? 'var(--green)' : totalPnl < 0 ? 'var(--red)' : 'var(--text-secondary)';
+
+  // Group closed trades by native currency
+  const inrTrades = trades.filter(t => nativeCs(t.symbol, t.instrument_type) === '₹');
+  const usdTrades = trades.filter(t => nativeCs(t.symbol, t.instrument_type) === '$');
+  const inrTotal = inrTrades.reduce((s, t) => s + (t.pnl_dollar || 0), 0);
+  const usdTotal = usdTrades.reduce((s, t) => s + (t.pnl_dollar || 0), 0);
+  const isMixed = inrTrades.length > 0 && usdTrades.length > 0;
+  const singleCs = inrTrades.length > 0 && usdTrades.length === 0 ? '₹' : '$';
+  const singleTotal = singleCs === '₹' ? inrTotal : usdTotal;
+  const pnlColor = (c) => c > 0 ? 'var(--green)' : c < 0 ? 'var(--red)' : 'var(--text-secondary)';
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
       <div className="card" style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Today's P&L</div>
-        <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor }}>
-          {totalPnl > 0 ? '+' : ''}{totalPnl === 0 ? '—' : `$${Math.abs(totalPnl).toFixed(2)}`}
-        </div>
+        {trades.length === 0 ? (
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+        ) : isMixed ? (
+          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>
+            <div style={{ fontSize: 18, color: pnlColor(inrTotal) }}>{fmtPnl(inrTotal, '₹')}</div>
+            <div style={{ fontSize: 18, color: pnlColor(usdTotal) }}>{fmtPnl(usdTotal, '$')}</div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(singleTotal) }}>
+            {fmtPnl(singleTotal, singleCs)}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ textAlign: 'center' }}>
@@ -38,7 +65,7 @@ export default function PnlSummary({ trades, allTimePnl }) {
         <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
           <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>All-Time P&L</div>
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: allTimePnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-            {allTimePnl >= 0 ? '+' : ''}{allTimePnl === 0 ? '—' : `$${Math.abs(allTimePnl).toFixed(2)}`}
+            {allTimePnl >= 0 ? '+' : ''}{allTimePnl === 0 ? '—' : `${singleCs}${Math.abs(allTimePnl).toFixed(2)}`}
           </div>
         </div>
       )}

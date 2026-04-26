@@ -2,6 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradesApi } from '../../api/client.js';
 import PnlBadge from '../shared/PnlBadge.jsx';
 
+function nativeCs(symbol, instrumentType) {
+  if (instrumentType !== 'crypto' && (symbol.endsWith('.NS') || symbol.endsWith('.BO'))) return '₹';
+  return '$';
+}
+
 export default function TodayTradeTable({ trades, date, onEdit }) {
   const qc = useQueryClient();
 
@@ -47,7 +52,9 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
             </tr>
           </thead>
           <tbody>
-            {trades.map(t => (
+            {trades.map(t => {
+              const cs = nativeCs(t.symbol, t.instrument_type);
+              return (
               <tr key={t.id}>
                 <td>
                   <button
@@ -64,10 +71,10 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
                   <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
                 </td>
                 <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
-                <td className="mono">${t.entry_price}</td>
-                <td className="mono">${t.exit_price}</td>
+                <td className="mono">{cs}{t.entry_price}</td>
+                <td className="mono">{t.exit_price != null ? `${cs}${t.exit_price}` : <span style={{ color: 'var(--text-dim)' }}>open</span>}</td>
                 <td className="mono">{t.size}</td>
-                <td><PnlBadge value={t.pnl_dollar} showPercent percent={t.pnl_percent} /></td>
+                <td><PnlBadge value={t.pnl_dollar} showPercent percent={t.pnl_percent} cs={cs} /></td>
                 <td style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{t.pattern_tag || '—'}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -77,7 +84,8 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
