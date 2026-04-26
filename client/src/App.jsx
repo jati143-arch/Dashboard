@@ -6,6 +6,7 @@ import TradeLog from './pages/TradeLog.jsx';
 import Performance from './pages/Performance.jsx';
 import PatternLibrary from './pages/PatternLibrary.jsx';
 import AiInsights from './pages/AiInsights.jsx';
+import Investments from './pages/Investments.jsx';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <main style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-base)' }}>
             <Routes>
               <Route path="/" element={<DailyDashboard />} />
+              <Route path="/investments" element={<Investments />} />
               <Route path="/trades" element={<TradeLog />} />
               <Route path="/performance" element={<Performance />} />
               <Route path="/patterns" element={<PatternLibrary />} />
