@@ -1,17 +1,25 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { tradesApi, dailyApi, statsApi } from '../api/client.js';
+import { tradesApi, dailyApi, statsApi, pricesApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
 import TodayTradeTable from '../components/dashboard/TodayTradeTable.jsx';
 import BestSetups from '../components/dashboard/BestSetups.jsx';
+import NewsWidget from '../components/dashboard/NewsWidget.jsx';
 import Modal from '../components/shared/Modal.jsx';
 import TradeForm from '../components/trades/TradeForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// Before 9:15 AM IST (UTC+5:30 = +330 min), day trading P&L resets to 0
+function isBeforeMarketOpen() {
+  const now = new Date();
+  const istMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 330) % 1440;
+  return istMinutes < 555; // 9 * 60 + 15
+}
 
 export default function DailyDashboard() {
   const [selectedDate, setSelectedDate] = useState(todayStr());
@@ -35,8 +43,44 @@ export default function DailyDashboard() {
     staleTime: 60_000,
   });
 
-  // Only show closed trades in day stats — open positions have their own panel
-  const closedTrades = trades.filter(t => t.status === 'closed');
+  // Open positions for unrealized P&L and news widget
+  const { data: openTrades = [] } = useQuery({
+    queryKey: ['trades', { status: 'open' }],
+    queryFn: () => tradesApi.list({ status: 'open' }),
+    staleTime: 60_000,
+  });
+
+  const openSymbols = [...new Set(
+    openTrades
+      .filter(t => t.instrument_type !== 'mutual_fund')
+      .map(t => t.symbol),
+  )];
+
+  const { data: prices = {} } = useQuery({
+    queryKey: ['prices', openSymbols],
+    queryFn: () => pricesApi.get(openSymbols),
+    enabled: openSymbols.length > 0,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
+  // Sum unrealized P&L from open non-MF positions using live prices
+  const unrealizedPnl = openTrades
+    .filter(t => t.instrument_type !== 'mutual_fund')
+    .reduce((sum, t) => {
+      const cp = prices[t.symbol]?.price;
+      if (!cp) return sum;
+      const qty = t.remaining_size ?? t.size;
+      const raw = t.direction === 'long'
+        ? (cp - t.entry_price) * qty
+        : (t.entry_price - cp) * qty;
+      return sum + raw;
+    }, 0);
+
+  const openNonMfCount = openTrades.filter(t => t.instrument_type !== 'mutual_fund').length;
+
+  // Only closed, non-MF trades count toward day realized stats
+  const closedTrades = trades.filter(t => t.status === 'closed' && t.instrument_type !== 'mutual_fund');
   const bestTrade = trades.find(t => t.is_best_trade);
   const isLoading = tradesLoading || dailyLoading;
 
@@ -45,7 +89,7 @@ export default function DailyDashboard() {
       {/* Open positions — always visible regardless of selected date */}
       <OpenPositions />
 
-      {/* Date picker + Add Trade */}
+      {/* Date picker + buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input
@@ -69,7 +113,13 @@ export default function DailyDashboard() {
       ) : (
         <>
           <HeroCard trade={bestTrade} date={selectedDate} />
-          <PnlSummary trades={closedTrades} allTimePnl={allTimeStats?.total_pnl} />
+          <PnlSummary
+            trades={closedTrades}
+            allTimePnl={allTimeStats?.total_pnl}
+            unrealizedPnl={unrealizedPnl}
+            openNonMfCount={openNonMfCount}
+            beforeMarketOpen={isBeforeMarketOpen()}
+          />
           <TodayTradeTable
             trades={trades}
             date={selectedDate}
@@ -90,6 +140,7 @@ export default function DailyDashboard() {
               </pre>
             </div>
           )}
+          <NewsWidget symbols={openSymbols} />
         </>
       )}
 

@@ -46,3 +46,11 @@ export const searchApi = {
 export const pricesApi = {
   get: (symbols) => api.get('/prices', { params: { symbols: symbols.join(',') } }).then(r => r.data),
 };
+
+export const newsApi = {
+  get: (symbols) => api.get('/news', { params: { symbols: symbols.join(',') } }).then(r => r.data),
+};
+
+export const mfApi = {
+  nav: (schemeCode) => api.get(`/mf/${schemeCode}`).then(r => r.data),
+};

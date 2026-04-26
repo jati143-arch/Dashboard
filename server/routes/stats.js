@@ -3,10 +3,10 @@ const db = require('../db');
 
 const router = express.Router();
 
-// Only count CLOSED trades in all stats — open positions have unrealized P&L
-const CLOSED = "status = 'closed'";
+// Mutual funds are tracked separately — exclude from all trading stats by default
+const CLOSED = "status = 'closed' AND instrument_type != 'mutual_fund'";
 
-// GET /api/stats/summary?period=daily|weekly|monthly|all&market=us|indian|crypto
+// GET /api/stats/summary?period=daily|weekly|monthly|all&market=us|indian|crypto|etf|mf
 router.get('/summary', (req, res) => {
   const { period = 'all', market = '' } = req.query;
   let dateFilter = '';
@@ -16,9 +16,14 @@ router.get('/summary', (req, res) => {
   else if (period === 'weekly')  dateFilter = "AND date >= date('now', '-7 days')";
   else if (period === 'monthly') dateFilter = "AND date >= date('now', '-30 days')";
 
-  if (market === 'us')      marketFilter = "AND instrument_type='stock' AND symbol NOT LIKE '%.NS' AND symbol NOT LIKE '%.BO'";
-  else if (market === 'indian') marketFilter = "AND (symbol LIKE '%.NS' OR symbol LIKE '%.BO')";
-  else if (market === 'crypto') marketFilter = "AND instrument_type='crypto'";
+  if (market === 'us')           marketFilter = "AND instrument_type='stock' AND symbol NOT LIKE '%.NS' AND symbol NOT LIKE '%.BO'";
+  else if (market === 'indian')  marketFilter = "AND (symbol LIKE '%.NS' OR symbol LIKE '%.BO')";
+  else if (market === 'crypto')  marketFilter = "AND instrument_type='crypto'";
+  else if (market === 'etf')     marketFilter = "AND instrument_type='etf'";
+  else if (market === 'mf')      marketFilter = "AND instrument_type='mutual_fund'";
+
+  // For mf market, allow mutual_fund in the base filter
+  const baseFilter = market === 'mf' ? "status = 'closed'" : CLOSED;
 
   const row = db.prepare(`
     SELECT
@@ -31,7 +36,7 @@ router.get('/summary', (req, res) => {
       MAX(pnl_dollar) as best_trade,
       MIN(pnl_dollar) as worst_trade
     FROM trades
-    WHERE ${CLOSED} ${dateFilter} ${marketFilter}
+    WHERE ${baseFilter} ${dateFilter} ${marketFilter}
   `).get();
 
   row.win_rate = row.total_trades > 0

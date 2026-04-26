@@ -10,6 +10,8 @@ const patternsRouter = require('./routes/patterns');
 const aiRouter = require('./routes/ai');
 const searchRouter = require('./routes/search');
 const pricesRouter = require('./routes/prices');
+const newsRouter = require('./routes/news');
+const mfRouter = require('./routes/mf');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,6 +26,8 @@ app.use('/api/patterns', patternsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/prices', pricesRouter);
+app.use('/api/news', newsRouter);
+app.use('/api/mf', mfRouter);
 
 // Serve built React app in production
 if (process.env.NODE_ENV === 'production') {

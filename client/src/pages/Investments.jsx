@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { tradesApi, pricesApi, statsApi } from '../api/client.js';
+import { tradesApi, pricesApi, statsApi, mfApi } from '../api/client.js';
 import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 function detectRegion(symbol, instrumentType) {
+  if (instrumentType === 'mutual_fund') return 'mf';
   if (instrumentType === 'crypto') return 'crypto';
+  if (instrumentType === 'etf') return 'etf';
   if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) return 'indian';
   return 'us';
 }
@@ -24,19 +26,46 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
 }
 
 const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
-const SUB_TABS = [['all', 'All'], ['us', 'US Market'], ['indian', 'Indian Markets'], ['crypto', 'Crypto']];
+
+const SUB_TABS = [
+  ['all',    'All'],
+  ['us',     'US Market'],
+  ['indian', 'Indian Markets'],
+  ['crypto', 'Crypto'],
+  ['etf',    'US ETF/Funds'],
+  ['mf',     'Indian MF'],
+];
 
 const CURRENCY_OPTIONS = {
   all:    ['USD', 'INR', 'EUR'],
   us:     ['USD', 'EUR'],
   indian: ['INR', 'EUR'],
   crypto: ['USD', 'EUR'],
+  etf:    ['USD', 'EUR'],
+  mf:     ['INR'],
 };
 
 function getInitCurrency(tab) {
   const saved = localStorage.getItem(`inv_currency_${tab}`);
   const opts = CURRENCY_OPTIONS[tab];
   return saved && opts.includes(saved) ? saved : opts[0];
+}
+
+// Inline component to fetch AMFI NAV for a single MF position row
+function MfNavCell({ schemeCode }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['mf-nav', schemeCode],
+    queryFn: () => mfApi.nav(schemeCode),
+    staleTime: 60 * 60_000, // NAV updates once per day
+  });
+  if (isLoading) return <span style={{ color: 'var(--text-dim)' }}>Loading…</span>;
+  if (!data) return <span style={{ color: 'var(--text-dim)' }}>—</span>;
+  return (
+    <span style={{ fontFamily: 'var(--text-mono)' }}>
+      ₹{data.nav.toFixed(4)}
+      {data.date && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>({data.date})</span>}
+    </span>
+  );
 }
 
 export default function Investments() {
@@ -60,7 +89,12 @@ export default function Investments() {
     queryFn: () => tradesApi.list({ status: 'open' }),
   });
 
-  const tradeSymbols = [...new Set(openTrades.map(t => t.symbol))];
+  // Only fetch Yahoo Finance prices for non-MF symbols
+  const tradeSymbols = [...new Set(
+    openTrades
+      .filter(t => t.instrument_type !== 'mutual_fund')
+      .map(t => t.symbol),
+  )];
   const allSymbols = tradeSymbols.length > 0 ? [...tradeSymbols, 'USDINR=X', 'EURUSD=X'] : [];
 
   const { data: prices = {} } = useQuery({
@@ -70,7 +104,7 @@ export default function Investments() {
     refetchInterval: 60_000,
   });
 
-  const marketParam = activeTab === 'all' ? '' : activeTab;
+  const marketParam = ['all', 'mf'].includes(activeTab) ? (activeTab === 'mf' ? 'mf' : '') : activeTab;
   const { data: tabStats } = useQuery({
     queryKey: ['stats', 'all', marketParam],
     queryFn: () => statsApi.summary('all', marketParam),
@@ -90,28 +124,43 @@ export default function Investments() {
     return fromUSD(toUSD(price, native, usdInr, eurUsd), displayCurrency, usdInr, eurUsd);
   }
 
-  const counts = { all: openTrades.length, us: 0, indian: 0, crypto: 0 };
-  openTrades.forEach(t => { counts[detectRegion(t.symbol, t.instrument_type)]++; });
+  // Count by region (exclude MF from 'all' count since they're separate)
+  const counts = { all: 0, us: 0, indian: 0, crypto: 0, etf: 0, mf: 0 };
+  openTrades.forEach(t => {
+    const r = detectRegion(t.symbol, t.instrument_type);
+    counts[r]++;
+    if (r !== 'mf') counts.all++;
+  });
 
   const filtered = openTrades.filter(t => {
-    if (activeTab === 'all') return true;
-    return detectRegion(t.symbol, t.instrument_type) === activeTab;
+    const r = detectRegion(t.symbol, t.instrument_type);
+    if (activeTab === 'all') return r !== 'mf'; // all tab excludes MF
+    return r === activeTab;
   });
+
+  const isMfTab = activeTab === 'mf';
 
   let totalInvested = 0;
   let totalUnrealized = 0;
-  filtered.forEach(t => {
-    const native = detectRegion(t.symbol, t.instrument_type) === 'indian' ? 'INR' : 'USD';
-    const entryC = convertPrice(t.entry_price, native);
-    const remaining = t.remaining_size ?? t.size;
-    totalInvested += entryC * remaining;
-    const liveData = prices[t.symbol];
-    if (liveData) {
-      const currentC = convertPrice(liveData.price, native);
-      const pnlD = t.direction === 'long' ? (currentC - entryC) * remaining : (entryC - currentC) * remaining;
-      totalUnrealized += pnlD;
-    }
-  });
+  if (!isMfTab) {
+    filtered.forEach(t => {
+      const native = detectRegion(t.symbol, t.instrument_type) === 'indian' ? 'INR' : 'USD';
+      const entryC = convertPrice(t.entry_price, native);
+      const remaining = t.remaining_size ?? t.size;
+      totalInvested += entryC * remaining;
+      const liveData = prices[t.symbol];
+      if (liveData) {
+        const currentC = convertPrice(liveData.price, native);
+        const pnlD = t.direction === 'long' ? (currentC - entryC) * remaining : (entryC - currentC) * remaining;
+        totalUnrealized += pnlD;
+      }
+    });
+  } else {
+    // For MF tab: invested = sum of entry_price * size in INR
+    filtered.forEach(t => {
+      totalInvested += t.entry_price * (t.remaining_size ?? t.size);
+    });
+  }
 
   const pnlColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
   const allTimePnl = tabStats?.total_pnl;
@@ -128,7 +177,7 @@ export default function Investments() {
       </div>
 
       {/* Sub-tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {SUB_TABS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => switchTab(key)} style={{
             padding: '6px 16px', fontSize: 12, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
@@ -150,19 +199,23 @@ export default function Investments() {
         </div>
         <div>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Total Invested</div>
-          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)' }}>{fmt(totalInvested)}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Unrealized P&L</div>
-          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: pnlColor }}>
-            {totalUnrealized >= 0 ? '+' : '-'}{fmt(totalUnrealized)}
+          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)' }}>
+            {isMfTab ? `₹${totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : fmt(totalInvested)}
           </div>
         </div>
+        {!isMfTab && (
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Unrealized P&L</div>
+            <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: pnlColor }}>
+              {totalUnrealized >= 0 ? '+' : '-'}{fmt(totalUnrealized)}
+            </div>
+          </div>
+        )}
         {allTimePnl != null && (
           <div>
             <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>All-Time Realized P&L</div>
             <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: allTimePnlColor }}>
-              {allTimePnl >= 0 ? '+' : '-'}${Math.abs(allTimePnl).toFixed(2)}
+              {allTimePnl >= 0 ? '+' : '-'}{isMfTab ? `₹${Math.abs(allTimePnl).toFixed(2)}` : `$${Math.abs(allTimePnl).toFixed(2)}`}
             </div>
           </div>
         )}
@@ -181,7 +234,59 @@ export default function Investments() {
       {/* Positions table */}
       {isLoading ? (
         <LoadingSpinner text="Loading positions..." />
+      ) : isMfTab ? (
+        /* MF Tab — special table with AMFI NAV */
+        <div className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: '3px solid var(--accent)' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Scheme Code</th>
+                  <th>Dir</th>
+                  <th>Entry Date</th>
+                  <th>Entry NAV</th>
+                  <th>Latest NAV</th>
+                  <th>Units</th>
+                  <th>Invested</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '32px 20px' }}>
+                      No mutual fund positions. Add one using "Open Position" with type "Indian Mutual Fund".
+                    </td>
+                  </tr>
+                ) : filtered.map(t => {
+                  const remaining = t.remaining_size ?? t.size;
+                  return (
+                    <tr key={t.id}>
+                      <td>
+                        <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
+                        <span className="badge badge-stock" style={{ marginLeft: 6, fontSize: 9 }}>MF</span>
+                      </td>
+                      <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
+                      <td style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
+                      <td style={{ fontFamily: 'var(--text-mono)' }}>₹{t.entry_price.toFixed(4)}</td>
+                      <td><MfNavCell schemeCode={t.symbol} /></td>
+                      <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
+                      <td style={{ fontFamily: 'var(--text-mono)' }}>₹{(t.entry_price * remaining).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                      <td>
+                        <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
+                          onClick={() => setClosingTrade({ trade: t, currentPrice: null })}>
+                          Redeem
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
+        /* All other tabs — Yahoo Finance prices */
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: '3px solid var(--accent)' }}>
           <div style={{ overflowX: 'auto' }}>
             <table>

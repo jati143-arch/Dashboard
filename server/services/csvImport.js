@@ -10,18 +10,18 @@ const COLUMN_MAP = {
   // Direction
   direction: ['direction', 'side', 'action', 'type', 'buy/sell', 'transaction type'],
   // Entry price
-  entry_price: ['entry price', 'entry', 'avg price', 'price', 'avg cost', 'cost per share', 'open price'],
+  entry_price: ['entry price', 'entry', 'avg price', 'price', 'avg cost', 'cost per share', 'open price', 'avg_entry'],
   // Exit price
-  exit_price: ['exit price', 'exit', 'close price', 'close'],
+  exit_price: ['exit price', 'exit', 'close price', 'close', 'ltp'],
   // Size
   size: ['size', 'quantity', 'qty', 'shares', 'units', 'amount', 'contracts'],
-  // P&L
-  pnl_dollar: ['p&l', 'pnl', 'profit/loss', 'realized p&l', 'gain/loss', 'net amount', 'profit'],
+  // P&L (pnl_rs for Indian ₹ P&L columns)
+  pnl_dollar: ['p&l', 'pnl', 'profit/loss', 'realized p&l', 'gain/loss', 'net amount', 'profit', 'pnl_rs'],
   // Times
   entry_time: ['entry time', 'open time', 'time'],
   exit_time: ['exit time', 'close time'],
-  // Pattern
-  pattern_tag: ['pattern', 'setup', 'strategy', 'pattern tag'],
+  // Pattern / Sector
+  pattern_tag: ['pattern', 'setup', 'strategy', 'pattern tag', 'sector'],
   // Notes
   notes: ['notes', 'comment', 'comments', 'description', 'memo'],
   // Instrument type
@@ -64,6 +64,8 @@ function normalizeInstrumentType(val, symbol) {
   }
   const v = val.toLowerCase();
   if (v.includes('crypto') || v.includes('coin') || v.includes('token')) return 'crypto';
+  if (v.includes('mutual') || v.includes('mf')) return 'mutual_fund';
+  if (v.includes('etf') || v.includes('index fund')) return 'etf';
   return 'stock';
 }
 
@@ -85,41 +87,70 @@ function parseCSV(buffer) {
   for (const record of records) {
     const get = (field) => colMap[field] ? record[colMap[field]] : null;
 
-    const symbol = (get('symbol') || '').toUpperCase().trim();
-    if (!symbol) { skipped.push(record); continue; }
+    const rawSymbol = (get('symbol') || '').toUpperCase().trim();
+    if (!rawSymbol) { skipped.push(record); continue; }
 
     const entryPrice = parseFloat(get('entry_price'));
-    const exitPrice = parseFloat(get('exit_price'));
     if (isNaN(entryPrice)) { skipped.push(record); continue; }
 
     const size = parseFloat(get('size')) || 1;
     const direction = normalizeDirection(get('direction'));
 
-    let pnlDollar = parseFloat(get('pnl_dollar'));
-    if (isNaN(pnlDollar) && !isNaN(exitPrice)) {
-      pnlDollar = direction === 'long'
-        ? (exitPrice - entryPrice) * size
-        : (entryPrice - exitPrice) * size;
+    // Determine instrument type first (needed for .NS suffix logic)
+    const instrType = normalizeInstrumentType(get('instrument_type'), rawSymbol);
+
+    // Auto-append .NS for bare NSE tickers (no dot, no dash, not crypto)
+    let finalSymbol = rawSymbol;
+    if (!finalSymbol.includes('.') && !finalSymbol.includes('-') && instrType === 'stock') {
+      finalSymbol = finalSymbol + '.NS';
     }
-    if (isNaN(pnlDollar)) pnlDollar = 0;
+
+    const exitPriceRaw = parseFloat(get('exit_price'));
+    // If exit price equals entry price (e.g. LTP column used as exit) and no separate
+    // exit_price column exists, treat as open position
+    const exitColHeader = colMap['exit_price'] ? colMap['exit_price'].toLowerCase().trim() : '';
+    const isLtpColumn = exitColHeader === 'ltp';
+    // Open if: no exit price, OR exit price column is "LTP" (live price, not a real exit)
+    const hasRealExit = !isNaN(exitPriceRaw) && !isLtpColumn;
+
+    const tradeStatus = hasRealExit ? 'closed' : 'open';
+
+    // P&L: use provided value, or calculate if closed
+    let pnlDollar = parseFloat(get('pnl_dollar'));
+    if (isNaN(pnlDollar)) {
+      if (hasRealExit) {
+        pnlDollar = direction === 'long'
+          ? (exitPriceRaw - entryPrice) * size
+          : (entryPrice - exitPriceRaw) * size;
+      } else {
+        pnlDollar = null;
+      }
+    } else if (!hasRealExit) {
+      // Has pnl_rs value but no real exit (unrealized) — still store as null (unrealized)
+      pnlDollar = null;
+    }
 
     const cost = entryPrice * size;
-    const pnlPercent = cost !== 0 ? (pnlDollar / cost) * 100 : 0;
+    const pnlPercent = (pnlDollar != null && cost !== 0)
+      ? (pnlDollar / cost) * 100
+      : null;
 
     rows.push({
-      date: normalizeDate(get('date')),
+      date: normalizeDate(get('date')) || new Date().toISOString().slice(0, 10),
       entry_time: get('entry_time') || null,
       exit_time: get('exit_time') || null,
-      symbol,
-      instrument_type: normalizeInstrumentType(get('instrument_type'), symbol),
+      symbol: finalSymbol,
+      instrument_type: instrType,
       direction,
       entry_price: entryPrice,
-      exit_price: isNaN(exitPrice) ? entryPrice : exitPrice,
+      exit_price: hasRealExit ? exitPriceRaw : null,
       size,
-      pnl_dollar: Math.round(pnlDollar * 100) / 100,
-      pnl_percent: Math.round(pnlPercent * 100) / 100,
+      pnl_dollar: pnlDollar != null ? Math.round(pnlDollar * 100) / 100 : null,
+      pnl_percent: pnlPercent != null ? Math.round(pnlPercent * 100) / 100 : null,
       pattern_tag: get('pattern_tag') || null,
       notes: get('notes') || null,
+      status: tradeStatus,
+      remaining_size: tradeStatus === 'open' ? size : null,
     });
   }
 

@@ -117,7 +117,20 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
         </div>
         <div>
           <label>Symbol</label>
-          {isClosingNewRecord ? (
+          {form.instrument_type === 'mutual_fund' ? (
+            <>
+              <input
+                type="text"
+                value={form.symbol}
+                onChange={e => set('symbol', e.target.value.trim())}
+                placeholder="AMFI scheme code (e.g. 120503)"
+                required
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                Enter the AMFI scheme code number. Find it at amfiindia.com.
+              </div>
+            </>
+          ) : isClosingNewRecord ? (
             <OpenPositionsSelect
               value={form.symbol}
               onSelect={(sym, type, size) => setForm(f => ({
@@ -150,6 +163,8 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
           <select value={form.instrument_type} onChange={e => set('instrument_type', e.target.value)}>
             <option value="stock">Stock</option>
             <option value="crypto">Crypto</option>
+            <option value="etf">ETF / Index Fund</option>
+            <option value="mutual_fund">Indian Mutual Fund</option>
           </select>
         </div>
         <div>
@@ -167,7 +182,7 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
 
       <div style={row2}>
         <div>
-          <label>Entry Price $</label>
+          <label>{form.instrument_type === 'mutual_fund' ? 'Entry NAV ₹' : form.instrument_type === 'stock' && form.symbol.match(/\.(NS|BO)$/) ? 'Entry Price ₹' : 'Entry Price $'}</label>
           <input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required />
         </div>
         <div>

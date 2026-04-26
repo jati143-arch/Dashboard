@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS trades (
   exit_time       TEXT,
   exit_date       TEXT,
   symbol          TEXT NOT NULL,
-  instrument_type TEXT NOT NULL CHECK(instrument_type IN ('stock','crypto')),
+  instrument_type TEXT NOT NULL CHECK(instrument_type IN ('stock','crypto','mutual_fund','etf')),
   direction       TEXT NOT NULL CHECK(direction IN ('long','short')),
   entry_price     REAL NOT NULL,
   exit_price      REAL,

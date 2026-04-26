@@ -8,7 +8,15 @@ function fmtPnl(value, cs) {
   return `${value > 0 ? '+' : ''}${cs}${Math.abs(value).toFixed(2)}`;
 }
 
-export default function PnlSummary({ trades, allTimePnl }) {
+const labelStyle = {
+  fontSize: 11,
+  color: 'var(--text-dim)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  marginBottom: 8,
+};
+
+export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, openNonMfCount, beforeMarketOpen }) {
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
 
@@ -20,13 +28,21 @@ export default function PnlSummary({ trades, allTimePnl }) {
   const isMixed = inrTrades.length > 0 && usdTrades.length > 0;
   const singleCs = inrTrades.length > 0 && usdTrades.length === 0 ? '₹' : '$';
   const singleTotal = singleCs === '₹' ? inrTotal : usdTotal;
+
   const pnlColor = (c) => c > 0 ? 'var(--green)' : c < 0 ? 'var(--red)' : 'var(--text-secondary)';
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+
+      {/* Realized P&L — today's closed trades; blank before market open */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Today's P&L</div>
-        {trades.length === 0 ? (
+        <div style={labelStyle}>Realized P&L</div>
+        {beforeMarketOpen ? (
+          <>
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Market closed</div>
+          </>
+        ) : trades.length === 0 ? (
           <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
         ) : isMixed ? (
           <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>
@@ -40,20 +56,40 @@ export default function PnlSummary({ trades, allTimePnl }) {
         )}
       </div>
 
+      {/* Unrealized P&L — live open positions */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Trades</div>
+        <div style={labelStyle}>Unrealized P&L</div>
+        {openNonMfCount === 0 ? (
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(unrealizedPnl) }}>
+              {unrealizedPnl >= 0 ? '+' : ''}₹{Math.abs(unrealizedPnl).toFixed(0)}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
+              {openNonMfCount} open position{openNonMfCount !== 1 ? 's' : ''}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Trade count */}
+      <div className="card" style={{ textAlign: 'center' }}>
+        <div style={labelStyle}>Trades</div>
         <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>{trades.length}</div>
       </div>
 
+      {/* Win Rate */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Win Rate</div>
+        <div style={labelStyle}>Win Rate</div>
         <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: winRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
           {trades.length ? `${winRate}%` : '—'}
         </div>
       </div>
 
+      {/* Wins / Losses */}
       <div className="card" style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Wins / Losses</div>
+        <div style={labelStyle}>Wins / Losses</div>
         <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)', marginTop: 4 }}>
           <span style={{ color: 'var(--green)' }}>{wins}</span>
           <span style={{ color: 'var(--text-dim)', margin: '0 6px' }}>/</span>
@@ -61,9 +97,10 @@ export default function PnlSummary({ trades, allTimePnl }) {
         </div>
       </div>
 
+      {/* All-Time P&L */}
       {allTimePnl != null && (
         <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>All-Time P&L</div>
+          <div style={labelStyle}>All-Time P&L</div>
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: allTimePnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
             {allTimePnl >= 0 ? '+' : ''}{allTimePnl === 0 ? '—' : `${singleCs}${Math.abs(allTimePnl).toFixed(2)}`}
           </div>
