@@ -24,7 +24,7 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
 }
 
 const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
-const SUB_TABS = [['all', 'All'], ['us', 'US Market'], ['indian', 'Indian Markets']];
+const SUB_TABS = [['all', 'All'], ['us', 'US Market'], ['indian', 'Indian Markets'], ['crypto', 'Crypto']];
 
 export default function Investments() {
   const qc = useQueryClient();
@@ -60,11 +60,8 @@ export default function Investments() {
     return fromUSD(toUSD(price, native, usdInr, eurUsd), displayCurrency, usdInr, eurUsd);
   }
 
-  const counts = { all: openTrades.length, us: 0, indian: 0 };
-  openTrades.forEach(t => {
-    const r = detectRegion(t.symbol, t.instrument_type);
-    if (r === 'us' || r === 'indian') counts[r]++;
-  });
+  const counts = { all: openTrades.length, us: 0, indian: 0, crypto: 0 };
+  openTrades.forEach(t => { counts[detectRegion(t.symbol, t.instrument_type)]++; });
 
   const filtered = openTrades.filter(t => {
     if (activeTab === 'all') return true;
@@ -107,7 +104,7 @@ export default function Investments() {
             color: activeTab === key ? '#000' : 'var(--text-secondary)',
             transition: 'background 0.15s',
           }}>
-            {label} ({counts[key] ?? filtered.length})
+            {label} ({counts[key]})
           </button>
         ))}
       </div>

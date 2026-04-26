@@ -49,7 +49,7 @@ export default function DailyDashboard() {
           <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelectedDate(todayStr())}>Today</button>
         </div>
         <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
-          + Add Trade
+          ◉ Open Position
         </button>
       </div>
 
@@ -91,7 +91,7 @@ export default function DailyDashboard() {
           <TradeForm
             trade={editingTrade?.id ? editingTrade : null}
             defaultDate={selectedDate}
-            defaultStatus={editingTrade?.status || 'closed'}
+            defaultStatus={editingTrade?.status || 'open'}
             onClose={() => { setShowForm(false); setEditingTrade(null); }}
           />
         </Modal>
