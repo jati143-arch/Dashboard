@@ -48,14 +48,9 @@ export default function DailyDashboard() {
           />
           <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setSelectedDate(todayStr())}>Today</button>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
-            ◉ Open Position
-          </button>
-          <button className="btn-primary" onClick={() => { setEditingTrade({ status: 'closed' }); setShowForm(true); }}>
-            + Add Closed Trade
-          </button>
-        </div>
+        <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>
+          + Add Trade
+        </button>
       </div>
 
       {isLoading ? (
