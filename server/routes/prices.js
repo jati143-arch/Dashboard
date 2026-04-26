@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const yahooFinance = require('yahoo-finance2').default;
 
-yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
-
 // GET /api/prices?symbols=AAPL,RELIANCE.NS,BTC-USD,USDINR=X,EURUSD=X
 router.get('/', async (req, res) => {
   const { symbols } = req.query;
