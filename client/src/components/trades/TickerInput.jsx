@@ -7,6 +7,12 @@ export default function TickerInput({ value, onChange, onSelect }) {
   const [loading, setLoading] = useState(false);
   const timer = useRef(null);
   const wrapRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -26,12 +32,14 @@ export default function TickerInput({ value, onChange, onSelect }) {
     timer.current = setTimeout(async () => {
       try {
         const data = await searchApi.search(v);
-        setResults(data);
-        setOpen(data.length > 0);
+        if (!mountedRef.current) return;
+        const safeData = Array.isArray(data) ? data : [];
+        setResults(safeData);
+        setOpen(safeData.length > 0);
       } catch {
-        setResults([]);
+        if (mountedRef.current) setResults([]);
       } finally {
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     }, 350);
   }

@@ -17,14 +17,14 @@ router.get('/', async (req, res) => {
     const json = await resp.json();
     const allowed = new Set(['EQUITY', 'CRYPTOCURRENCY', 'ETF', 'MUTUALFUND']);
 
-    const results = (json.quotes || [])
-      .filter(q => allowed.has(q.quoteType))
+    const results = (Array.isArray(json.quotes) ? json.quotes : [])
+      .filter(qt => allowed.has(qt.quoteType))
       .slice(0, 8)
-      .map(q => ({
-        symbol: q.symbol,
-        name: q.shortname || q.longname || q.symbol,
-        type: q.quoteType === 'CRYPTOCURRENCY' ? 'crypto' : 'stock',
-        exchange: q.exchange || q.fullExchangeName || '',
+      .map(qt => ({
+        symbol: qt.symbol,
+        name: qt.shortname || qt.longname || qt.symbol,
+        type: qt.quoteType === 'CRYPTOCURRENCY' ? 'crypto' : 'stock',
+        exchange: qt.exchange || qt.fullExchangeName || '',
       }));
 
     res.json(results);
