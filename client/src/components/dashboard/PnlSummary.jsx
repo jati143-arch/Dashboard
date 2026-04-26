@@ -1,4 +1,4 @@
-export default function PnlSummary({ trades }) {
+export default function PnlSummary({ trades, allTimePnl }) {
   const totalPnl = trades.reduce((sum, t) => sum + t.pnl_dollar, 0);
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
@@ -33,6 +33,15 @@ export default function PnlSummary({ trades }) {
           <span style={{ color: 'var(--red)' }}>{trades.length - wins}</span>
         </div>
       </div>
+
+      {allTimePnl != null && (
+        <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>All-Time P&L</div>
+          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: allTimePnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
+            {allTimePnl >= 0 ? '+' : ''}{allTimePnl === 0 ? '—' : `$${Math.abs(allTimePnl).toFixed(2)}`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

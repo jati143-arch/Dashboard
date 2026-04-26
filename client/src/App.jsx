@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar.jsx';
 import TopBar from './components/layout/TopBar.jsx';
@@ -9,12 +10,17 @@ import AiInsights from './pages/AiInsights.jsx';
 import Investments from './pages/Investments.jsx';
 
 export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
+
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-        <Sidebar />
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <TopBar />
+          <TopBar onToggle={() => setSidebarOpen(o => !o)} />
           <main style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-base)' }}>
             <Routes>
               <Route path="/" element={<DailyDashboard />} />

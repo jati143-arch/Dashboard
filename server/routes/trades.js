@@ -49,8 +49,8 @@ router.post('/', (req, res) => {
   const result = db.prepare(`
     INSERT INTO trades (date, entry_time, exit_time, exit_date, symbol, instrument_type,
       direction, entry_price, exit_price, size, pnl_dollar, pnl_percent,
-      pattern_tag, notes, status, is_best_trade)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      pattern_tag, notes, status, is_best_trade, remaining_size)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     date,
     entry_time || null,
@@ -68,6 +68,7 @@ router.post('/', (req, res) => {
     notes || null,
     status,
     is_best_trade ? 1 : 0,
+    isOpen ? size : null,
   );
 
   res.status(201).json(db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid));
@@ -128,6 +129,76 @@ router.patch('/:id/best', (req, res) => {
   const newVal = trade.is_best_trade ? 0 : 1;
   db.prepare('UPDATE trades SET is_best_trade = ? WHERE id = ?').run(newVal, req.params.id);
   res.json({ ...trade, is_best_trade: newVal });
+});
+
+// POST /api/trades/:id/partial-close
+router.post('/:id/partial-close', (req, res) => {
+  const original = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id);
+  if (!original) return res.status(404).json({ error: 'Trade not found' });
+  if (original.status !== 'open') return res.status(400).json({ error: 'Trade is not open' });
+
+  const { qty_to_sell, exit_price, exit_date, pnl_dollar, pnl_percent, notes } = req.body;
+  const qtyNum = parseFloat(qty_to_sell);
+  const remaining = (original.remaining_size ?? original.size) - qtyNum;
+
+  if (qtyNum <= 0) return res.status(400).json({ error: 'qty_to_sell must be positive' });
+  if (remaining < -0.0001) return res.status(400).json({ error: 'qty_to_sell exceeds remaining size' });
+
+  const closeOp = db.transaction(() => {
+    const created = db.prepare(`
+      INSERT INTO trades (date, symbol, instrument_type, direction, entry_price, exit_price,
+        exit_date, size, pnl_dollar, pnl_percent, notes, status, parent_trade_id, remaining_size)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', ?, null)
+    `).run(
+      original.date, original.symbol, original.instrument_type, original.direction,
+      original.entry_price, parseFloat(exit_price),
+      exit_date || null, qtyNum,
+      pnl_dollar != null ? parseFloat(pnl_dollar) : null,
+      pnl_percent != null ? parseFloat(pnl_percent) : null,
+      notes || null, original.id,
+    );
+
+    const newRemaining = Math.max(0, remaining);
+    const newStatus = newRemaining <= 0.0001 ? 'closed' : 'open';
+    db.prepare('UPDATE trades SET remaining_size = ?, status = ? WHERE id = ?')
+      .run(newRemaining, newStatus, original.id);
+
+    return {
+      updated: db.prepare('SELECT * FROM trades WHERE id = ?').get(original.id),
+      created: db.prepare('SELECT * FROM trades WHERE id = ?').get(created.lastInsertRowid),
+    };
+  });
+
+  res.json(closeOp());
+});
+
+// GET /api/trades/symbol-stats?symbol=AAPL
+router.get('/symbol-stats', (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.json(null);
+
+  const stats = db.prepare(`
+    SELECT
+      AVG(entry_price) as avg_buy_price,
+      COUNT(*) as trade_count
+    FROM trades
+    WHERE UPPER(symbol) = UPPER(?) AND parent_trade_id IS NULL AND entry_price IS NOT NULL
+  `).get(symbol);
+
+  const last = db.prepare(`
+    SELECT entry_price as last_buy_price
+    FROM trades
+    WHERE UPPER(symbol) = UPPER(?) AND parent_trade_id IS NULL
+    ORDER BY created_at DESC LIMIT 1
+  `).get(symbol);
+
+  if (!stats || stats.trade_count === 0) return res.json(null);
+
+  res.json({
+    avg_buy_price: stats.avg_buy_price,
+    last_buy_price: last?.last_buy_price ?? stats.avg_buy_price,
+    trade_count: stats.trade_count,
+  });
 });
 
 // POST /api/trades/import-csv

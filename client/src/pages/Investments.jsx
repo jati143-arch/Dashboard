@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { tradesApi, pricesApi } from '../api/client.js';
+import { tradesApi, pricesApi, statsApi } from '../api/client.js';
 import Modal from '../components/shared/Modal.jsx';
-import TradeForm from '../components/trades/TradeForm.jsx';
+import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 function detectRegion(symbol, instrumentType) {
@@ -26,11 +26,34 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
 const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
 const SUB_TABS = [['all', 'All'], ['us', 'US Market'], ['indian', 'Indian Markets'], ['crypto', 'Crypto']];
 
+const CURRENCY_OPTIONS = {
+  all:    ['USD', 'INR', 'EUR'],
+  us:     ['USD', 'EUR'],
+  indian: ['INR', 'EUR'],
+  crypto: ['USD', 'EUR'],
+};
+
+function getInitCurrency(tab) {
+  const saved = localStorage.getItem(`inv_currency_${tab}`);
+  const opts = CURRENCY_OPTIONS[tab];
+  return saved && opts.includes(saved) ? saved : opts[0];
+}
+
 export default function Investments() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState('all');
-  const [displayCurrency, setDisplayCurrency] = useState('USD');
+  const [displayCurrency, setDisplayCurrency] = useState(() => getInitCurrency('all'));
   const [closingTrade, setClosingTrade] = useState(null);
+
+  function switchTab(tab) {
+    setActiveTab(tab);
+    setDisplayCurrency(getInitCurrency(tab));
+  }
+
+  function switchCurrency(c) {
+    setDisplayCurrency(c);
+    localStorage.setItem(`inv_currency_${activeTab}`, c);
+  }
 
   const { data: openTrades = [], isLoading } = useQuery({
     queryKey: ['trades', { status: 'open' }],
@@ -45,6 +68,13 @@ export default function Investments() {
     queryFn: () => pricesApi.get(allSymbols),
     enabled: allSymbols.length > 0,
     refetchInterval: 60_000,
+  });
+
+  const marketParam = activeTab === 'all' ? '' : activeTab;
+  const { data: tabStats } = useQuery({
+    queryKey: ['stats', 'all', marketParam],
+    queryFn: () => statsApi.summary('all', marketParam),
+    staleTime: 60_000,
   });
 
   const usdInr = prices['USDINR=X']?.price || 83;
@@ -73,20 +103,23 @@ export default function Investments() {
   filtered.forEach(t => {
     const native = detectRegion(t.symbol, t.instrument_type) === 'indian' ? 'INR' : 'USD';
     const entryC = convertPrice(t.entry_price, native);
-    totalInvested += entryC * t.size;
+    const remaining = t.remaining_size ?? t.size;
+    totalInvested += entryC * remaining;
     const liveData = prices[t.symbol];
     if (liveData) {
       const currentC = convertPrice(liveData.price, native);
-      const pnlD = t.direction === 'long' ? (currentC - entryC) * t.size : (entryC - currentC) * t.size;
+      const pnlD = t.direction === 'long' ? (currentC - entryC) * remaining : (entryC - currentC) * remaining;
       totalUnrealized += pnlD;
     }
   });
 
   const pnlColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
+  const allTimePnl = tabStats?.total_pnl;
+  const allTimePnlColor = allTimePnl == null ? 'var(--text-dim)' : allTimePnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const currencyOpts = CURRENCY_OPTIONS[activeTab];
 
   return (
     <div>
-      {/* Page title */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Investments</div>
@@ -97,7 +130,7 @@ export default function Investments() {
       {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
         {SUB_TABS.map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setActiveTab(key)} style={{
+          <button key={key} type="button" onClick={() => switchTab(key)} style={{
             padding: '6px 16px', fontSize: 12, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
             border: activeTab === key ? 'none' : '1px solid var(--border)',
             background: activeTab === key ? 'var(--accent)' : 'var(--bg-card)',
@@ -125,9 +158,17 @@ export default function Investments() {
             {totalUnrealized >= 0 ? '+' : '-'}{fmt(totalUnrealized)}
           </div>
         </div>
+        {allTimePnl != null && (
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>All-Time Realized P&L</div>
+            <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: allTimePnlColor }}>
+              {allTimePnl >= 0 ? '+' : '-'}${Math.abs(allTimePnl).toFixed(2)}
+            </div>
+          </div>
+        )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-          {['USD', 'INR', 'EUR'].map(c => (
-            <button key={c} type="button" onClick={() => setDisplayCurrency(c)} style={{
+          {currencyOpts.map(c => (
+            <button key={c} type="button" onClick={() => switchCurrency(c)} style={{
               padding: '4px 10px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 700,
               border: displayCurrency === c ? 'none' : '1px solid var(--border)',
               background: displayCurrency === c ? 'var(--accent)' : 'transparent',
@@ -152,7 +193,7 @@ export default function Investments() {
                   <th>Entry Price</th>
                   <th>Current Price</th>
                   <th>Change %</th>
-                  <th>Size</th>
+                  <th>Remaining</th>
                   <th>Unrealized P&L</th>
                   <th></th>
                 </tr>
@@ -170,16 +211,17 @@ export default function Investments() {
                   const liveData = prices[t.symbol];
                   const currentPrice = liveData?.price;
                   const hasPrice = currentPrice != null;
+                  const remaining = t.remaining_size ?? t.size;
 
                   const entryC = hasPrice ? convertPrice(t.entry_price, native) : null;
                   const currentC = hasPrice ? convertPrice(currentPrice, native) : null;
 
                   let calc = null;
-                  if (entryC != null && currentC != null && t.size) {
+                  if (entryC != null && currentC != null && remaining) {
                     const pnlD = t.direction === 'long'
-                      ? (currentC - entryC) * t.size
-                      : (entryC - currentC) * t.size;
-                    const cost = entryC * t.size;
+                      ? (currentC - entryC) * remaining
+                      : (entryC - currentC) * remaining;
+                    const cost = entryC * remaining;
                     calc = { pnlD, pnlP: cost !== 0 ? (pnlD / cost) * 100 : 0 };
                   }
 
@@ -209,7 +251,7 @@ export default function Investments() {
                           </span>
                         )}
                       </td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>{t.size}</td>
+                      <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
                       <td>
                         {calc ? (
                           <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: rowPnlColor }}>
@@ -224,7 +266,7 @@ export default function Investments() {
                       </td>
                       <td>
                         <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                          onClick={() => setClosingTrade({ ...t, exit_price: currentPrice ? currentPrice.toFixed(2) : '', status: 'closed' })}>
+                          onClick={() => setClosingTrade({ trade: t, currentPrice })}>
                           Close
                         </button>
                       </td>
@@ -238,10 +280,10 @@ export default function Investments() {
       )}
 
       {closingTrade && (
-        <Modal title={`Close Position — ${closingTrade.symbol}`} onClose={() => setClosingTrade(null)} width={580}>
-          <TradeForm
-            trade={closingTrade}
-            defaultStatus="closed"
+        <Modal title={`Close Position — ${closingTrade.trade.symbol}`} onClose={() => setClosingTrade(null)} width={520}>
+          <ClosePositionForm
+            trade={closingTrade.trade}
+            currentPrice={closingTrade.currentPrice}
             onClose={() => {
               setClosingTrade(null);
               qc.invalidateQueries({ queryKey: ['trades'] });

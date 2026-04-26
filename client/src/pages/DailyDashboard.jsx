@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { tradesApi, dailyApi } from '../api/client.js';
+import { tradesApi, dailyApi, statsApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
@@ -25,6 +25,12 @@ export default function DailyDashboard() {
   const { data: daily, isLoading: dailyLoading } = useQuery({
     queryKey: ['daily', selectedDate],
     queryFn: () => dailyApi.get(selectedDate),
+  });
+
+  const { data: allTimeStats } = useQuery({
+    queryKey: ['stats', 'all', ''],
+    queryFn: () => statsApi.summary('all', ''),
+    staleTime: 60_000,
   });
 
   // Only show closed trades in day stats — open positions have their own panel
@@ -58,7 +64,7 @@ export default function DailyDashboard() {
       ) : (
         <>
           <HeroCard trade={bestTrade} date={selectedDate} />
-          <PnlSummary trades={closedTrades} />
+          <PnlSummary trades={closedTrades} allTimePnl={allTimeStats?.total_pnl} />
           <TodayTradeTable
             trades={trades}
             date={selectedDate}

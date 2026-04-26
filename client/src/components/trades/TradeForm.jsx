@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, patternsApi } from '../../api/client.js';
 import TickerInput from './TickerInput.jsx';
+import OpenPositionsSelect from './OpenPositionsSelect.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = {
   date: today(), symbol: '', instrument_type: 'stock', direction: 'long',
   entry_price: '', exit_price: '', exit_date: '', size: '',
   pnl_dollar: '', pnl_percent: '',
-  pattern_tag: '', entry_time: '', exit_time: '', notes: '',
+  pattern_tag: '', notes: '',
   is_best_trade: false, status: 'closed',
 };
 
@@ -21,6 +22,8 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
       : { ...EMPTY, date: defaultDate || today(), status: initStatus }
   );
   const [autoCalc, setAutoCalc] = useState(!trade);
+  const [symbolHint, setSymbolHint] = useState(null);
+  const hintTimer = useRef(null);
 
   const { data: patterns = [] } = useQuery({ queryKey: ['patterns'], queryFn: patternsApi.list });
 
@@ -32,6 +35,20 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); }
 
   const isOpen = form.status === 'open';
+
+  // Fetch symbol hint when symbol changes (debounced)
+  useEffect(() => {
+    const sym = form.symbol.trim();
+    if (!sym || isOpen) { setSymbolHint(null); return; }
+    clearTimeout(hintTimer.current);
+    hintTimer.current = setTimeout(async () => {
+      try {
+        const hint = await tradesApi.symbolStats(sym);
+        setSymbolHint(hint);
+      } catch { setSymbolHint(null); }
+    }, 600);
+    return () => clearTimeout(hintTimer.current);
+  }, [form.symbol, isOpen]);
 
   useEffect(() => {
     if (!autoCalc || isOpen) return;
@@ -62,14 +79,18 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
     mutate(payload);
   }
 
+  // When closing an existing position (trade.id exists), show TickerInput with pre-filled value
+  // When adding a new closed trade (no trade.id, status=closed), show OpenPositionsSelect
+  const isClosingNewRecord = !trade?.id && form.status === 'closed';
+
   const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 };
   const row3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 };
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Status toggle */}
+      {/* Status toggle — Open Position first, Closed Trade second */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {['closed', 'open'].map(s => (
+        {['open', 'closed'].map(s => (
           <button
             key={s}
             type="button"
@@ -96,11 +117,30 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
         </div>
         <div>
           <label>Symbol</label>
-          <TickerInput
-            value={form.symbol}
-            onChange={v => set('symbol', v)}
-            onSelect={(sym, type) => setForm(f => ({ ...f, symbol: sym, instrument_type: type }))}
-          />
+          {isClosingNewRecord ? (
+            <OpenPositionsSelect
+              value={form.symbol}
+              onSelect={(sym, type, size) => setForm(f => ({
+                ...f, symbol: sym, instrument_type: type,
+                size: size != null ? String(size) : f.size,
+              }))}
+            />
+          ) : (
+            <>
+              <TickerInput
+                value={form.symbol}
+                onChange={v => set('symbol', v)}
+                onSelect={(sym, type) => setForm(f => ({ ...f, symbol: sym, instrument_type: type }))}
+              />
+              {symbolHint && (
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                  Previously traded · Last buy: ${symbolHint.last_buy_price.toFixed(2)}
+                  {' · '}Avg buy: ${symbolHint.avg_buy_price.toFixed(2)}
+                  {' · '}{symbolHint.trade_count} trade{symbolHint.trade_count !== 1 ? 's' : ''}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -125,14 +165,10 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
         </div>
       </div>
 
-      <div style={row3}>
+      <div style={row2}>
         <div>
           <label>Entry Price $</label>
           <input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required />
-        </div>
-        <div>
-          <label>Entry Time</label>
-          <input type="time" value={form.entry_time || ''} onChange={e => set('entry_time', e.target.value)} />
         </div>
         <div>
           <label>Pattern / Setup</label>
@@ -146,7 +182,7 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
       {/* Exit fields — only shown for closed trades */}
       {!isOpen && (
         <>
-          <div style={row3}>
+          <div style={row2}>
             <div>
               <label>Exit Price $</label>
               <input type="number" step="any" value={form.exit_price || ''} onChange={e => { setAutoCalc(false); set('exit_price', e.target.value); }} placeholder="0.00" />
@@ -154,10 +190,6 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
             <div>
               <label>Exit Date <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(if different)</span></label>
               <input type="date" value={form.exit_date || ''} onChange={e => set('exit_date', e.target.value)} />
-            </div>
-            <div>
-              <label>Exit Time</label>
-              <input type="time" value={form.exit_time || ''} onChange={e => set('exit_time', e.target.value)} />
             </div>
           </div>
 

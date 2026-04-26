@@ -11,6 +11,8 @@ export const tradesApi = {
   toggleBest: (id) => api.patch(`/trades/${id}/best`).then(r => r.data),
   importCSV: (formData) => api.post('/trades/import-csv', formData).then(r => r.data),
   confirmImport: (formData) => api.post('/trades/import-csv', formData).then(r => r.data),
+  partialClose: (id, data) => api.post(`/trades/${id}/partial-close`, data).then(r => r.data),
+  symbolStats: (symbol) => api.get('/trades/symbol-stats', { params: { symbol } }).then(r => r.data),
 };
 
 export const dailyApi = {
@@ -20,7 +22,7 @@ export const dailyApi = {
 };
 
 export const statsApi = {
-  summary: (period) => api.get('/stats/summary', { params: { period } }).then(r => r.data),
+  summary: (period = 'all', market = '') => api.get('/stats/summary', { params: { period, market } }).then(r => r.data),
   pnlSeries: (from, to) => api.get('/stats/pnl-series', { params: { from, to } }).then(r => r.data),
   byPattern: () => api.get('/stats/by-pattern').then(r => r.data),
 };

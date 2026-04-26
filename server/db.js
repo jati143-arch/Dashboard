@@ -30,4 +30,13 @@ if (!tradeColumns.includes('status')) {
   db.exec('ALTER TABLE trades ADD COLUMN exit_date TEXT');
 }
 
+const tradeColumns2 = db.prepare('PRAGMA table_info(trades)').all().map(c => c.name);
+if (!tradeColumns2.includes('remaining_size')) {
+  db.exec('ALTER TABLE trades ADD COLUMN remaining_size REAL');
+  db.exec("UPDATE trades SET remaining_size = size WHERE status = 'open'");
+}
+if (!tradeColumns2.includes('parent_trade_id')) {
+  db.exec('ALTER TABLE trades ADD COLUMN parent_trade_id INTEGER');
+}
+
 module.exports = db;

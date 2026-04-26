@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi } from '../../api/client.js';
 import Modal from '../shared/Modal.jsx';
-import TradeForm from '../trades/TradeForm.jsx';
+import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
@@ -145,7 +145,7 @@ export default function OpenPositions() {
                 <th>Entry Price</th>
                 <th>Current Price</th>
                 <th>Change</th>
-                <th>Size</th>
+                <th>Remaining</th>
                 <th>Unrealized P&L</th>
                 <th></th>
               </tr>
@@ -198,7 +198,7 @@ export default function OpenPositions() {
                         </span>
                       )}
                     </td>
-                    <td style={{ fontFamily: 'var(--text-mono)' }}>{t.size}</td>
+                    <td style={{ fontFamily: 'var(--text-mono)' }}>{t.remaining_size ?? t.size}</td>
                     <td>
                       {calc ? (
                         <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: pnlColor }}>
@@ -213,7 +213,7 @@ export default function OpenPositions() {
                     </td>
                     <td>
                       <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                        onClick={() => setClosingTrade({ ...t, exit_price: currentPrice ? currentPrice.toFixed(2) : '', status: 'closed' })}>
+                        onClick={() => setClosingTrade({ trade: t, currentPrice })}>
                         Close
                       </button>
                     </td>
@@ -226,14 +226,11 @@ export default function OpenPositions() {
       </div>
 
       {closingTrade && (
-        <Modal title={`Close Position — ${closingTrade.symbol}`} onClose={() => setClosingTrade(null)} width={580}>
-          <TradeForm
-            trade={closingTrade}
-            defaultStatus="closed"
-            onClose={() => {
-              setClosingTrade(null);
-              qc.invalidateQueries({ queryKey: ['trades'] });
-            }}
+        <Modal title={`Close Position — ${closingTrade.trade.symbol}`} onClose={() => setClosingTrade(null)} width={520}>
+          <ClosePositionForm
+            trade={closingTrade.trade}
+            currentPrice={closingTrade.currentPrice}
+            onClose={() => setClosingTrade(null)}
           />
         </Modal>
       )}

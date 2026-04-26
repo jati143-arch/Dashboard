@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS trades (
   notes           TEXT,
   status          TEXT NOT NULL DEFAULT 'closed' CHECK(status IN ('open','closed')),
   is_best_trade   INTEGER NOT NULL DEFAULT 0,
+  remaining_size  REAL,
+  parent_trade_id INTEGER,
   created_at      TEXT DEFAULT (datetime('now'))
 );
 

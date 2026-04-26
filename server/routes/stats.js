@@ -6,14 +6,19 @@ const router = express.Router();
 // Only count CLOSED trades in all stats — open positions have unrealized P&L
 const CLOSED = "status = 'closed'";
 
-// GET /api/stats/summary?period=daily|weekly|monthly|all
+// GET /api/stats/summary?period=daily|weekly|monthly|all&market=us|indian|crypto
 router.get('/summary', (req, res) => {
-  const { period = 'all' } = req.query;
+  const { period = 'all', market = '' } = req.query;
   let dateFilter = '';
+  let marketFilter = '';
 
-  if (period === 'daily')   dateFilter = "AND date = date('now')";
+  if (period === 'daily')        dateFilter = "AND date = date('now')";
   else if (period === 'weekly')  dateFilter = "AND date >= date('now', '-7 days')";
   else if (period === 'monthly') dateFilter = "AND date >= date('now', '-30 days')";
+
+  if (market === 'us')      marketFilter = "AND instrument_type='stock' AND symbol NOT LIKE '%.NS' AND symbol NOT LIKE '%.BO'";
+  else if (market === 'indian') marketFilter = "AND (symbol LIKE '%.NS' OR symbol LIKE '%.BO')";
+  else if (market === 'crypto') marketFilter = "AND instrument_type='crypto'";
 
   const row = db.prepare(`
     SELECT
@@ -26,7 +31,7 @@ router.get('/summary', (req, res) => {
       MAX(pnl_dollar) as best_trade,
       MIN(pnl_dollar) as worst_trade
     FROM trades
-    WHERE ${CLOSED} ${dateFilter}
+    WHERE ${CLOSED} ${dateFilter} ${marketFilter}
   `).get();
 
   row.win_rate = row.total_trades > 0
