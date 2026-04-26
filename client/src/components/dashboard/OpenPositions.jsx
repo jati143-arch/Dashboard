@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi } from '../../api/client.js';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
+import { useChart } from '../../context/ChartContext.jsx';
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
@@ -26,6 +27,7 @@ const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
 
 export default function OpenPositions() {
   const qc = useQueryClient();
+  const { openChart } = useChart();
   const [closingTrade, setClosingTrade] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -178,7 +180,11 @@ export default function OpenPositions() {
                 return (
                   <tr key={t.id}>
                     <td>
-                      <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
+                      <span
+                        style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                        onClick={() => openChart(t.symbol, t.entry_price)}
+                        title="View chart"
+                      >{t.symbol}</span>
                       <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
                     </td>
                     <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>

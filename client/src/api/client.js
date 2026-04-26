@@ -54,3 +54,17 @@ export const newsApi = {
 export const mfApi = {
   nav: (schemeCode) => api.get(`/mf/${schemeCode}`).then(r => r.data),
 };
+
+export const chartApi = {
+  ohlcv: (symbol, range = '6mo', interval = '1d') =>
+    api.get(`/chart/${encodeURIComponent(symbol)}`, { params: { range, interval } }).then(r => r.data),
+};
+
+export const nseApi = {
+  deals: (symbol) => api.get('/nse/deals', { params: { symbol } }).then(r => r.data),
+};
+
+export const backtestApi = {
+  run: (symbol, strategy, from, to) =>
+    api.post('/backtest', { symbol, strategy, from, to }).then(r => r.data),
+};

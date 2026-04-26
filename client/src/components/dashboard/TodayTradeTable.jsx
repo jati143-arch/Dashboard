@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradesApi } from '../../api/client.js';
 import PnlBadge from '../shared/PnlBadge.jsx';
+import { useChart } from '../../context/ChartContext.jsx';
 
 function nativeCs(symbol, instrumentType) {
   if (instrumentType !== 'crypto' && (symbol.endsWith('.NS') || symbol.endsWith('.BO'))) return '₹';
@@ -9,6 +10,7 @@ function nativeCs(symbol, instrumentType) {
 
 export default function TodayTradeTable({ trades, date, onEdit }) {
   const qc = useQueryClient();
+  const { openChart } = useChart();
 
   const { mutate: toggleBest } = useMutation({
     mutationFn: (id) => tradesApi.toggleBest(id),
@@ -67,7 +69,11 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
                   >★</button>
                 </td>
                 <td>
-                  <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
+                  <span
+                    style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                    onClick={() => openChart(t.symbol, t.status === 'open' ? t.entry_price : null)}
+                    title="View chart"
+                  >{t.symbol}</span>
                   <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
                 </td>
                 <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>

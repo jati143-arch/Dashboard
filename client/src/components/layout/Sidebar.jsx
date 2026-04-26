@@ -5,6 +5,7 @@ const links = [
   { to: '/investments', icon: '◎', label: 'Investments' },
   { to: '/trades',      icon: '≡', label: 'Trade Log'  },
   { to: '/performance', icon: '◈', label: 'Performance' },
+  { to: '/backtest',    icon: '⊕', label: 'Backtest'   },
   { to: '/patterns',    icon: '◇', label: 'Patterns'   },
   { to: '/ai',          icon: '✦', label: 'AI Insights' },
 ];

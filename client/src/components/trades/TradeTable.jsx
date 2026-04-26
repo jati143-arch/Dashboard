@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradesApi } from '../../api/client.js';
 import PnlBadge from '../shared/PnlBadge.jsx';
+import { useChart } from '../../context/ChartContext.jsx';
 
 const COLS = [
   { key: 'date', label: 'Date' },
@@ -20,6 +21,7 @@ export default function TradeTable({ trades, onEdit }) {
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
   const qc = useQueryClient();
+  const { openChart } = useChart();
 
   const { mutate: remove } = useMutation({
     mutationFn: (id) => tradesApi.remove(id),
@@ -60,7 +62,11 @@ export default function TradeTable({ trades, onEdit }) {
               <td className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
               <td>
                 {t.is_best_trade ? <span style={{ color: 'var(--yellow)', marginRight: 4 }}>★</span> : null}
-                <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
+                <span
+                  style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                  onClick={() => openChart(t.symbol, t.status === 'open' ? t.entry_price : null)}
+                  title="View chart"
+                >{t.symbol}</span>
               </td>
               <td><span className={`badge badge-${t.instrument_type}`}>{t.instrument_type}</span></td>
               <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
