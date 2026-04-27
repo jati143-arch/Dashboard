@@ -65,6 +65,6 @@ export const nseApi = {
 };
 
 export const backtestApi = {
-  run: (symbol, strategy, from, to) =>
-    api.post('/backtest', { symbol, strategy, from, to }).then(r => r.data),
+  run: (symbol, strategy, from, to, timeframe = '1d') =>
+    api.post('/backtest', { symbol, strategy, from, to, timeframe }).then(r => r.data),
 };

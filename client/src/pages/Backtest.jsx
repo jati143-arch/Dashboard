@@ -1,33 +1,54 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { backtestApi } from '../api/client.js';
+import TickerInput from '../components/trades/TickerInput.jsx';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const twoYearsAgo = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().slice(0, 10); };
 
 const STRATEGIES = [
-  { value: 'ema_cross',      label: 'EMA 9/20 Crossover',     desc: 'Buy when 9 EMA crosses above 20 EMA, sell on cross below' },
-  { value: 'rsi_pullback',   label: 'RSI Pullback in Uptrend', desc: 'Buy RSI bounce above 45 when price is above 50 SMA' },
-  { value: 'breakout_vol',   label: 'Breakout + Volume',       desc: 'Buy 20-bar high breakout with volume > 1.5× average' },
+  { value: 'ema_cross',    label: 'EMA 9/20 Crossover',       desc: 'Buy when 9 EMA crosses above 20 EMA, sell on cross below' },
+  { value: 'rsi_pullback', label: 'RSI Pullback in Uptrend',   desc: 'Buy RSI bounce above 45 when price is above 50 SMA' },
+  { value: 'breakout_vol', label: 'Breakout + Volume',         desc: 'Buy 20-bar high breakout with volume > 1.5× average' },
+  { value: 'macd_cross',   label: 'MACD Crossover',            desc: 'Buy when MACD line crosses above signal, sell on cross below' },
+  { value: 'bb_squeeze',   label: 'Bollinger Band Squeeze',    desc: 'Buy when price breaks above upper BB, sell below middle' },
+  { value: 'sma200_trend', label: '200 SMA Trend Filter',      desc: 'Buy 9/20 EMA crossover only when above 200 SMA' },
+  { value: 'vwap_reclaim', label: 'VWAP Reclaim',              desc: 'Buy when price crosses above VWAP, sell on cross below' },
 ];
+
+const TIMEFRAMES = [
+  { value: '5m',  label: '5 Min',    note: 'Yahoo Finance: last 60 days only' },
+  { value: '15m', label: '15 Min',   note: 'Yahoo Finance: last 60 days only' },
+  { value: '30m', label: '30 Min',   note: 'Yahoo Finance: last 60 days only' },
+  { value: '1h',  label: '1 Hour',   note: 'Yahoo Finance: last 365 days only' },
+  { value: '1d',  label: 'Daily',    note: '' },
+  { value: '1wk', label: 'Weekly',   note: '' },
+];
+
+const INTRADAY = ['5m', '15m', '30m', '1h'];
 
 const STAT_COLOR = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text-secondary)';
 
 export default function Backtest() {
+  const [symbol, setSymbol] = useState('');
   const [form, setForm] = useState({
-    symbol: '', strategy: 'ema_cross',
-    from: twoYearsAgo(), to: today(),
+    strategy: 'ema_cross',
+    timeframe: '1d',
+    from: twoYearsAgo(),
+    to: today(),
   });
   const [result, setResult] = useState(null);
 
   const { mutate, isPending, error } = useMutation({
-    mutationFn: () => backtestApi.run(form.symbol.trim().toUpperCase(), form.strategy, form.from, form.to),
+    mutationFn: () => backtestApi.run(symbol.trim().toUpperCase(), form.strategy, form.from, form.to, form.timeframe),
     onSuccess: data => setResult(data),
   });
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
+  const isIntraday = INTRADAY.includes(form.timeframe);
+  const tfInfo = TIMEFRAMES.find(t => t.value === form.timeframe);
   const stats = result?.stats;
   const trades = result?.trades ?? [];
   const curve  = result?.equityCurve ?? [];
@@ -44,12 +65,10 @@ export default function Backtest() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 16 }}>
           <div>
             <label>Symbol</label>
-            <input
-              type="text"
-              value={form.symbol}
-              onChange={e => set('symbol', e.target.value)}
-              placeholder="e.g. RELIANCE.NS or AAPL"
-              style={{ textTransform: 'uppercase' }}
+            <TickerInput
+              value={symbol}
+              onChange={setSymbol}
+              onSelect={(sym) => setSymbol(sym)}
             />
           </div>
           <div>
@@ -59,19 +78,36 @@ export default function Backtest() {
             </select>
           </div>
           <div>
-            <label>From</label>
-            <input type="date" value={form.from} onChange={e => set('from', e.target.value)} />
+            <label>Timeframe</label>
+            <select value={form.timeframe} onChange={e => { set('timeframe', e.target.value); setResult(null); }}>
+              {TIMEFRAMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
           </div>
-          <div>
-            <label>To</label>
-            <input type="date" value={form.to} onChange={e => set('to', e.target.value)} />
-          </div>
+          {!isIntraday && (
+            <>
+              <div>
+                <label>From</label>
+                <input type="date" value={form.from} onChange={e => set('from', e.target.value)} />
+              </div>
+              <div>
+                <label>To</label>
+                <input type="date" value={form.to} onChange={e => set('to', e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
+
+        {isIntraday && tfInfo?.note && (
+          <div style={{ marginBottom: 12, padding: '8px 12px', background: '#1a1200', border: '1px solid #3a2a00', borderRadius: 6, fontSize: 12, color: '#ccaa44' }}>
+            ⚠ {tfInfo.note} — date pickers are disabled for intraday timeframes
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
             className="btn-primary"
             onClick={() => mutate()}
-            disabled={isPending || !form.symbol.trim()}
+            disabled={isPending || !symbol.trim()}
             style={{ padding: '8px 24px' }}
           >
             {isPending ? '⟳ Running…' : '▶ Run Backtest'}
@@ -92,14 +128,14 @@ export default function Backtest() {
           {/* Stats cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Win Rate',       value: `${stats.winRate}%`,        color: stats.winRate >= 50 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Total Trades',   value: stats.totalTrades,           color: 'var(--text-primary)' },
-              { label: 'Wins / Losses',  value: `${stats.wins} / ${stats.losses}`, color: 'var(--text-primary)' },
-              { label: 'Avg Win',        value: `+${stats.avgWinPct}%`,     color: 'var(--green)' },
-              { label: 'Avg Loss',       value: `${stats.avgLossPct}%`,     color: 'var(--red)' },
-              { label: 'Profit Factor',  value: stats.profitFactor ?? '—',  color: (stats.profitFactor ?? 0) >= 1.5 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Max Drawdown',   value: `-${stats.maxDrawdownPct}%`, color: 'var(--red)' },
-              { label: 'Final Equity',   value: `${stats.finalEquity}`,     color: STAT_COLOR(stats.finalEquity - 100) },
+              { label: 'Win Rate',      value: `${stats.winRate}%`,         color: stats.winRate >= 50 ? 'var(--green)' : 'var(--red)' },
+              { label: 'Total Trades',  value: stats.totalTrades,            color: 'var(--text-primary)' },
+              { label: 'Wins / Losses', value: `${stats.wins} / ${stats.losses}`, color: 'var(--text-primary)' },
+              { label: 'Avg Win',       value: `+${stats.avgWinPct}%`,      color: 'var(--green)' },
+              { label: 'Avg Loss',      value: `${stats.avgLossPct}%`,      color: 'var(--red)' },
+              { label: 'Profit Factor', value: stats.profitFactor ?? '—',   color: (stats.profitFactor ?? 0) >= 1.5 ? 'var(--green)' : 'var(--red)' },
+              { label: 'Max Drawdown',  value: `-${stats.maxDrawdownPct}%`, color: 'var(--red)' },
+              { label: 'Final Equity',  value: `${stats.finalEquity}`,      color: STAT_COLOR(stats.finalEquity - 100) },
             ].map(({ label, value, color }) => (
               <div key={label} className="card" style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</div>
@@ -117,7 +153,7 @@ export default function Backtest() {
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={curve} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-                  <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 10 }} tickFormatter={d => d.slice(5)} />
+                  <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 10 }} tickFormatter={d => d.slice(0, 10).slice(5)} />
                   <YAxis tick={{ fill: '#888', fontSize: 10 }} domain={['auto', 'auto']} />
                   <Tooltip
                     contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6 }}
@@ -144,8 +180,8 @@ export default function Backtest() {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>Entry Date</th>
-                      <th>Exit Date</th>
+                      <th>Entry</th>
+                      <th>Exit</th>
                       <th>Entry Price</th>
                       <th>Exit Price</th>
                       <th>P&L</th>
@@ -186,8 +222,8 @@ export default function Backtest() {
       {!stats && !isPending && (
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-dim)' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⊕</div>
-          <div style={{ fontSize: 14 }}>Enter a symbol, select a strategy, and click Run Backtest</div>
-          <div style={{ fontSize: 12, marginTop: 6 }}>Supports NSE (.NS), US stocks, crypto</div>
+          <div style={{ fontSize: 14 }}>Enter a symbol, select a strategy and timeframe, then click Run Backtest</div>
+          <div style={{ fontSize: 12, marginTop: 6 }}>Supports NSE (.NS), US stocks, crypto · 7 strategies available</div>
         </div>
       )}
     </div>
