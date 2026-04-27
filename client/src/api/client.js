@@ -13,6 +13,14 @@ export const tradesApi = {
   confirmImport: (formData) => api.post('/trades/import-csv', formData).then(r => r.data),
   partialClose: (id, data) => api.post(`/trades/${id}/partial-close`, data).then(r => r.data),
   symbolStats: (symbol) => api.get('/trades/symbol-stats', { params: { symbol } }).then(r => r.data),
+  exportCSV: (market = 'all', status = 'all') => {
+    const a = document.createElement('a');
+    a.href = `/api/trades/export?market=${market}&status=${status}`;
+    a.download = `trades-${market}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  },
 };
 
 export const dailyApi = {

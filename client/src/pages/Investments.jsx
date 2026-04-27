@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi, statsApi, mfApi } from '../api/client.js';
 import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
+import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 function detectRegion(symbol, instrumentType) {
@@ -73,6 +74,7 @@ export default function Investments() {
   const [activeTab, setActiveTab] = useState('all');
   const [displayCurrency, setDisplayCurrency] = useState(() => getInitCurrency('all'));
   const [closingTrade, setClosingTrade] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -169,10 +171,14 @@ export default function Investments() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Investments</div>
           <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Open positions · Prices refresh every 60s</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-ghost" onClick={() => setShowImport(true)}>⬆ Import CSV</button>
+          <button className="btn-ghost" onClick={() => tradesApi.exportCSV(activeTab)}>⬇ Export CSV</button>
         </div>
       </div>
 
@@ -394,6 +400,16 @@ export default function Investments() {
               qc.invalidateQueries({ queryKey: ['trades'] });
             }}
           />
+        </Modal>
+      )}
+
+      {showImport && (
+        <Modal title="Import from CSV" onClose={() => setShowImport(false)} width={680}>
+          <CsvImport onClose={() => {
+            setShowImport(false);
+            qc.invalidateQueries({ queryKey: ['trades'] });
+            qc.invalidateQueries({ queryKey: ['stats'] });
+          }} />
         </Modal>
       )}
     </div>

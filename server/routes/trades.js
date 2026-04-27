@@ -29,6 +29,59 @@ router.get('/', (req, res) => {
   res.json(db.prepare(sql).all(...params));
 });
 
+// GET /api/trades/export?market=all&status=all
+// Must be before /:id to avoid route collision
+router.get('/export', (req, res) => {
+  const { market = 'all', status = 'all' } = req.query;
+
+  let sql = 'SELECT * FROM trades WHERE 1=1';
+  const params = [];
+
+  if (status !== 'all') { sql += ' AND status = ?'; params.push(status); }
+
+  if (market === 'indian') {
+    sql += " AND (symbol LIKE '%.NS' OR symbol LIKE '%.BO')";
+  } else if (market === 'us') {
+    sql += " AND instrument_type='stock' AND symbol NOT LIKE '%.NS' AND symbol NOT LIKE '%.BO'";
+  } else if (market === 'crypto') {
+    sql += " AND instrument_type='crypto'";
+  } else if (market === 'etf') {
+    sql += " AND instrument_type='etf'";
+  } else if (market === 'mf') {
+    sql += " AND instrument_type='mutual_fund'";
+  } else {
+    // 'all' — exclude MF (matches Investments "All" tab behaviour)
+    sql += " AND instrument_type != 'mutual_fund'";
+  }
+
+  sql += ' ORDER BY date DESC, created_at DESC';
+  const trades = db.prepare(sql).all(...params);
+
+  const headers = ['Symbol','Instrument Type','Direction','Status','Entry Date','Entry Price',
+    'Exit Price','Size','Remaining Size','P&L','P&L %','Pattern','Notes'];
+
+  function esc(v) {
+    if (v == null) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  const lines = [headers.join(',')];
+  for (const t of trades) {
+    lines.push([
+      t.symbol, t.instrument_type, t.direction, t.status,
+      t.date, t.entry_price, t.exit_price ?? '',
+      t.size, t.remaining_size ?? '', t.pnl_dollar ?? '', t.pnl_percent ?? '',
+      t.pattern_tag ?? '', t.notes ?? '',
+    ].map(esc).join(','));
+  }
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Disposition', `attachment; filename="trades-${market}-${dateStr}.csv"`);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.send(lines.join('\r\n'));
+});
+
 // GET /api/trades/:id
 router.get('/:id', (req, res) => {
   const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id);
@@ -217,10 +270,14 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
     const insertMany = db.transaction((trades) => {
       for (const t of trades) {
         const tradeStatus = t.status || 'closed';
+        // Use explicit remaining_size from row (Google Sheets may have partial qty)
+        const remSize = tradeStatus === 'open'
+          ? (t.remaining_size != null ? t.remaining_size : t.size)
+          : null;
         insert.run(t.date, t.entry_time || null, t.exit_time || null, t.symbol,
                    t.instrument_type, t.direction, t.entry_price, t.exit_price,
                    t.size, t.pnl_dollar, t.pnl_percent, t.pattern_tag || null, t.notes || null,
-                   tradeStatus, tradeStatus === 'open' ? t.size : null);
+                   tradeStatus, remSize);
       }
     });
     insertMany(parsed);

@@ -10,13 +10,17 @@ const COLUMN_MAP = {
   // Direction
   direction: ['direction', 'side', 'action', 'type', 'buy/sell', 'transaction type'],
   // Entry price
-  entry_price: ['entry price', 'entry', 'avg price', 'price', 'avg cost', 'cost per share', 'open price', 'avg_entry'],
+  entry_price: ['entry price', 'entry', 'avg price', 'price', 'avg cost', 'cost per share', 'open price', 'avg_entry', 'buy price'],
   // Exit price
   exit_price: ['exit price', 'exit', 'close price', 'close', 'ltp'],
-  // Size
-  size: ['size', 'quantity', 'qty', 'shares', 'units', 'amount', 'contracts'],
+  // Size (total original quantity)
+  size: ['size', 'quantity', 'qty', 'shares', 'units', 'amount', 'contracts', 'original u', 'original units'],
+  // Remaining quantity (Google Sheets "Current Re" column)
+  remaining_qty: ['current re', 'current remaining', 'remaining qty', 'remaining'],
   // P&L (pnl_rs for Indian ₹ P&L columns)
-  pnl_dollar: ['p&l', 'pnl', 'profit/loss', 'realized p&l', 'gain/loss', 'net amount', 'profit', 'pnl_rs'],
+  pnl_dollar: ['p&l', 'pnl', 'profit/loss', 'realized p&l', 'gain/loss', 'net amount', 'profit', 'pnl_rs', 'realized profit'],
+  // P&L percent
+  pnl_percent: ['pnl %', 'pnl%', 'gain %', 'gain%', 'return %', 'return%', 'p&l %'],
   // Times
   entry_time: ['entry time', 'open time', 'time'],
   exit_time: ['exit time', 'close time'],
@@ -38,6 +42,23 @@ function findColumn(headers, field) {
   return null;
 }
 
+// Find the "GOOGLE CODES" column index for Google Sheets format detection
+function findGoogleCodesCol(headers) {
+  return headers.findIndex(h => h.toLowerCase().trim() === 'google codes');
+}
+
+// Convert "nse:63moons" or "NSE:ACMESOLAR" → "63MOONS.NS"
+function googleCodeToSymbol(raw) {
+  const stripped = raw.trim().replace(/^[a-z]+:/i, '').toUpperCase();
+  return stripped.includes('.') ? stripped : stripped + '.NS';
+}
+
+// Strip currency symbols and commas from numeric strings like "₹1,234.56"
+function cleanNumber(val) {
+  if (!val) return NaN;
+  return parseFloat(String(val).replace(/[₹$€,\s]/g, ''));
+}
+
 function normalizeDirection(val) {
   if (!val) return 'long';
   const v = val.toLowerCase();
@@ -47,10 +68,8 @@ function normalizeDirection(val) {
 
 function normalizeDate(val) {
   if (!val) return new Date().toISOString().slice(0, 10);
-  // Try to extract YYYY-MM-DD
   const match = val.match(/(\d{4}[-/]\d{2}[-/]\d{2})/);
   if (match) return match[1].replace(/\//g, '-');
-  // Try MM/DD/YYYY
   const us = val.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (us) return `${us[3]}-${us[1].padStart(2,'0')}-${us[2].padStart(2,'0')}`;
   return new Date().toISOString().slice(0, 10);
@@ -58,7 +77,6 @@ function normalizeDate(val) {
 
 function normalizeInstrumentType(val, symbol) {
   if (!val) {
-    // Guess from symbol: common crypto tickers
     const crypto = ['BTC','ETH','SOL','BNB','XRP','ADA','DOGE','DOT','AVAX','MATIC'];
     return crypto.some(c => (symbol || '').toUpperCase().includes(c)) ? 'crypto' : 'stock';
   }
@@ -76,6 +94,9 @@ function parseCSV(buffer) {
   if (records.length === 0) return { imported: 0, skipped: 0, rows: [] };
 
   const headers = Object.keys(records[0]);
+  const googleCodesIdx = findGoogleCodesCol(headers);
+  const isGoogleSheet = googleCodesIdx !== -1;
+
   const colMap = {};
   for (const field of Object.keys(COLUMN_MAP)) {
     colMap[field] = findColumn(headers, field);
@@ -86,54 +107,92 @@ function parseCSV(buffer) {
 
   for (const record of records) {
     const get = (field) => colMap[field] ? record[colMap[field]] : null;
+    const vals = Object.values(record);
 
-    const rawSymbol = (get('symbol') || '').toUpperCase().trim();
-    if (!rawSymbol) { skipped.push(record); continue; }
+    // --- Symbol resolution ---
+    let finalSymbol;
+    if (isGoogleSheet) {
+      const rawCode = vals[googleCodesIdx] || '';
+      if (!rawCode.trim()) { skipped.push(record); continue; }
+      finalSymbol = googleCodeToSymbol(rawCode);
+    } else {
+      const rawSymbol = (get('symbol') || '').toUpperCase().trim();
+      if (!rawSymbol) { skipped.push(record); continue; }
+      finalSymbol = rawSymbol;
+    }
 
-    const entryPrice = parseFloat(get('entry_price'));
+    // --- Entry price ---
+    const entryPrice = cleanNumber(get('entry_price'));
     if (isNaN(entryPrice)) { skipped.push(record); continue; }
 
-    const size = parseFloat(get('size')) || 1;
-    const direction = normalizeDirection(get('direction'));
+    // --- Size ---
+    const size = cleanNumber(get('size')) || 1;
 
-    // Determine instrument type first (needed for .NS suffix logic)
-    const instrType = normalizeInstrumentType(get('instrument_type'), rawSymbol);
+    // --- Remaining qty (Google Sheets "Current Re") ---
+    const remainingQtyRaw = cleanNumber(get('remaining_qty'));
+    const hasRemainingQty = !isNaN(remainingQtyRaw);
 
-    // Auto-append .NS for bare NSE tickers (no dot, no dash, not crypto)
-    let finalSymbol = rawSymbol;
-    if (!finalSymbol.includes('.') && !finalSymbol.includes('-') && instrType === 'stock') {
+    // --- Direction ---
+    const direction = isGoogleSheet ? 'long' : normalizeDirection(get('direction'));
+
+    // --- Instrument type ---
+    const instrType = isGoogleSheet
+      ? 'stock'
+      : normalizeInstrumentType(get('instrument_type'), finalSymbol);
+
+    // Auto-append .NS for bare NSE tickers (non-Google Sheet format)
+    if (!isGoogleSheet && !finalSymbol.includes('.') && !finalSymbol.includes('-') && instrType === 'stock') {
       finalSymbol = finalSymbol + '.NS';
     }
 
-    const exitPriceRaw = parseFloat(get('exit_price'));
-    // If exit price equals entry price (e.g. LTP column used as exit) and no separate
-    // exit_price column exists, treat as open position
+    // --- Exit price / status ---
+    const exitPriceRaw = cleanNumber(get('exit_price'));
     const exitColHeader = colMap['exit_price'] ? colMap['exit_price'].toLowerCase().trim() : '';
     const isLtpColumn = exitColHeader === 'ltp';
-    // Open if: no exit price, OR exit price column is "LTP" (live price, not a real exit)
     const hasRealExit = !isNaN(exitPriceRaw) && !isLtpColumn;
 
-    const tradeStatus = hasRealExit ? 'closed' : 'open';
+    // For Google Sheets: position is closed if Current Re === 0
+    let tradeStatus;
+    let remainingSize;
+    if (isGoogleSheet) {
+      const currentRe = hasRemainingQty ? remainingQtyRaw : size;
+      if (currentRe <= 0) {
+        tradeStatus = 'closed';
+        remainingSize = null;
+      } else {
+        tradeStatus = 'open';
+        remainingSize = currentRe;
+      }
+    } else {
+      tradeStatus = hasRealExit ? 'closed' : 'open';
+      remainingSize = tradeStatus === 'open' ? size : null;
+    }
 
-    // P&L: use provided value, or calculate if closed
-    let pnlDollar = parseFloat(get('pnl_dollar'));
+    // --- P&L ---
+    let pnlDollar = cleanNumber(get('pnl_dollar'));
     if (isNaN(pnlDollar)) {
-      if (hasRealExit) {
+      if (hasRealExit && tradeStatus === 'closed') {
         pnlDollar = direction === 'long'
           ? (exitPriceRaw - entryPrice) * size
           : (entryPrice - exitPriceRaw) * size;
+      } else if (isGoogleSheet && tradeStatus === 'closed') {
+        // Google Sheet has realized profit for closed portion in the Realized Profit column
+        pnlDollar = null; // already tried above via cleanNumber
       } else {
         pnlDollar = null;
       }
-    } else if (!hasRealExit) {
-      // Has pnl_rs value but no real exit (unrealized) — still store as null (unrealized)
+    } else if (tradeStatus === 'open') {
+      // Has a pnl value but position is still open — treat as unrealized (don't store)
       pnlDollar = null;
     }
 
-    const cost = entryPrice * size;
-    const pnlPercent = (pnlDollar != null && cost !== 0)
-      ? (pnlDollar / cost) * 100
-      : null;
+    let pnlPercent = cleanNumber(get('pnl_percent'));
+    if (isNaN(pnlPercent)) {
+      const cost = entryPrice * size;
+      pnlPercent = (pnlDollar != null && cost !== 0) ? (pnlDollar / cost) * 100 : null;
+    } else if (tradeStatus === 'open') {
+      pnlPercent = null;
+    }
 
     rows.push({
       date: normalizeDate(get('date')) || new Date().toISOString().slice(0, 10),
@@ -143,14 +202,14 @@ function parseCSV(buffer) {
       instrument_type: instrType,
       direction,
       entry_price: entryPrice,
-      exit_price: hasRealExit ? exitPriceRaw : null,
+      exit_price: (hasRealExit && tradeStatus === 'closed') ? exitPriceRaw : null,
       size,
       pnl_dollar: pnlDollar != null ? Math.round(pnlDollar * 100) / 100 : null,
       pnl_percent: pnlPercent != null ? Math.round(pnlPercent * 100) / 100 : null,
       pattern_tag: get('pattern_tag') || null,
       notes: get('notes') || null,
       status: tradeStatus,
-      remaining_size: tradeStatus === 'open' ? size : null,
+      remaining_size: remainingSize,
     });
   }
 
