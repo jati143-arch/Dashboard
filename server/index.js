@@ -35,9 +35,10 @@ app.use('/api/chart', chartRouter);
 app.use('/api/nse', nseRouter);
 app.use('/api/backtest', backtestRouter);
 
-// Serve built React app in production
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../client/dist');
+// Serve built React app if dist folder exists
+const distPath = path.join(__dirname, '../client/dist');
+const fs = require('fs');
+if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
