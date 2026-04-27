@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   createChart, CrosshairMode, LineStyle,
   CandlestickSeries, LineSeries, HistogramSeries,
+  createSeriesMarkers,
 } from 'lightweight-charts';
 import { chartApi, nseApi } from '../../api/client.js';
 
@@ -479,7 +480,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
           color: sfp.type === 'bearish' ? '#ff3355' : '#00ff88',
           text: 'SFP',
         }));
-        if (markers.length) cs.setMarkers(markers);
+        if (markers.length) createSeriesMarkers(cs, markers);
       }
 
       if (smcLayers.liq) {
