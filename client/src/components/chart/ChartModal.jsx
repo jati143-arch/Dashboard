@@ -69,26 +69,27 @@ function detectFVG(candles, count = 6) {
   return fvgs.slice(-count);
 }
 
-// Intraday quick-access buttons
-const INTRADAY_BTNS = [
-  { value: '1m',  label: '1 Min' },
-  { value: '2m',  label: '2 Min' },
-  { value: '5m',  label: '5 Min' },
-  { value: '15m', label: '15 Min' },
-];
+// Timeframe config: label + data-range note
+const TIMEFRAMES = {
+  '1m':  { label: '1 Min',   note: 'max 7 days'  },
+  '2m':  { label: '2 Min',   note: 'max 7 days'  },
+  '5m':  { label: '5 Min',   note: 'max 60 days' },
+  '15m': { label: '15 Min',  note: 'max 60 days' },
+  '30m': { label: '30 Min',  note: 'max 60 days' },
+  '1h':  { label: '1 Hour',  note: 'max 2 years' },
+  '2h':  { label: '2 Hour',  note: 'max 2 years' },
+  '4h':  { label: '4 Hour',  note: 'max 2 years' },
+  '6h':  { label: '6 Hour',  note: 'max 2 years' },
+  '8h':  { label: '8 Hour',  note: 'max 2 years' },
+  '12h': { label: '12 Hour', note: 'max 2 years' },
+  '3mo': { label: '3 Months',  note: 'full history' },
+  '6mo': { label: '6 Months',  note: 'full history' },
+  '1y':  { label: '1 Year',    note: 'full history' },
+  '2y':  { label: '2 Years',   note: 'full history' },
+  '5y':  { label: '5 Years',   note: 'full history' },
+};
 
-// All timeframes for the "More" dropdown
-const MORE_RANGES = [
-  { value: '30m', label: '30 Min' },
-  { value: '1h',  label: '1 Hour' },
-  { value: '3mo', label: '3 Months' },
-  { value: '6mo', label: '6 Months' },
-  { value: '1y',  label: '1 Year' },
-  { value: '2y',  label: '2 Years' },
-  { value: '5y',  label: '5 Years' },
-];
-
-const ALL_RANGES = [...INTRADAY_BTNS, ...MORE_RANGES];
+const INTRADAY_BTNS = ['1m', '2m', '5m', '15m'];
 
 const DARK_OPTS = {
   layout:    { background: { color: '#141414' }, textColor: '#888888' },
@@ -96,19 +97,29 @@ const DARK_OPTS = {
   crosshair: { mode: CrosshairMode.Normal },
 };
 
-export default function ChartModal({ symbol, entryPrice, onClose }) {
-  const [range, setRange]         = useState('1y');
-  const [showSmc, setShowSmc]     = useState(true);
-  const [showDeals, setShowDeals] = useState(false);
+const INDICATOR_DEFS = [
+  { key: 'ema9',  label: '9 EMA',  color: '#00aaff' },
+  { key: 'ema20', label: '20 EMA', color: '#ffa500' },
+  { key: 'sma50', label: '50 SMA', color: '#aa44ff' },
+  { key: 'rsi',   label: 'RSI(14)', color: '#ffd700' },
+];
 
-  const mainRef   = useRef(null);
-  const rsiRef    = useRef(null);
-  const mainChart = useRef(null);
-  const rsiChart  = useRef(null);
+export default function ChartModal({ symbol, entryPrice, onClose }) {
+  const [range, setRange]           = useState('1y');
+  const [showSmc, setShowSmc]       = useState(true);
+  const [showDeals, setShowDeals]   = useState(false);
+  const [indicators, setIndicators] = useState({ ema9: true, ema20: true, sma50: true, rsi: true });
+
+  const mainRef    = useRef(null);
+  const rsiRef     = useRef(null);
+  const mainChart  = useRef(null);
+  const rsiChart   = useRef(null);
+  // refs to the actual series so we can toggle visibility without redrawing
+  const seriesRefs = useRef({});
 
   const nseSym = symbol.replace(/\.(NS|BO)$/, '');
-  const currentLabel = ALL_RANGES.find(r => r.value === range)?.label || range;
-  const isMoreRange  = MORE_RANGES.some(r => r.value === range);
+  const tf = TIMEFRAMES[range] || TIMEFRAMES['1y'];
+  const isMoreRange = !INTRADAY_BTNS.includes(range);
 
   const { data: candles = [], isLoading } = useQuery({
     queryKey: ['chart', symbol, range],
@@ -123,16 +134,18 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     staleTime: 60 * 60_000,
   });
 
+  // Build / rebuild charts when data or SMC toggle changes
   useEffect(() => {
     if (!candles.length || !mainRef.current || !rsiRef.current) return;
 
     if (mainChart.current) { mainChart.current.remove(); mainChart.current = null; }
     if (rsiChart.current)  { rsiChart.current.remove();  rsiChart.current  = null; }
+    seriesRefs.current = {};
 
     const closes = candles.map(c => c.close);
     const times  = candles.map(c => c.time);
 
-    // ── Main chart ──────────────────────────────────────────
+    // ── Main chart ───────────────────────────────────────────
     const main = createChart(mainRef.current, {
       ...DARK_OPTS,
       width:  mainRef.current.clientWidth,
@@ -158,13 +171,19 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       color: c.close >= c.open ? '#00ff8844' : '#ff335544',
     })));
 
-    [
-      { values: calcEMA(closes, 9),  color: '#00aaff', title: '9 EMA' },
-      { values: calcEMA(closes, 20), color: '#ffa500', title: '20 EMA' },
-      { values: calcSMA(closes, 50), color: '#aa44ff', title: '50 SMA' },
-    ].forEach(({ values, color, title }) => {
-      const s = main.addSeries(LineSeries, { color, lineWidth: 1, priceLineVisible: false, lastValueVisible: true, title });
+    // EMA / SMA indicator series
+    const indDefs = [
+      { key: 'ema9',  values: calcEMA(closes, 9),  color: '#00aaff', title: '9 EMA' },
+      { key: 'ema20', values: calcEMA(closes, 20), color: '#ffa500', title: '20 EMA' },
+      { key: 'sma50', values: calcSMA(closes, 50), color: '#aa44ff', title: '50 SMA' },
+    ];
+    indDefs.forEach(({ key, values, color, title }) => {
+      const s = main.addSeries(LineSeries, {
+        color, lineWidth: 1, priceLineVisible: false, lastValueVisible: true, title,
+        visible: indicators[key],
+      });
       s.setData(values.map((v, i) => v !== null ? { time: times[i], value: v } : null).filter(Boolean));
+      seriesRefs.current[key] = s;
     });
 
     if (entryPrice != null) {
@@ -199,11 +218,15 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     rsiChart.current = rsi;
 
     const rsiValues = calcRSI(closes, 14);
-    const rsiLine = rsi.addSeries(LineSeries, { color: '#ffd700', lineWidth: 1, priceLineVisible: false, lastValueVisible: true });
+    const rsiLine = rsi.addSeries(LineSeries, {
+      color: '#ffd700', lineWidth: 1, priceLineVisible: false, lastValueVisible: true,
+      visible: indicators.rsi,
+    });
     rsiLine.setData(rsiValues.map((v, i) => v !== null ? { time: times[i], value: v } : null).filter(Boolean));
     rsiLine.createPriceLine({ price: 70, color: '#ff3355', lineWidth: 1, lineStyle: LineStyle.Dotted, title: '70', axisLabelVisible: true });
     rsiLine.createPriceLine({ price: 30, color: '#00ff88', lineWidth: 1, lineStyle: LineStyle.Dotted, title: '30', axisLabelVisible: true });
     rsiLine.createPriceLine({ price: 50, color: '#444444', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false });
+    seriesRefs.current['rsi'] = rsiLine;
 
     main.timeScale().subscribeVisibleLogicalRangeChange(r => {
       if (r) rsi.timeScale().setVisibleLogicalRange(r);
@@ -215,6 +238,21 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       if (rsiChart.current)  { rsiChart.current.remove();  rsiChart.current  = null; }
     };
   }, [candles, entryPrice, showSmc]);
+
+  // Toggle indicator visibility without rebuilding the chart
+  function toggleIndicator(key) {
+    setIndicators(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      if (seriesRefs.current[key]) {
+        seriesRefs.current[key].applyOptions({ visible: next[key] });
+      }
+      // Show/hide RSI pane
+      if (key === 'rsi' && rsiRef.current) {
+        rsiRef.current.parentElement.style.display = next.rsi ? '' : 'none';
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const obs = new ResizeObserver(() => {
@@ -233,11 +271,11 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
 
   const nativeCs = symbol.endsWith('.NS') || symbol.endsWith('.BO') ? '₹' : '$';
 
-  const btnStyle = (active) => ({
+  const btnStyle = (active, color) => ({
     padding: '3px 9px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
     border: active ? 'none' : '1px solid var(--border)',
-    background: active ? 'var(--accent)' : 'transparent',
-    color: active ? '#000' : 'var(--text-dim)',
+    background: active ? (color || 'var(--accent)') : 'transparent',
+    color: active ? (color ? '#fff' : '#000') : 'var(--text-dim)',
   });
 
   return (
@@ -247,7 +285,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     >
       <div style={{
         background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8,
-        width: 'min(98vw, 1200px)', height: 'min(92vh, 800px)',
+        width: 'min(98vw, 1200px)', height: 'min(92vh, 820px)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
 
@@ -263,13 +301,13 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
           {/* Intraday quick buttons */}
           <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
             {INTRADAY_BTNS.map(r => (
-              <button key={r.value} onClick={() => setRange(r.value)} style={btnStyle(range === r.value)}>
-                {r.label}
+              <button key={r} onClick={() => setRange(r)} style={btnStyle(range === r)}>
+                {TIMEFRAMES[r].label}
               </button>
             ))}
           </div>
 
-          {/* More dropdown (30min, 1H, and all daily+) */}
+          {/* More dropdown */}
           <select
             value={isMoreRange ? range : ''}
             onChange={e => { if (e.target.value) setRange(e.target.value); }}
@@ -280,10 +318,17 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
               fontSize: 11, fontWeight: 600, padding: '3px 6px', cursor: 'pointer',
             }}
           >
-            <option value="" disabled>{isMoreRange ? currentLabel : 'More ▾'}</option>
+            <option value="" disabled>{isMoreRange ? tf.label : 'More ▾'}</option>
             <optgroup label="─ Intraday ─">
               <option value="30m">30 Min</option>
               <option value="1h">1 Hour</option>
+            </optgroup>
+            <optgroup label="─ Multi-Hour ─">
+              <option value="2h">2 Hour</option>
+              <option value="4h">4 Hour</option>
+              <option value="6h">6 Hour</option>
+              <option value="8h">8 Hour</option>
+              <option value="12h">12 Hour</option>
             </optgroup>
             <optgroup label="─ Daily & Above ─">
               <option value="3mo">3 Months</option>
@@ -296,18 +341,8 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
 
           {/* Right controls */}
           <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-            <button onClick={() => setShowSmc(v => !v)} style={{
-              padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
-              border: showSmc ? 'none' : '1px solid var(--border)',
-              background: showSmc ? '#aa44ff' : 'transparent',
-              color: showSmc ? '#fff' : 'var(--text-dim)',
-            }}>SMC</button>
-            <button onClick={() => setShowDeals(v => !v)} style={{
-              padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
-              border: showDeals ? 'none' : '1px solid var(--border)',
-              background: showDeals ? 'var(--accent)' : 'transparent',
-              color: showDeals ? '#000' : 'var(--text-dim)',
-            }}>Deals</button>
+            <button onClick={() => setShowSmc(v => !v)} style={btnStyle(showSmc, '#aa44ff')}>SMC</button>
+            <button onClick={() => setShowDeals(v => !v)} style={btnStyle(showDeals)}>Deals</button>
             <button onClick={onClose} style={{
               background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)',
               borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 13,
@@ -315,18 +350,31 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
           </div>
         </div>
 
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 14, padding: '4px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
-          {[['9 EMA', '#00aaff'], ['20 EMA', '#ffa500'], ['50 SMA', '#aa44ff'], ['RSI(14)', '#ffd700']].map(([l, c]) => (
-            <span key={l} style={{ fontSize: 10, color: c, fontFamily: 'var(--text-mono)' }}>▬ {l}</span>
+        {/* Legend — indicator toggle buttons + data range note */}
+        <div style={{ display: 'flex', gap: 6, padding: '5px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+          {INDICATOR_DEFS.map(({ key, label, color }) => (
+            <button
+              key={key}
+              onClick={() => toggleIndicator(key)}
+              title={indicators[key] ? `Hide ${label}` : `Show ${label}`}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+                fontSize: 10, fontFamily: 'var(--text-mono)', borderRadius: 3,
+                color: indicators[key] ? color : '#444',
+                textDecoration: indicators[key] ? 'none' : 'line-through',
+                opacity: indicators[key] ? 1 : 0.5,
+              }}
+            >
+              ▬ {label}
+            </button>
           ))}
           {showSmc && <>
-            <span style={{ fontSize: 10, color: '#00ff88', fontFamily: 'var(--text-mono)' }}>▬ OB↑</span>
-            <span style={{ fontSize: 10, color: '#ff3355', fontFamily: 'var(--text-mono)' }}>▬ OB↓</span>
-            <span style={{ fontSize: 10, color: '#ffd700', fontFamily: 'var(--text-mono)' }}>▬ FVG</span>
+            <span style={{ fontSize: 10, color: '#00ff88', fontFamily: 'var(--text-mono)', pointerEvents: 'none' }}>▬ OB↑</span>
+            <span style={{ fontSize: 10, color: '#ff3355', fontFamily: 'var(--text-mono)', pointerEvents: 'none' }}>▬ OB↓</span>
+            <span style={{ fontSize: 10, color: '#ffd700', fontFamily: 'var(--text-mono)', pointerEvents: 'none' }}>▬ FVG</span>
           </>}
           <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--text-mono)' }}>
-            {currentLabel}
+            {tf.label} · {tf.note}
           </span>
         </div>
 
@@ -334,7 +382,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
           {isLoading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', zIndex: 2, background: '#141414' }}>
-              Loading {currentLabel} chart…
+              Loading {tf.label} chart…
             </div>
           )}
           <div ref={mainRef} style={{ width: '100%', height: '100%' }} />

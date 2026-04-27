@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { newsApi } from '../../api/client.js';
 
 export default function NewsWidget({ symbols }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const enabled = symbols && symbols.length > 0;
 
   const { data: news = [], isLoading } = useQuery({
