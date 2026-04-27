@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const yahooFinance = require('yahoo-finance2').default;
+const { default: YahooFinance } = require('yahoo-finance2');
+const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
 // --- Indicator helpers ---
 
@@ -197,16 +198,20 @@ router.post('/', async (req, res) => {
   if (!symbol || !strategy) return res.status(400).json({ error: 'symbol and strategy required' });
 
   try {
-    const rows = await yahooFinance.historical(symbol, {
-      period1: from || (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().slice(0, 10); })(),
-      period2: to || new Date().toISOString().slice(0, 10),
-      interval: '1d',
-    });
+    const fromDate = from || (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.toISOString().slice(0, 10); })();
+    const toDate   = to   || new Date().toISOString().slice(0, 10);
 
+    const data = await yf.chart(symbol, {
+      period1:  fromDate,
+      period2:  toDate,
+      interval: '1d',
+    }, { validateResult: false });
+
+    const rows = data?.quotes || [];
     const candles = rows
       .filter(r => r.open && r.high && r.low && r.close)
       .map(r => ({
-        time: r.date.toISOString().slice(0, 10),
+        time: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10),
         open: r.open, high: r.high, low: r.low, close: r.close, volume: r.volume ?? 0,
       }));
 
