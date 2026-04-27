@@ -16,7 +16,7 @@ const labelStyle = {
   marginBottom: 8,
 };
 
-export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, openNonMfCount, beforeMarketOpen }) {
+export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, todaysGain, openNonMfCount, beforeMarketOpen }) {
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
 
@@ -69,6 +69,26 @@ export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, openNonM
             <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
               {openNonMfCount} open position{openNonMfCount !== 1 ? 's' : ''}
             </div>
+          </>
+        )}
+      </div>
+
+      {/* Today's Gain — daily session gain on open positions */}
+      <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--yellow)' }}>
+        <div style={labelStyle}>Today's Gain</div>
+        {beforeMarketOpen ? (
+          <>
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Market closed</div>
+          </>
+        ) : openNonMfCount === 0 || todaysGain == null ? (
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(todaysGain) }}>
+              {todaysGain >= 0 ? '+' : ''}₹{Math.abs(todaysGain).toFixed(0)}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>today's session</div>
           </>
         )}
       </div>

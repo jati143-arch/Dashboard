@@ -25,6 +25,11 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
 
 const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
 
+const SORT_ICON = (key, sortKey, sortDir) => {
+  if (sortKey !== key) return <span style={{ color: 'var(--border)', marginLeft: 3 }}>⇅</span>;
+  return <span style={{ marginLeft: 3, fontSize: 9 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
+};
+
 export default function OpenPositions() {
   const qc = useQueryClient();
   const { openChart } = useChart();
@@ -32,6 +37,8 @@ export default function OpenPositions() {
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
   const [displayCurrency, setDisplayCurrency] = useState('USD');
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
 
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
@@ -63,23 +70,72 @@ export default function OpenPositions() {
     return fromUSD(toUSD(price, native, usdInr, eurUsd), displayCurrency, usdInr, eurUsd);
   }
 
+  function toggleSort(key) {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  const thStyle = { cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' };
+
   const counts = { all: openTrades.length, us: 0, indian: 0, crypto: 0 };
   openTrades.forEach(t => { counts[detectRegion(t.symbol, t.instrument_type)]++; });
 
-  const filtered = openTrades
+  // Build enriched rows for sorting
+  const enriched = openTrades
     .filter(t => activeTab === 'all' || detectRegion(t.symbol, t.instrument_type) === activeTab)
-    .filter(t => t.symbol.toUpperCase().includes(search.toUpperCase()));
+    .filter(t => t.symbol.toUpperCase().includes(search.toUpperCase()))
+    .map(t => {
+      const region = detectRegion(t.symbol, t.instrument_type);
+      const native = region === 'indian' ? 'INR' : 'USD';
+      const liveData = prices[t.symbol];
+      const currentPrice = liveData?.price;
+      const hasPrice = currentPrice != null;
+      const qty = t.remaining_size ?? t.size;
 
-  const totalUnrealized = filtered.reduce((sum, t) => {
-    const liveData = prices[t.symbol];
-    if (!liveData) return sum;
-    const native = detectRegion(t.symbol, t.instrument_type) === 'indian' ? 'INR' : 'USD';
-    const entryC = convertPrice(t.entry_price, native);
-    const currentC = convertPrice(liveData.price, native);
-    const pnlD = t.direction === 'long' ? (currentC - entryC) * t.size : (entryC - currentC) * t.size;
-    return sum + pnlD;
-  }, 0);
+      const entryC = hasPrice ? convertPrice(t.entry_price, native) : null;
+      const currentC = hasPrice ? convertPrice(currentPrice, native) : null;
+      const prevCloseRaw = (hasPrice && liveData.change != null) ? currentPrice - liveData.change : null;
+      const prevCloseC = prevCloseRaw != null ? convertPrice(prevCloseRaw, native) : null;
 
+      let pnlD = null, pnlP = null;
+      if (entryC != null && currentC != null) {
+        pnlD = t.direction === 'long' ? (currentC - entryC) * qty : (entryC - currentC) * qty;
+        const cost = entryC * qty;
+        pnlP = cost !== 0 ? (pnlD / cost) * 100 : 0;
+      }
+
+      // Today's gain: price change today × qty (in native currency, shown in INR for Indian)
+      const todayGain = (liveData?.change != null) ? liveData.change * qty : null;
+      const todayGainC = (todayGain != null) ? convertPrice(Math.abs(todayGain), native) * Math.sign(todayGain) : null;
+
+      return { t, region, native, liveData, currentPrice, hasPrice, qty,
+               entryC, currentC, prevCloseC, pnlD, pnlP, todayGain, todayGainC };
+    });
+
+  // Sort
+  const sorted = [...enriched].sort((a, b) => {
+    let av, bv;
+    switch (sortKey) {
+      case 'symbol':     av = a.t.symbol;           bv = b.t.symbol;           break;
+      case 'date':       av = a.t.date;              bv = b.t.date;             break;
+      case 'entry':      av = a.entryC ?? 0;         bv = b.entryC ?? 0;        break;
+      case 'prev_close': av = a.prevCloseC ?? 0;     bv = b.prevCloseC ?? 0;    break;
+      case 'current':    av = a.currentC ?? 0;       bv = b.currentC ?? 0;      break;
+      case 'change_pct': av = a.liveData?.changePercent ?? -Infinity; bv = b.liveData?.changePercent ?? -Infinity; break;
+      case 'remaining':  av = a.qty;                 bv = b.qty;                break;
+      case 'pnl':        av = a.pnlD ?? -Infinity;   bv = b.pnlD ?? -Infinity;  break;
+      case 'today_gain': av = a.todayGainC ?? -Infinity; bv = b.todayGainC ?? -Infinity; break;
+      default:           av = a.t.date;              bv = b.t.date;
+    }
+    if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return sortDir === 'asc' ? av - bv : bv - av;
+  });
+
+  const totalUnrealized = enriched.reduce((sum, { pnlD }) => sum + (pnlD ?? 0), 0);
   const TABS = [['all', 'All'], ['us', '🇺🇸 US'], ['indian', '🇮🇳 Indian'], ['crypto', '₿ Crypto']];
 
   return (
@@ -141,41 +197,27 @@ export default function OpenPositions() {
           <table>
             <thead>
               <tr>
-                <th>Symbol</th>
+                <th style={thStyle} onClick={() => toggleSort('symbol')}>Symbol {SORT_ICON('symbol', sortKey, sortDir)}</th>
                 <th>Dir</th>
-                <th>Entry Date</th>
-                <th>Entry Price</th>
-                <th>Current Price</th>
-                <th>Change</th>
-                <th>Remaining</th>
-                <th>Unrealized P&L</th>
+                <th style={thStyle} onClick={() => toggleSort('date')}>Entry Date {SORT_ICON('date', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('entry')}>Entry Price {SORT_ICON('entry', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('prev_close')}>Prev Close {SORT_ICON('prev_close', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('current')}>Current Price {SORT_ICON('current', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('change_pct')}>Change {SORT_ICON('change_pct', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('today_gain')}>Today's Gain {SORT_ICON('today_gain', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('remaining')}>Remaining {SORT_ICON('remaining', sortKey, sortDir)}</th>
+                <th style={thStyle} onClick={() => toggleSort('pnl')}>Unrealized P&L {SORT_ICON('pnl', sortKey, sortDir)}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No positions found</td></tr>
-              ) : filtered.map(t => {
+              {sorted.length === 0 ? (
+                <tr><td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No positions found</td></tr>
+              ) : sorted.map(({ t, liveData, entryC, currentC, prevCloseC, pnlD, pnlP, todayGainC }) => {
+                const pnlColor = pnlD == null ? 'var(--text-dim)' : pnlD >= 0 ? 'var(--green)' : 'var(--red)';
+                const gainColor = todayGainC == null ? 'var(--text-dim)' : todayGainC >= 0 ? 'var(--green)' : 'var(--red)';
                 const region = detectRegion(t.symbol, t.instrument_type);
-                const native = region === 'indian' ? 'INR' : 'USD';
-                const liveData = prices[t.symbol];
-                const currentPrice = liveData?.price;
-                const hasPrice = currentPrice != null;
-
-                const entryC = hasPrice ? convertPrice(t.entry_price, native) : null;
-                const currentC = hasPrice ? convertPrice(currentPrice, native) : null;
-
-                let calc = null;
-                if (entryC != null && currentC != null && t.size) {
-                  const pnlD = t.direction === 'long'
-                    ? (currentC - entryC) * t.size
-                    : (entryC - currentC) * t.size;
-                  const cost = entryC * t.size;
-                  calc = { pnlD, pnlP: cost !== 0 ? (pnlD / cost) * 100 : 0 };
-                }
-
-                const pnlColor = !calc ? 'var(--text-dim)' : calc.pnlD >= 0 ? 'var(--green)' : 'var(--red)';
-                const nativeSymbol = native === 'INR' ? '₹' : '$';
+                const nativeSymbol = region === 'indian' ? '₹' : '$';
 
                 return (
                   <tr key={t.id}>
@@ -192,10 +234,11 @@ export default function OpenPositions() {
                     <td style={{ fontFamily: 'var(--text-mono)' }}>
                       {entryC != null ? fmt(entryC) : `${nativeSymbol}${t.entry_price}`}
                     </td>
+                    <td style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>
+                      {prevCloseC != null ? fmt(prevCloseC) : <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                    </td>
                     <td style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>
-                      {currentC != null
-                        ? fmt(currentC)
-                        : <span style={{ color: 'var(--text-dim)' }}>Loading...</span>}
+                      {currentC != null ? fmt(currentC) : <span style={{ color: 'var(--text-dim)' }}>Loading...</span>}
                     </td>
                     <td>
                       {liveData && (
@@ -204,13 +247,20 @@ export default function OpenPositions() {
                         </span>
                       )}
                     </td>
+                    <td>
+                      {todayGainC != null ? (
+                        <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600, color: gainColor }}>
+                          {todayGainC >= 0 ? '+' : '-'}{fmt(todayGainC)}
+                        </span>
+                      ) : <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                    </td>
                     <td style={{ fontFamily: 'var(--text-mono)' }}>{t.remaining_size ?? t.size}</td>
                     <td>
-                      {calc ? (
+                      {pnlD != null ? (
                         <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: pnlColor }}>
-                          {calc.pnlD >= 0 ? '+' : '-'}{fmt(calc.pnlD)}
+                          {pnlD >= 0 ? '+' : '-'}{fmt(pnlD)}
                           <span style={{ fontSize: '0.8em', marginLeft: 5, opacity: 0.8 }}>
-                            ({calc.pnlP >= 0 ? '+' : ''}{calc.pnlP.toFixed(1)}%)
+                            ({pnlP >= 0 ? '+' : ''}{pnlP.toFixed(1)}%)
                           </span>
                         </span>
                       ) : (
@@ -219,7 +269,7 @@ export default function OpenPositions() {
                     </td>
                     <td>
                       <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                        onClick={() => setClosingTrade({ trade: t, currentPrice })}>
+                        onClick={() => setClosingTrade({ trade: t, currentPrice: liveData?.price })}>
                         Close
                       </button>
                     </td>

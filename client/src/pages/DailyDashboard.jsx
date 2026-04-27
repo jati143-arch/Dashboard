@@ -69,6 +69,14 @@ export default function DailyDashboard() {
     refetchInterval: 60_000,
   });
 
+  const todaysGain = openTrades
+    .filter(t => t.instrument_type !== 'mutual_fund')
+    .reduce((sum, t) => {
+      const p = prices[t.symbol];
+      if (!p || p.change == null) return sum;
+      return sum + p.change * (t.remaining_size ?? t.size);
+    }, 0);
+
   const unrealizedPnl = openTrades
     .filter(t => t.instrument_type !== 'mutual_fund')
     .reduce((sum, t) => {
@@ -96,6 +104,7 @@ export default function DailyDashboard() {
         trades={closedTodayTrades}
         allTimePnl={allTimeStats?.total_pnl}
         unrealizedPnl={unrealizedPnl}
+        todaysGain={todaysGain}
         openNonMfCount={openNonMfCount}
         beforeMarketOpen={isBeforeMarketOpen()}
       />
