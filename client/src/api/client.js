@@ -56,8 +56,8 @@ export const mfApi = {
 };
 
 export const chartApi = {
-  ohlcv: (symbol, range = '6mo', interval = '1d') =>
-    api.get(`/chart/${encodeURIComponent(symbol)}`, { params: { range, interval } }).then(r => r.data),
+  ohlcv: (symbol, range = '1y') =>
+    api.get(`/chart/${encodeURIComponent(symbol)}`, { params: { range } }).then(r => r.data),
 };
 
 export const nseApi = {

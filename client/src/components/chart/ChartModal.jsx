@@ -69,25 +69,46 @@ function detectFVG(candles, count = 6) {
   return fvgs.slice(-count);
 }
 
+// Intraday quick-access buttons
+const INTRADAY_BTNS = [
+  { value: '1m',  label: '1 Min' },
+  { value: '2m',  label: '2 Min' },
+  { value: '5m',  label: '5 Min' },
+  { value: '15m', label: '15 Min' },
+];
+
+// All timeframes for the "More" dropdown
+const MORE_RANGES = [
+  { value: '30m', label: '30 Min' },
+  { value: '1h',  label: '1 Hour' },
+  { value: '3mo', label: '3 Months' },
+  { value: '6mo', label: '6 Months' },
+  { value: '1y',  label: '1 Year' },
+  { value: '2y',  label: '2 Years' },
+  { value: '5y',  label: '5 Years' },
+];
+
+const ALL_RANGES = [...INTRADAY_BTNS, ...MORE_RANGES];
+
 const DARK_OPTS = {
   layout:    { background: { color: '#141414' }, textColor: '#888888' },
   grid:      { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
   crosshair: { mode: CrosshairMode.Normal },
 };
 
-const RANGES = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y'];
-
 export default function ChartModal({ symbol, entryPrice, onClose }) {
-  const [range, setRange]         = useState('6mo');
+  const [range, setRange]         = useState('1y');
   const [showSmc, setShowSmc]     = useState(true);
   const [showDeals, setShowDeals] = useState(false);
 
-  const mainRef  = useRef(null);
-  const rsiRef   = useRef(null);
+  const mainRef   = useRef(null);
+  const rsiRef    = useRef(null);
   const mainChart = useRef(null);
   const rsiChart  = useRef(null);
 
   const nseSym = symbol.replace(/\.(NS|BO)$/, '');
+  const currentLabel = ALL_RANGES.find(r => r.value === range)?.label || range;
+  const isMoreRange  = MORE_RANGES.some(r => r.value === range);
 
   const { data: candles = [], isLoading } = useQuery({
     queryKey: ['chart', symbol, range],
@@ -105,14 +126,13 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
   useEffect(() => {
     if (!candles.length || !mainRef.current || !rsiRef.current) return;
 
-    // Destroy old instances
     if (mainChart.current) { mainChart.current.remove(); mainChart.current = null; }
     if (rsiChart.current)  { rsiChart.current.remove();  rsiChart.current  = null; }
 
     const closes = candles.map(c => c.close);
     const times  = candles.map(c => c.time);
 
-    // ── Main chart (v5 API) ──────────────────────────────────
+    // ── Main chart ──────────────────────────────────────────
     const main = createChart(mainRef.current, {
       ...DARK_OPTS,
       width:  mainRef.current.clientWidth,
@@ -122,7 +142,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     });
     mainChart.current = main;
 
-    // Candlesticks — v5 uses addSeries(SeriesType, options)
     const cs = main.addSeries(CandlestickSeries, {
       upColor:       '#00ff88', downColor:       '#ff3355',
       borderUpColor: '#00ff88', borderDownColor: '#ff3355',
@@ -130,10 +149,8 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     });
     cs.setData(candles);
 
-    // Volume
     const vol = main.addSeries(HistogramSeries, {
-      color: '#2a2a2a', priceFormat: { type: 'volume' },
-      priceScaleId: 'vol',
+      color: '#2a2a2a', priceFormat: { type: 'volume' }, priceScaleId: 'vol',
     });
     main.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     vol.setData(candles.map(c => ({
@@ -141,7 +158,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       color: c.close >= c.open ? '#00ff8844' : '#ff335544',
     })));
 
-    // EMAs + SMA
     [
       { values: calcEMA(closes, 9),  color: '#00aaff', title: '9 EMA' },
       { values: calcEMA(closes, 20), color: '#ffa500', title: '20 EMA' },
@@ -151,7 +167,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       s.setData(values.map((v, i) => v !== null ? { time: times[i], value: v } : null).filter(Boolean));
     });
 
-    // Entry price line
     if (entryPrice != null) {
       cs.createPriceLine({
         price: entryPrice, color: '#00ff88', lineWidth: 1,
@@ -160,7 +175,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       });
     }
 
-    // SMC overlays
     if (showSmc) {
       detectOrderBlocks(candles).forEach(ob => {
         const color = ob.type === 'bullish' ? '#00ff88' : '#ff3355';
@@ -191,7 +205,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     rsiLine.createPriceLine({ price: 30, color: '#00ff88', lineWidth: 1, lineStyle: LineStyle.Dotted, title: '30', axisLabelVisible: true });
     rsiLine.createPriceLine({ price: 50, color: '#444444', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false });
 
-    // Sync scroll
     main.timeScale().subscribeVisibleLogicalRangeChange(r => {
       if (r) rsi.timeScale().setVisibleLogicalRange(r);
     });
@@ -203,7 +216,6 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     };
   }, [candles, entryPrice, showSmc]);
 
-  // Resize handler
   useEffect(() => {
     const obs = new ResizeObserver(() => {
       if (mainChart.current && mainRef.current) mainChart.current.applyOptions({ width: mainRef.current.clientWidth, height: mainRef.current.clientHeight });
@@ -213,14 +225,20 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     return () => obs.disconnect();
   }, []);
 
-  // Escape to close
   useEffect(() => {
-    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    const h = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
   const nativeCs = symbol.endsWith('.NS') || symbol.endsWith('.BO') ? '₹' : '$';
+
+  const btnStyle = (active) => ({
+    padding: '3px 9px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
+    border: active ? 'none' : '1px solid var(--border)',
+    background: active ? 'var(--accent)' : 'transparent',
+    color: active ? '#000' : 'var(--text-dim)',
+  });
 
   return (
     <div
@@ -229,29 +247,54 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     >
       <div style={{
         background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 8,
-        width: 'min(98vw, 1200px)', height: 'min(92vh, 780px)',
+        width: 'min(98vw, 1200px)', height: 'min(92vh, 800px)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
+
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>{symbol}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{symbol}</span>
           {entryPrice != null && (
             <span style={{ fontSize: 11, color: 'var(--green)', border: '1px solid var(--green)', borderRadius: 4, padding: '1px 6px' }}>
               Entry {nativeCs}{entryPrice}
             </span>
           )}
-          {/* Range buttons */}
-          <div style={{ display: 'flex', gap: 4, marginLeft: 8, flexWrap: 'wrap' }}>
-            {RANGES.map(r => (
-              <button key={r} onClick={() => setRange(r)} style={{
-                padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
-                border: range === r ? 'none' : '1px solid var(--border)',
-                background: range === r ? 'var(--accent)' : 'transparent',
-                color: range === r ? '#000' : 'var(--text-dim)',
-              }}>{r.toUpperCase()}</button>
+
+          {/* Intraday quick buttons */}
+          <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
+            {INTRADAY_BTNS.map(r => (
+              <button key={r.value} onClick={() => setRange(r.value)} style={btnStyle(range === r.value)}>
+                {r.label}
+              </button>
             ))}
           </div>
-          {/* Toggles */}
+
+          {/* More dropdown (30min, 1H, and all daily+) */}
+          <select
+            value={isMoreRange ? range : ''}
+            onChange={e => { if (e.target.value) setRange(e.target.value); }}
+            style={{
+              background: isMoreRange ? 'var(--accent)' : 'var(--bg-card)',
+              color: isMoreRange ? '#000' : 'var(--text-dim)',
+              border: '1px solid var(--border)', borderRadius: 4,
+              fontSize: 11, fontWeight: 600, padding: '3px 6px', cursor: 'pointer',
+            }}
+          >
+            <option value="" disabled>{isMoreRange ? currentLabel : 'More ▾'}</option>
+            <optgroup label="─ Intraday ─">
+              <option value="30m">30 Min</option>
+              <option value="1h">1 Hour</option>
+            </optgroup>
+            <optgroup label="─ Daily & Above ─">
+              <option value="3mo">3 Months</option>
+              <option value="6mo">6 Months</option>
+              <option value="1y">1 Year</option>
+              <option value="2y">2 Years</option>
+              <option value="5y">5 Years</option>
+            </optgroup>
+          </select>
+
+          {/* Right controls */}
           <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             <button onClick={() => setShowSmc(v => !v)} style={{
               padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
@@ -273,7 +316,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: 14, padding: '4px 16px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, padding: '4px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap' }}>
           {[['9 EMA', '#00aaff'], ['20 EMA', '#ffa500'], ['50 SMA', '#aa44ff'], ['RSI(14)', '#ffd700']].map(([l, c]) => (
             <span key={l} style={{ fontSize: 10, color: c, fontFamily: 'var(--text-mono)' }}>▬ {l}</span>
           ))}
@@ -282,48 +325,51 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
             <span style={{ fontSize: 10, color: '#ff3355', fontFamily: 'var(--text-mono)' }}>▬ OB↓</span>
             <span style={{ fontSize: 10, color: '#ffd700', fontFamily: 'var(--text-mono)' }}>▬ FVG</span>
           </>}
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', fontFamily: 'var(--text-mono)' }}>
+            {currentLabel}
+          </span>
         </div>
 
         {/* Main chart */}
         <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
           {isLoading && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', zIndex: 2, background: '#141414' }}>
-              Loading chart…
+              Loading {currentLabel} chart…
             </div>
           )}
           <div ref={mainRef} style={{ width: '100%', height: '100%' }} />
         </div>
 
-        {/* RSI */}
-        <div style={{ flexShrink: 0, height: 110, borderTop: '1px solid var(--border)', position: 'relative' }}>
+        {/* RSI pane */}
+        <div style={{ flexShrink: 0, height: 100, borderTop: '1px solid var(--border)', position: 'relative' }}>
           <span style={{ position: 'absolute', top: 4, left: 8, fontSize: 10, color: '#ffd700', fontFamily: 'var(--text-mono)', zIndex: 1, pointerEvents: 'none' }}>RSI (14)</span>
           <div ref={rsiRef} style={{ width: '100%', height: '100%' }} />
         </div>
 
         {/* Deals panel */}
         {showDeals && (
-          <div style={{ flexShrink: 0, maxHeight: 150, overflowY: 'auto', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          <div style={{ flexShrink: 0, maxHeight: 140, overflowY: 'auto', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             {deals.length === 0 ? (
-              <div style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>No bulk/block deals found for {nseSym} in today's NSE data.</div>
+              <div style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>No bulk/block deals found for {nseSym}.</div>
             ) : (
               <table style={{ width: '100%', fontSize: 11 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Date', 'Client', 'Buy/Sell', 'Qty', 'Price', 'Type'].map(h => (
-                      <th key={h} style={{ padding: '6px 12px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 600 }}>{h}</th>
+                    {['Date','Client','Buy/Sell','Qty','Price','Type'].map(h => (
+                      <th key={h} style={{ padding: '5px 10px', textAlign: 'left', color: 'var(--text-dim)', fontWeight: 600 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {deals.map((d, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>{d.date}</td>
-                      <td style={{ padding: '5px 12px', color: 'var(--text-primary)' }}>{d.client}</td>
-                      <td style={{ padding: '5px 12px', color: d.buySell?.toLowerCase().includes('buy') ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>{d.buySell}</td>
-                      <td style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)' }}>{Number(d.qty).toLocaleString('en-IN')}</td>
-                      <td style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)' }}>₹{d.price}</td>
-                      <td style={{ padding: '5px 12px' }}>
-                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, background: d.type === 'bulk' ? '#00aaff33' : '#ffd70033', color: d.type === 'bulk' ? '#00aaff' : '#ffd700' }}>{d.type}</span>
+                      <td style={{ padding: '4px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>{d.date}</td>
+                      <td style={{ padding: '4px 10px', color: 'var(--text-primary)' }}>{d.client}</td>
+                      <td style={{ padding: '4px 10px', color: d.buySell?.toLowerCase().includes('buy') ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>{d.buySell}</td>
+                      <td style={{ padding: '4px 10px', fontFamily: 'var(--text-mono)' }}>{Number(d.qty).toLocaleString('en-IN')}</td>
+                      <td style={{ padding: '4px 10px', fontFamily: 'var(--text-mono)' }}>₹{d.price}</td>
+                      <td style={{ padding: '4px 10px' }}>
+                        <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: d.type === 'bulk' ? '#00aaff33' : '#ffd70033', color: d.type === 'bulk' ? '#00aaff' : '#ffd700' }}>{d.type}</span>
                       </td>
                     </tr>
                   ))}
