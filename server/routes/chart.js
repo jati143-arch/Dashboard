@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const yahooFinance = require('yahoo-finance2').default;
 
-yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
-
 // GET /api/chart/:symbol?range=6mo&interval=1d
 router.get('/:symbol', async (req, res) => {
   const { range = '6mo', interval = '1d' } = req.query;

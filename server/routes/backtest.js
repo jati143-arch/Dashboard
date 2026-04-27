@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const yahooFinance = require('yahoo-finance2').default;
 
-yahooFinance.setGlobalConfig({ validation: { logErrors: false } });
-
 // --- Indicator helpers ---
 
 function calcEMA(closes, period) {
