@@ -117,15 +117,19 @@ export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, todaysGa
         </div>
       </div>
 
-      {/* All-Time P&L */}
-      {allTimePnl != null && (
-        <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
-          <div style={labelStyle}>All-Time P&L</div>
-          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: allTimePnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
-            {allTimePnl >= 0 ? '+' : ''}{allTimePnl === 0 ? '—' : `${singleCs}${Math.abs(allTimePnl).toFixed(2)}`}
+      {/* Overall P&L — realized + unrealized combined */}
+      {allTimePnl != null && (() => {
+        const overall = (allTimePnl || 0) + (unrealizedPnl || 0);
+        return (
+          <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
+            <div style={labelStyle}>Overall P&L</div>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(overall) }}>
+              {overall > 0 ? '+' : ''}{overall === 0 ? '—' : `${singleCs}${Math.abs(overall).toFixed(2)}`}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>realized + unrealized</div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

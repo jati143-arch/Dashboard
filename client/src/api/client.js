@@ -33,6 +33,7 @@ export const statsApi = {
   summary: (period = 'all', market = '') => api.get('/stats/summary', { params: { period, market } }).then(r => r.data),
   pnlSeries: (from, to) => api.get('/stats/pnl-series', { params: { from, to } }).then(r => r.data),
   byPattern: () => api.get('/stats/by-pattern').then(r => r.data),
+  portfolioSeries: (from, to) => api.get('/stats/portfolio-series', { params: { from, to } }).then(r => r.data),
 };
 
 export const patternsApi = {

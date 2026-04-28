@@ -7,6 +7,8 @@ import {
 } from 'recharts';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 import PnlBadge from '../components/shared/PnlBadge.jsx';
+import PortfolioChart from '../components/performance/PortfolioChart.jsx';
+import PnlHeatmap from '../components/performance/PnlHeatmap.jsx';
 
 const PERIODS = ['daily', 'weekly', 'monthly', 'all'];
 
@@ -60,6 +62,8 @@ export default function Performance() {
 
   return (
     <div>
+      <PortfolioChart />
+      <PnlHeatmap />
       {/* Period toggle */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {PERIODS.map(p => (

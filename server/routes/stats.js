@@ -85,4 +85,31 @@ router.get('/by-pattern', (req, res) => {
   })));
 });
 
+// GET /api/stats/portfolio-series?from=YYYY-MM-DD&to=YYYY-MM-DD
+router.get('/portfolio-series', (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const { from = '2000-01-01', to = today } = req.query;
+
+  const rows = db.prepare(`
+    SELECT date,
+      SUM(entry_price * size) AS deployed,
+      SUM(CASE WHEN status = 'closed' THEN pnl_dollar ELSE 0 END) AS realized
+    FROM trades
+    WHERE instrument_type != 'mutual_fund' AND date >= ? AND date <= ?
+    GROUP BY date ORDER BY date ASC
+  `).all(from, to);
+
+  let cumDeployed = 0, cumRealized = 0;
+  res.json(rows.map(r => {
+    cumDeployed += r.deployed || 0;
+    cumRealized += r.realized || 0;
+    return {
+      date: r.date,
+      invested:    Math.round(cumDeployed),
+      realizedPnl: Math.round(cumRealized),
+      portfolio:   Math.round(cumDeployed + cumRealized),
+    };
+  }));
+});
+
 module.exports = router;
