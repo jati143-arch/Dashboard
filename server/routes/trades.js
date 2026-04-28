@@ -8,7 +8,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // GET /api/trades
 router.get('/', (req, res) => {
-  const { date, symbol, pattern_tag, direction, from, to, status, result, sort } = req.query;
+  const { date, symbol, pattern_tag, direction, from, to, status, result, sort, realized_on } = req.query;
   let sql = 'SELECT * FROM trades WHERE 1=1';
   const params = [];
 
@@ -19,6 +19,7 @@ router.get('/', (req, res) => {
   if (from)        { sql += ' AND date >= ?';                  params.push(from); }
   if (to)          { sql += ' AND date <= ?';                  params.push(to); }
   if (status)      { sql += ' AND status = ?';                 params.push(status); }
+  if (realized_on) { sql += " AND status = 'closed' AND (exit_date = ? OR (date = ? AND exit_date IS NULL))"; params.push(realized_on, realized_on); }
   if (result === 'win')  { sql += ' AND pnl_dollar > 0'; }
   if (result === 'loss') { sql += ' AND pnl_dollar <= 0 AND pnl_dollar IS NOT NULL'; }
 

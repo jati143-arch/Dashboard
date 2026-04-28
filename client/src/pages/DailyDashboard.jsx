@@ -25,10 +25,17 @@ export default function DailyDashboard() {
   const [showImport, setShowImport] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
 
-  // Today's closed trades — always today for P&L tiles
+  // Today's trades by entry date — for HeroCard, BestSetups, displayTrades
   const { data: todayTrades = [] } = useQuery({
     queryKey: ['trades', todayStr()],
     queryFn: () => tradesApi.list({ date: todayStr() }),
+    staleTime: 30_000,
+  });
+
+  // Today's REALIZED closed trades — by exit date (catches multi-day trades closed today)
+  const { data: realizedToday = [] } = useQuery({
+    queryKey: ['trades', 'realized', todayStr()],
+    queryFn: () => tradesApi.list({ realized_on: todayStr() }),
     staleTime: 30_000,
   });
 
@@ -88,8 +95,8 @@ export default function DailyDashboard() {
 
   const openNonMfCount = openTrades.filter(t => t.instrument_type !== 'mutual_fund').length;
 
-  // Always use TODAY's closed non-MF trades for the P&L tiles
-  const closedTodayTrades = todayTrades.filter(t => t.status === 'closed' && t.instrument_type !== 'mutual_fund');
+  // Realized P&L tiles use exit-date-aware query (catches multi-day trades closed today)
+  const closedTodayTrades = realizedToday.filter(t => t.instrument_type !== 'mutual_fund');
 
   // For HeroCard and BestSetups use the selected date's trades
   const displayTrades = selectedDate === todayStr() ? todayTrades : selectedTrades;

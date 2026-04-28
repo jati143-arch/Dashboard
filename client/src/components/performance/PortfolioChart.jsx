@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer, ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from 'recharts';
-import { statsApi } from '../../api/client.js';
+import { statsApi, tradesApi, pricesApi } from '../../api/client.js';
 
 const TIMEFRAMES = [
   {
@@ -48,7 +48,7 @@ function tfToFrom(tf) {
   const d = new Date();
   const map = { '1d': 1, '2d': 2, '1w': 7, '2w': 14, '1m': 30, '6m': 180, '1y': 365 };
   if (map[tf]) { d.setDate(d.getDate() - map[tf]); return d.toISOString().slice(0, 10); }
-  return '2000-01-01'; // all
+  return '2000-01-01';
 }
 
 function fmtY(v) {
@@ -60,7 +60,7 @@ function fmtY(v) {
 function fmtDate(dateStr, tf) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
-  if (INTRADAY.has(tf) || tf === '1d' || tf === '2d') return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  if (tf === '1d' || tf === '2d') return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   if (tf === '1w' || tf === '2w') return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   if (tf === '1m') return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
@@ -84,12 +84,83 @@ export default function PortfolioChart() {
   const [tf, setTf] = useState('1y');
   const today = new Date().toISOString().slice(0, 10);
   const from = useMemo(() => tfToFrom(tf), [tf]);
+  const isIntraday = INTRADAY.has(tf);
 
-  const { data = [], isLoading } = useQuery({
+  // Accumulate live snapshots for intraday mode
+  const snapshotsRef = useRef([]);
+  const [tickCount, setTickCount] = useState(0);
+
+  // Historical data query (non-intraday)
+  const { data: histData = [], isLoading: histLoading } = useQuery({
     queryKey: ['portfolio-series', from, today],
     queryFn: () => statsApi.portfolioSeries(from, today),
+    enabled: !isIntraday,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Live queries for intraday mode
+  const { data: openTrades = [] } = useQuery({
+    queryKey: ['trades', { status: 'open' }],
+    queryFn: () => tradesApi.list({ status: 'open' }),
+    enabled: isIntraday,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
+  const liveSymbols = useMemo(
+    () => [...new Set(openTrades.filter(t => t.instrument_type !== 'mutual_fund').map(t => t.symbol))],
+    [openTrades],
+  );
+
+  const { data: livePrices = {}, dataUpdatedAt } = useQuery({
+    queryKey: ['live-prices', liveSymbols],
+    queryFn: () => pricesApi.get(liveSymbols),
+    enabled: isIntraday && liveSymbols.length > 0,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
+  const { data: allTimeStats } = useQuery({
+    queryKey: ['stats', 'all', ''],
+    queryFn: () => statsApi.summary('all', ''),
+    enabled: isIntraday,
+    staleTime: 60_000,
+  });
+
+  // Append a snapshot each time live prices refresh
+  useEffect(() => {
+    if (!isIntraday) return;
+    const nonMf = openTrades.filter(t => t.instrument_type !== 'mutual_fund');
+    const invested = nonMf.reduce((s, t) => s + t.entry_price * (t.remaining_size ?? t.size), 0);
+    const unrealized = nonMf.reduce((s, t) => {
+      const cp = livePrices[t.symbol]?.price;
+      if (!cp) return s;
+      const qty = t.remaining_size ?? t.size;
+      return s + (t.direction === 'long' ? (cp - t.entry_price) * qty : (t.entry_price - cp) * qty);
+    }, 0);
+    const realized = allTimeStats?.total_pnl || 0;
+    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    snapshotsRef.current = [
+      ...snapshotsRef.current,
+      {
+        time,
+        portfolio: Math.round(invested + unrealized + realized),
+        invested:   Math.round(invested),
+        realizedPnl: Math.round(realized),
+      },
+    ];
+    setTickCount(c => c + 1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataUpdatedAt, allTimeStats?.total_pnl, isIntraday]);
+
+  // Clear snapshots when switching away from intraday
+  useEffect(() => {
+    if (!isIntraday) { snapshotsRef.current = []; setTickCount(0); }
+  }, [isIntraday]);
+
+  const chartData = isIntraday ? snapshotsRef.current : histData;
+  const isLoading = isIntraday ? false : histLoading;
+  const noData = chartData.length === 0;
 
   const selectStyle = {
     background: 'var(--bg-card)',
@@ -105,7 +176,14 @@ export default function PortfolioChart() {
   return (
     <div className="card" style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Portfolio Equity Curve</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Portfolio Equity Curve</div>
+          {isIntraday && (
+            <span style={{ fontSize: 11, background: 'var(--green)', color: '#000', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
+              LIVE
+            </span>
+          )}
+        </div>
         <select value={tf} onChange={e => setTf(e.target.value)} style={selectStyle}>
           {TIMEFRAMES.map(group => (
             <optgroup key={group.group} label={group.group}>
@@ -119,15 +197,24 @@ export default function PortfolioChart() {
 
       {isLoading ? (
         <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>Loading…</div>
-      ) : data.length === 0 ? (
-        <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>No trade data for this period</div>
+      ) : noData ? (
+        <div style={{ height: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13, gap: 8 }}>
+          {isIntraday ? (
+            <>
+              <div>Building live chart…</div>
+              <div style={{ fontSize: 11 }}>Prices update every minute. Keep this tab open.</div>
+            </>
+          ) : (
+            <div>No trade data for this period</div>
+          )}
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} />
             <XAxis
-              dataKey="date"
-              tickFormatter={d => fmtDate(d, tf)}
+              dataKey={isIntraday ? 'time' : 'date'}
+              tickFormatter={isIntraday ? (t => t) : (d => fmtDate(d, tf))}
               tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
               axisLine={false}
               tickLine={false}

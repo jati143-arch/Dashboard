@@ -50,16 +50,16 @@ router.get('/summary', (req, res) => {
 router.get('/pnl-series', (req, res) => {
   const { from, to } = req.query;
   let sql = `
-    SELECT date, SUM(pnl_dollar) as pnl, COUNT(*) as trades
+    SELECT COALESCE(exit_date, date) as day, SUM(pnl_dollar) as pnl, COUNT(*) as trades
     FROM trades
     WHERE ${CLOSED}
   `;
   const params = [];
-  if (from) { sql += ' AND date >= ?'; params.push(from); }
-  if (to)   { sql += ' AND date <= ?'; params.push(to); }
-  sql += ' GROUP BY date ORDER BY date ASC';
+  if (from) { sql += ' AND COALESCE(exit_date, date) >= ?'; params.push(from); }
+  if (to)   { sql += ' AND COALESCE(exit_date, date) <= ?'; params.push(to); }
+  sql += ' GROUP BY day ORDER BY day ASC';
 
-  res.json(db.prepare(sql).all(...params));
+  res.json(db.prepare(sql).all(...params).map(r => ({ ...r, date: r.day })));
 });
 
 // GET /api/stats/by-pattern
@@ -92,8 +92,8 @@ router.get('/portfolio-series', (req, res) => {
 
   const rows = db.prepare(`
     SELECT date,
-      SUM(entry_price * size) AS deployed,
-      SUM(CASE WHEN status = 'closed' THEN pnl_dollar ELSE 0 END) AS realized
+      SUM(CASE WHEN parent_trade_id IS NULL THEN entry_price * size ELSE 0 END) AS deployed,
+      SUM(CASE WHEN status = 'closed' THEN COALESCE(pnl_dollar, 0) ELSE 0 END) AS realized
     FROM trades
     WHERE instrument_type != 'mutual_fund' AND date >= ? AND date <= ?
     GROUP BY date ORDER BY date ASC
