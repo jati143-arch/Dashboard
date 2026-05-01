@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { signalsApi } from '../../api/client.js';
+import { createChart, CandlestickSeries } from 'lightweight-charts';
+import { signalsApi, chartApi } from '../../api/client.js';
 import { speakSignal } from '../../utils/speakSignal.js';
-import { toTvSymbol, tvTimezone } from '../../utils/tvSymbol.js';
+import { toTvSymbol } from '../../utils/tvSymbol.js';
 
 
 // Signal colour palette
@@ -216,69 +217,79 @@ function SignalPanel({ symbol }) {
   );
 }
 
-// ── Main modal ────────────────────────────────────────────────────────────────
+// ── Timeframe options ─────────────────────────────────────────────────────────
 
-let widgetCounter = 0;
+const RANGES = [
+  { label: '1M', value: '1mo' },
+  { label: '3M', value: '3mo' },
+  { label: '6M', value: '6mo' },
+  { label: '1Y', value: '1y'  },
+  { label: '2Y', value: '2y'  },
+];
+
+// ── Main modal ────────────────────────────────────────────────────────────────
 
 export default function ChartModal({ symbol, entryPrice, onClose }) {
   const tvSymbol = toTvSymbol(symbol);
-  const containerId = useRef(`tv_chart_${++widgetCounter}`).current;
   const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const [range, setRange] = useState('6mo');
 
+  const { data: candles, isLoading, isError } = useQuery({
+    queryKey: ['chart', symbol, range],
+    queryFn: () => chartApi.ohlcv(symbol, range),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  // Build / rebuild chart whenever candle data changes
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    function createWidget() {
-      if (typeof window.TradingView === 'undefined') return;
-      el.innerHTML = `<div id="${containerId}" style="height:100%"></div>`;
-      new window.TradingView.widget({
-        autosize:            true,
-        symbol:              tvSymbol,
-        interval:            'D',
-        timezone:            tvTimezone(symbol),
-        theme:               'dark',
-        style:               '1',
-        locale:              'en',
-        enable_publishing:   false,
-        withdateranges:      true,
-        hide_side_toolbar:   false,
-        allow_symbol_change: true,
-        save_image:          false,
-        container_id:        containerId,
-        studies: [
-          'RSI@tv-basicstudies',
-          'MAExp@tv-basicstudies',
-          'MACD@tv-basicstudies',
-        ],
-        overrides: {
-          'paneProperties.background':               '#141414',
-          'paneProperties.backgroundType':           'solid',
-          'paneProperties.vertGridProperties.color': '#1e1e1e',
-          'paneProperties.horzGridProperties.color': '#1e1e1e',
-        },
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+
+    if (!candles?.length) return;
+
+    const chart = createChart(el, {
+      autoSize: true,
+      layout: { background: { color: '#141414' }, textColor: '#888' },
+      grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
+      rightPriceScale: { borderColor: '#2a2a2a' },
+      timeScale: { borderColor: '#2a2a2a', timeVisible: false },
+      crosshair: { mode: 1 },
+    });
+    chartRef.current = chart;
+
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: '#00ff88', downColor: '#ff3355',
+      borderVisible: false,
+      wickUpColor: '#00ff88', wickDownColor: '#ff3355',
+    });
+
+    series.setData(candles);
+
+    if (entryPrice != null) {
+      series.createPriceLine({
+        price: entryPrice,
+        color: '#ffd700',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Entry',
       });
     }
 
-    if (window.TradingView) {
-      createWidget();
-    } else {
-      const existing = document.getElementById('tv-script');
-      if (!existing) {
-        const script = document.createElement('script');
-        script.id = 'tv-script';
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = createWidget;
-        document.head.appendChild(script);
-      } else {
-        existing.addEventListener('load', createWidget);
-        if (window.TradingView) createWidget();
-      }
-    }
+    chart.timeScale().fitContent();
 
-    return () => { if (el) el.innerHTML = ''; };
-  }, [tvSymbol, containerId]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      chart.remove();
+      chartRef.current = null;
+    };
+  }, [candles, entryPrice]);
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -292,28 +303,56 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>{symbol}</span>
           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{tvSymbol}</span>
           <a
             href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: 10, color: 'var(--text-dim)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px' }}
+            style={{ fontSize: 10, color: 'var(--text-dim)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}
             title="Open in TradingView"
           >↗ TV</a>
           {entryPrice != null && (
-            <span style={{ fontSize: 11, background: 'rgba(0,255,136,0.12)', color: 'var(--green)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--text-mono)' }}>
+            <span style={{ fontSize: 11, background: 'rgba(0,255,136,0.12)', color: 'var(--green)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--text-mono)', whiteSpace: 'nowrap' }}>
               Entry @ {entryPrice}
             </span>
           )}
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13 }}>✕</button>
+        {/* Timeframe selector */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          {RANGES.map(r => (
+            <button
+              key={r.value}
+              onClick={() => setRange(r.value)}
+              style={{
+                background: range === r.value ? 'var(--accent)' : 'none',
+                color: range === r.value ? '#000' : 'var(--text-dim)',
+                border: `1px solid ${range === r.value ? 'var(--accent)' : 'var(--border)'}`,
+                borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--text-mono)',
+              }}
+            >{r.label}</button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13, flexShrink: 0 }}>✕</button>
       </div>
 
-      {/* TradingView chart */}
-      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
+      {/* Chart */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {isLoading && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 14, zIndex: 1 }}>
+            Loading chart…
+          </div>
+        )}
+        {isError && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, zIndex: 1 }}>
+            <span style={{ color: 'var(--red)', fontSize: 14 }}>Failed to load chart data</span>
+            <a href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--accent)' }}>Open on TradingView instead ↗</a>
+          </div>
+        )}
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      </div>
 
       {/* Signal analysis panel */}
       <SignalPanel symbol={symbol} />

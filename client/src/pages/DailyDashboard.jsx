@@ -61,6 +61,12 @@ export default function DailyDashboard() {
     staleTime: 60_000,
   });
 
+  const { data: winlossStats } = useQuery({
+    queryKey: ['stats', 'winloss'],
+    queryFn: () => statsApi.winloss(),
+    staleTime: 60_000,
+  });
+
   // Open positions
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
@@ -124,6 +130,10 @@ export default function DailyDashboard() {
         todaysGain={todaysGain}
         openNonMfCount={openNonMfCount}
         beforeMarketOpen={isBeforeMarketOpen()}
+        overallWins={winlossStats?.wins ?? 0}
+        overallLosses={winlossStats?.losses ?? 0}
+        overallWinRate={winlossStats?.win_rate ?? 0}
+        overallTotal={winlossStats?.total ?? 0}
       />
 
       {/* 2. Portfolio News */}

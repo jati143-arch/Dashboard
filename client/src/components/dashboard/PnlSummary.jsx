@@ -11,13 +11,17 @@ const labelStyle = {
 };
 
 export default function PnlSummary({
-  trades,           // today's closed non-MF trades (Win Rate / Trades count)
+  trades,           // today's closed non-MF trades (Trades Today tile)
   openTrades,       // all open trades (portfolio currency detection)
   allTimePnl,       // all-time realized P&L in portfolio native currency
   unrealizedPnl,    // already in display currency (from DailyDashboard)
   todaysGain,       // already in display currency (from DailyDashboard)
   openNonMfCount,
   beforeMarketOpen,
+  overallWins = 0,
+  overallLosses = 0,
+  overallWinRate = 0,
+  overallTotal = 0,
 }) {
   const { currency, rates } = useCurrency();
   const sym = CUR_SYMBOL[currency] || '₹';
@@ -111,22 +115,24 @@ export default function PnlSummary({
           <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>{trades.length}</div>
         </div>
 
-        {/* Win Rate — today's closed */}
+        {/* Win Rate — overall fully closed trades */}
         <div className="card" style={{ textAlign: 'center' }}>
           <div style={labelStyle}>Win Rate</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: winRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
-            {trades.length ? `${winRate}%` : '—'}
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: overallWinRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
+            {overallTotal > 0 ? `${overallWinRate}%` : '—'}
           </div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>all closed trades</div>
         </div>
 
-        {/* Wins / Losses — today's closed */}
+        {/* Wins / Losses — overall fully closed trades */}
         <div className="card" style={{ textAlign: 'center' }}>
           <div style={labelStyle}>Wins / Losses</div>
           <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)', marginTop: 4 }}>
-            <span style={{ color: 'var(--green)' }}>{wins}</span>
+            <span style={{ color: 'var(--green)' }}>{overallWins}</span>
             <span style={{ color: 'var(--text-dim)', margin: '0 6px' }}>/</span>
-            <span style={{ color: 'var(--red)' }}>{trades.length - wins}</span>
+            <span style={{ color: 'var(--red)' }}>{overallLosses}</span>
           </div>
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>all closed trades</div>
         </div>
 
         {/* Overall P&L — all-time realized + current unrealized, both in display currency */}

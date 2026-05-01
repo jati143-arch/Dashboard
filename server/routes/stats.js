@@ -46,6 +46,23 @@ router.get('/summary', (req, res) => {
   res.json(row);
 });
 
+// GET /api/stats/winloss — overall win/loss for fully closed parent trades only
+router.get('/winloss', (req, res) => {
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) as total,
+      SUM(CASE WHEN pnl_dollar > 0 THEN 1 ELSE 0 END) as wins,
+      SUM(CASE WHEN pnl_dollar <= 0 THEN 1 ELSE 0 END) as losses
+    FROM trades
+    WHERE status = 'closed'
+      AND instrument_type != 'mutual_fund'
+      AND parent_trade_id IS NULL
+      AND pnl_dollar IS NOT NULL
+  `).get();
+  row.win_rate = row.total > 0 ? Math.round((row.wins / row.total) * 100) : 0;
+  res.json(row);
+});
+
 // GET /api/stats/pnl-series?from=YYYY-MM-DD&to=YYYY-MM-DD
 router.get('/pnl-series', (req, res) => {
   const { from, to } = req.query;
