@@ -9,6 +9,9 @@ import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 import PnlBadge from '../components/shared/PnlBadge.jsx';
 import PortfolioChart from '../components/performance/PortfolioChart.jsx';
 import PnlHeatmap from '../components/performance/PnlHeatmap.jsx';
+import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
+import { useCurrency } from '../context/CurrencyContext.jsx';
+import { CUR_SYMBOL } from '../utils/currency.js';
 
 const PERIODS = ['daily', 'weekly', 'monthly', 'all'];
 
@@ -22,14 +25,14 @@ function StatCard({ label, value, sub, color }) {
   );
 }
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, sym }) {
   if (!active || !payload?.length) return null;
   const val = payload[0].value;
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '8px 12px' }}>
       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: val >= 0 ? 'var(--green)' : 'var(--red)' }}>
-        {val >= 0 ? '+' : ''}${Math.abs(val).toFixed(2)}
+        {val >= 0 ? '+' : ''}{sym}{Math.abs(val).toFixed(2)}
       </div>
     </div>
   );
@@ -38,6 +41,8 @@ function CustomTooltip({ active, payload, label }) {
 export default function Performance() {
   const [period, setPeriod] = useState('monthly');
   const [chartType, setChartType] = useState('bar');
+  const { currency } = useCurrency();
+  const sym = CUR_SYMBOL[currency] || '$';
 
   const { data: summary, isLoading: sumLoading } = useQuery({
     queryKey: ['stats-summary', period],
@@ -64,25 +69,28 @@ export default function Performance() {
     <div>
       <PortfolioChart />
       <PnlHeatmap />
-      {/* Period toggle */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {PERIODS.map(p => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            style={{
-              background: period === p ? 'var(--accent)' : 'transparent',
-              color: period === p ? '#000' : 'var(--text-secondary)',
-              border: period === p ? 'none' : '1px solid var(--border)',
-              fontWeight: period === p ? 700 : 400,
-              borderRadius: 'var(--radius)',
-              padding: '5px 14px',
-              cursor: 'pointer',
-              fontSize: 12,
-              textTransform: 'capitalize',
-            }}
-          >{p === 'all' ? 'All Time' : p.charAt(0).toUpperCase() + p.slice(1)}</button>
-        ))}
+      {/* Period toggle + currency */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {PERIODS.map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={{
+                background: period === p ? 'var(--accent)' : 'transparent',
+                color: period === p ? '#000' : 'var(--text-secondary)',
+                border: period === p ? 'none' : '1px solid var(--border)',
+                fontWeight: period === p ? 700 : 400,
+                borderRadius: 'var(--radius)',
+                padding: '5px 14px',
+                cursor: 'pointer',
+                fontSize: 12,
+                textTransform: 'capitalize',
+              }}
+            >{p === 'all' ? 'All Time' : p.charAt(0).toUpperCase() + p.slice(1)}</button>
+          ))}
+        </div>
+        <CurrencyToggle />
       </div>
 
       {/* Summary cards */}
@@ -96,28 +104,28 @@ export default function Performance() {
         <StatCard
           label="Total P&L"
           value={summary?.total_pnl != null
-            ? `${summary.total_pnl >= 0 ? '+' : ''}$${Math.abs(summary.total_pnl).toFixed(2)}`
+            ? `${summary.total_pnl >= 0 ? '+' : ''}${sym}${Math.abs(summary.total_pnl).toFixed(2)}`
             : '—'}
           color={summary?.total_pnl >= 0 ? 'var(--green)' : 'var(--red)'}
         />
         <StatCard
           label="Avg Winner"
-          value={summary?.avg_winner != null ? `+$${summary.avg_winner.toFixed(2)}` : '—'}
+          value={summary?.avg_winner != null ? `+${sym}${summary.avg_winner.toFixed(2)}` : '—'}
           color="var(--green)"
         />
         <StatCard
           label="Avg Loser"
-          value={summary?.avg_loser != null ? `$${summary.avg_loser.toFixed(2)}` : '—'}
+          value={summary?.avg_loser != null ? `${sym}${summary.avg_loser.toFixed(2)}` : '—'}
           color="var(--red)"
         />
         <StatCard
           label="Best Trade"
-          value={summary?.best_trade != null ? `+$${summary.best_trade.toFixed(2)}` : '—'}
+          value={summary?.best_trade != null ? `+${sym}${summary.best_trade.toFixed(2)}` : '—'}
           color="var(--green)"
         />
         <StatCard
           label="Worst Trade"
-          value={summary?.worst_trade != null ? `$${summary.worst_trade.toFixed(2)}` : '—'}
+          value={summary?.worst_trade != null ? `${sym}${summary.worst_trade.toFixed(2)}` : '—'}
           color="var(--red)"
         />
       </div>
@@ -144,12 +152,11 @@ export default function Performance() {
               <BarChart data={chartData} margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
+                <Tooltip content={<CustomTooltip sym={sym} />} />
                 <ReferenceLine y={0} stroke="var(--border)" />
                 <Bar dataKey="pnl" fill="var(--accent)" radius={[3,3,0,0]}
                   label={false}
-                  // color bars individually
                   isAnimationActive={false}
                 />
               </BarChart>
@@ -157,8 +164,8 @@ export default function Performance() {
               <LineChart data={chartData} margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: 'var(--text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
+                <Tooltip content={<CustomTooltip sym={sym} />} />
                 <ReferenceLine y={0} stroke="var(--border)" />
                 <Line dataKey="pnl" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>

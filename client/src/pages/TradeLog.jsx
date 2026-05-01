@@ -8,6 +8,9 @@ import TradeForm from '../components/trades/TradeForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 import PnlBadge from '../components/shared/PnlBadge.jsx';
+import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
+import { useCurrency } from '../context/CurrencyContext.jsx';
+import { nativeOf } from '../utils/currency.js';
 
 const EMPTY_FILTERS = { from: '', to: '', symbol: '', direction: '', pattern_tag: '' };
 
@@ -16,6 +19,7 @@ export default function TradeLog() {
   const [showForm, setShowForm] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const { currency, rates } = useCurrency();
 
   const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
   const { data: trades = [], isLoading } = useQuery({
@@ -23,14 +27,14 @@ export default function TradeLog() {
     queryFn: () => tradesApi.list(params),
   });
 
-  const totalPnl = trades.reduce((s, t) => s + t.pnl_dollar, 0);
+  const totalPnl = trades.reduce((s, t) => s + (t.pnl_dollar ?? 0), 0);
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Trades Shown</div>
             <div style={{ fontFamily: 'var(--text-mono)', fontSize: 20, fontWeight: 700 }}>{trades.length}</div>
@@ -45,6 +49,7 @@ export default function TradeLog() {
               {trades.length ? `${winRate}%` : '—'}
             </div>
           </div>
+          <CurrencyToggle />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn-ghost" onClick={() => setShowImport(true)}>↑ Import CSV</button>

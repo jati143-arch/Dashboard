@@ -4,6 +4,9 @@ import { tradesApi, pricesApi } from '../../api/client.js';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
+import { useCurrency } from '../../context/CurrencyContext.jsx';
+import { CUR_SYMBOL } from '../../utils/currency.js';
+import CurrencyToggle from '../shared/CurrencyToggle.jsx';
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
@@ -23,8 +26,6 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
   return usdPrice;
 }
 
-const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
-
 const SORT_ICON = (key, sortKey, sortDir) => {
   if (sortKey !== key) return <span style={{ color: 'var(--border)', marginLeft: 3 }}>⇅</span>;
   return <span style={{ marginLeft: 3, fontSize: 9 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
@@ -33,10 +34,10 @@ const SORT_ICON = (key, sortKey, sortDir) => {
 export default function OpenPositions() {
   const qc = useQueryClient();
   const { openChart } = useChart();
+  const { currency: displayCurrency, rates } = useCurrency();
   const [closingTrade, setClosingTrade] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
-  const [displayCurrency, setDisplayCurrency] = useState('USD');
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
 
@@ -57,8 +58,8 @@ export default function OpenPositions() {
 
   if (openTrades.length === 0) return null;
 
-  const usdInr = prices['USDINR=X']?.price || 83;
-  const eurUsd = prices['EURUSD=X']?.price || 1.08;
+  const usdInr = rates.usdInr;
+  const eurUsd = rates.eurUsd;
   const cs = CUR_SYMBOL[displayCurrency];
 
   function fmt(amount) {
@@ -151,16 +152,7 @@ export default function OpenPositions() {
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Prices refresh every 60s</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {['USD', 'INR', 'EUR'].map(c => (
-                <button key={c} type="button" onClick={() => setDisplayCurrency(c)} style={{
-                  padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 700,
-                  border: displayCurrency === c ? 'none' : '1px solid var(--border)',
-                  background: displayCurrency === c ? 'var(--accent)' : 'transparent',
-                  color: displayCurrency === c ? '#000' : 'var(--text-dim)',
-                }}>{c}</button>
-              ))}
-            </div>
+            <CurrencyToggle />
             <div>
               <span style={{ fontSize: 11, color: 'var(--text-dim)', marginRight: 8 }}>Unrealized:</span>
               <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 15, color: totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)' }}>

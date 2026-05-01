@@ -1,12 +1,6 @@
-function nativeCs(symbol, instrumentType) {
-  if (instrumentType !== 'crypto' && (symbol.endsWith('.NS') || symbol.endsWith('.BO'))) return '₹';
-  return '$';
-}
-
-function fmtPnl(value, cs) {
-  if (value === 0) return '—';
-  return `${value > 0 ? '+' : ''}${cs}${Math.abs(value).toFixed(2)}`;
-}
+import { useCurrency } from '../../context/CurrencyContext.jsx';
+import { CUR_SYMBOL, convert } from '../../utils/currency.js';
+import CurrencyToggle from '../shared/CurrencyToggle.jsx';
 
 const labelStyle = {
   fontSize: 11,
@@ -16,120 +10,144 @@ const labelStyle = {
   marginBottom: 8,
 };
 
-export default function PnlSummary({ trades, allTimePnl, unrealizedPnl, todaysGain, openNonMfCount, beforeMarketOpen }) {
+export default function PnlSummary({
+  trades,           // today's closed non-MF trades (Win Rate / Trades count)
+  openTrades,       // all open trades (portfolio currency detection)
+  allTimePnl,       // all-time realized P&L in portfolio native currency
+  unrealizedPnl,    // already in display currency (from DailyDashboard)
+  todaysGain,       // already in display currency (from DailyDashboard)
+  openNonMfCount,
+  beforeMarketOpen,
+}) {
+  const { currency, rates } = useCurrency();
+  const sym = CUR_SYMBOL[currency] || '₹';
+
+  // Detect portfolio native currency from open positions
+  const nonMfOpen = (openTrades || []).filter(t => t.instrument_type !== 'mutual_fund');
+  const portfolioNative = nonMfOpen.length > 0 && nonMfOpen.every(t =>
+    t.symbol?.endsWith('.NS') || t.symbol?.endsWith('.BO'),
+  ) ? 'INR' : 'USD';
+
+  // Convert all-time realized P&L to selected display currency
+  const realizedDisplay = allTimePnl != null
+    ? convert(allTimePnl, portfolioNative, currency, rates)
+    : null;
+
+  // Today's trade stats (for Trades / Win Rate / Wins/Losses tiles)
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
 
-  // Group closed trades by native currency
-  const inrTrades = trades.filter(t => nativeCs(t.symbol, t.instrument_type) === '₹');
-  const usdTrades = trades.filter(t => nativeCs(t.symbol, t.instrument_type) === '$');
-  const inrTotal = inrTrades.reduce((s, t) => s + (t.pnl_dollar || 0), 0);
-  const usdTotal = usdTrades.reduce((s, t) => s + (t.pnl_dollar || 0), 0);
-  const isMixed = inrTrades.length > 0 && usdTrades.length > 0;
-  const singleCs = inrTrades.length > 0 && usdTrades.length === 0 ? '₹' : '$';
-  const singleTotal = singleCs === '₹' ? inrTotal : usdTotal;
+  const pnlColor = (v) => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text-secondary)';
 
-  const pnlColor = (c) => c > 0 ? 'var(--green)' : c < 0 ? 'var(--red)' : 'var(--text-secondary)';
+  function fmtVal(val) {
+    if (val == null || val === 0) return '—';
+    return `${val >= 0 ? '+' : ''}${sym}${Math.abs(val).toFixed(2)}`;
+  }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+    <div>
+      {/* Currency toggle */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <CurrencyToggle />
+      </div>
 
-      {/* Realized P&L — today's closed trades; blank before market open */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div style={labelStyle}>Realized P&L</div>
-        {beforeMarketOpen ? (
-          <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+
+        {/* Realized P&L — ALL-TIME closed trades */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div style={labelStyle}>Realized P&L</div>
+          {realizedDisplay == null ? (
             <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Market closed</div>
-          </>
-        ) : trades.length === 0 ? (
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
-        ) : isMixed ? (
-          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>
-            <div style={{ fontSize: 18, color: pnlColor(inrTotal) }}>{fmtPnl(inrTotal, '₹')}</div>
-            <div style={{ fontSize: 18, color: pnlColor(usdTotal) }}>{fmtPnl(usdTotal, '$')}</div>
-          </div>
-        ) : (
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(singleTotal) }}>
-            {fmtPnl(singleTotal, singleCs)}
-          </div>
-        )}
-      </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(realizedDisplay) }}>
+                {fmtVal(realizedDisplay)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>all closed trades</div>
+            </>
+          )}
+        </div>
 
-      {/* Unrealized P&L — live open positions */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div style={labelStyle}>Unrealized P&L</div>
-        {openNonMfCount === 0 ? (
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
-        ) : (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(unrealizedPnl) }}>
-              {unrealizedPnl >= 0 ? '+' : ''}₹{Math.abs(unrealizedPnl).toFixed(0)}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
-              {openNonMfCount} open position{openNonMfCount !== 1 ? 's' : ''}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Today's Gain — daily session gain on open positions */}
-      <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--yellow)' }}>
-        <div style={labelStyle}>Today's Gain</div>
-        {beforeMarketOpen ? (
-          <>
+        {/* Unrealized P&L — live open positions, already in display currency */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div style={labelStyle}>Unrealized P&L</div>
+          {openNonMfCount === 0 ? (
             <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Market closed</div>
-          </>
-        ) : openNonMfCount === 0 || todaysGain == null ? (
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
-        ) : (
-          <>
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(todaysGain) }}>
-              {todaysGain >= 0 ? '+' : ''}₹{Math.abs(todaysGain).toFixed(0)}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>today's session</div>
-          </>
-        )}
-      </div>
-
-      {/* Trade count */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div style={labelStyle}>Trades</div>
-        <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>{trades.length}</div>
-      </div>
-
-      {/* Win Rate */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div style={labelStyle}>Win Rate</div>
-        <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: winRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
-          {trades.length ? `${winRate}%` : '—'}
+          ) : (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(unrealizedPnl) }}>
+                {unrealizedPnl >= 0 ? '+' : ''}{sym}{Math.abs(unrealizedPnl).toFixed(0)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
+                {openNonMfCount} open position{openNonMfCount !== 1 ? 's' : ''}
+              </div>
+            </>
+          )}
         </div>
-      </div>
 
-      {/* Wins / Losses */}
-      <div className="card" style={{ textAlign: 'center' }}>
-        <div style={labelStyle}>Wins / Losses</div>
-        <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)', marginTop: 4 }}>
-          <span style={{ color: 'var(--green)' }}>{wins}</span>
-          <span style={{ color: 'var(--text-dim)', margin: '0 6px' }}>/</span>
-          <span style={{ color: 'var(--red)' }}>{trades.length - wins}</span>
+        {/* Today's Gain — price change on open positions, already in display currency */}
+        <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--yellow)' }}>
+          <div style={labelStyle}>Today's Gain</div>
+          {beforeMarketOpen ? (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>Market closed</div>
+            </>
+          ) : openNonMfCount === 0 || todaysGain == null ? (
+            <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)' }}>—</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(todaysGain) }}>
+                {todaysGain >= 0 ? '+' : ''}{sym}{Math.abs(todaysGain).toFixed(0)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>today's session</div>
+            </>
+          )}
         </div>
-      </div>
 
-      {/* Overall P&L — realized + unrealized combined */}
-      {allTimePnl != null && (() => {
-        const overall = (allTimePnl || 0) + (unrealizedPnl || 0);
-        return (
+        {/* Trades Today */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div style={labelStyle}>Trades Today</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>{trades.length}</div>
+        </div>
+
+        {/* Win Rate — today's closed */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div style={labelStyle}>Win Rate</div>
+          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--text-mono)', color: winRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
+            {trades.length ? `${winRate}%` : '—'}
+          </div>
+        </div>
+
+        {/* Wins / Losses — today's closed */}
+        <div className="card" style={{ textAlign: 'center' }}>
+          <div style={labelStyle}>Wins / Losses</div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--text-primary)', marginTop: 4 }}>
+            <span style={{ color: 'var(--green)' }}>{wins}</span>
+            <span style={{ color: 'var(--text-dim)', margin: '0 6px' }}>/</span>
+            <span style={{ color: 'var(--red)' }}>{trades.length - wins}</span>
+          </div>
+        </div>
+
+        {/* Overall P&L — all-time realized + current unrealized, both in display currency */}
+        {realizedDisplay != null && (
           <div className="card" style={{ textAlign: 'center', borderLeft: '2px solid var(--accent)' }}>
             <div style={labelStyle}>Overall P&L</div>
-            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(overall) }}>
-              {overall > 0 ? '+' : ''}{overall === 0 ? '—' : `${singleCs}${Math.abs(overall).toFixed(2)}`}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>realized + unrealized</div>
+            {(() => {
+              const overall = realizedDisplay + (unrealizedPnl || 0);
+              return (
+                <>
+                  <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: pnlColor(overall) }}>
+                    {overall === 0 ? '—' : `${overall >= 0 ? '+' : ''}${sym}${Math.abs(overall).toFixed(2)}`}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>realized + unrealized</div>
+                </>
+              );
+            })()}
           </div>
-        );
-      })()}
+        )}
+
+      </div>
     </div>
   );
 }

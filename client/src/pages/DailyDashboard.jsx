@@ -10,6 +10,8 @@ import Modal from '../components/shared/Modal.jsx';
 import TradeForm from '../components/trades/TradeForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
+import { useCurrency } from '../context/CurrencyContext.jsx';
+import { nativeOf, convert } from '../utils/currency.js';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -25,6 +27,8 @@ export default function DailyDashboard() {
   const [showImport, setShowImport] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
 
+  const { currency, rates } = useCurrency();
+
   // Today's trades by entry date — for HeroCard, BestSetups, displayTrades
   const { data: todayTrades = [] } = useQuery({
     queryKey: ['trades', todayStr()],
@@ -32,14 +36,14 @@ export default function DailyDashboard() {
     staleTime: 30_000,
   });
 
-  // Today's REALIZED closed trades — by exit date (catches multi-day trades closed today)
+  // Today's REALIZED closed trades — matched by exit_date (catches multi-day trades closed today)
   const { data: realizedToday = [] } = useQuery({
     queryKey: ['trades', 'realized', todayStr()],
     queryFn: () => tradesApi.list({ realized_on: todayStr() }),
     staleTime: 30_000,
   });
 
-  // Selected date data — for HeroCard, BestSetups, AI Insight
+  // Selected date trades (only fetched when not today)
   const { data: selectedTrades = [], isLoading: tradesLoading } = useQuery({
     queryKey: ['trades', selectedDate],
     queryFn: () => tradesApi.list({ date: selectedDate }),
@@ -57,7 +61,7 @@ export default function DailyDashboard() {
     staleTime: 60_000,
   });
 
-  // Open positions for unrealized P&L + news
+  // Open positions
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
     queryFn: () => tradesApi.list({ status: 'open' }),
@@ -76,29 +80,34 @@ export default function DailyDashboard() {
     refetchInterval: 60_000,
   });
 
-  const todaysGain = openTrades
-    .filter(t => t.instrument_type !== 'mutual_fund')
-    .reduce((sum, t) => {
-      const p = prices[t.symbol];
-      if (!p || p.change == null) return sum;
-      return sum + p.change * (t.remaining_size ?? t.size);
-    }, 0);
+  const openNonMf = openTrades.filter(t => t.instrument_type !== 'mutual_fund');
+  const openNonMfCount = openNonMf.length;
 
-  const unrealizedPnl = openTrades
-    .filter(t => t.instrument_type !== 'mutual_fund')
-    .reduce((sum, t) => {
-      const cp = prices[t.symbol]?.price;
-      if (!cp) return sum;
-      const qty = t.remaining_size ?? t.size;
-      return sum + (t.direction === 'long' ? (cp - t.entry_price) * qty : (t.entry_price - cp) * qty);
-    }, 0);
+  // Today's gain: price change × qty, converted to display currency
+  const todaysGain = openNonMf.reduce((sum, t) => {
+    const p = prices[t.symbol];
+    if (!p || p.change == null) return sum;
+    const native = nativeOf(t.symbol, t.instrument_type);
+    const changeDisplay = convert(p.change, native, currency, rates);
+    return sum + changeDisplay * (t.remaining_size ?? t.size);
+  }, 0);
 
-  const openNonMfCount = openTrades.filter(t => t.instrument_type !== 'mutual_fund').length;
+  // Unrealized P&L: (current - entry) × qty, converted to display currency
+  const unrealizedPnl = openNonMf.reduce((sum, t) => {
+    const cp = prices[t.symbol]?.price;
+    if (!cp) return sum;
+    const qty = t.remaining_size ?? t.size;
+    const native = nativeOf(t.symbol, t.instrument_type);
+    const pnlNative = t.direction === 'long'
+      ? (cp - t.entry_price) * qty
+      : (t.entry_price - cp) * qty;
+    return sum + convert(pnlNative, native, currency, rates);
+  }, 0);
 
-  // Realized P&L tiles use exit-date-aware query (catches multi-day trades closed today)
+  // Today's closed trades for Win Rate / Trades count tiles
   const closedTodayTrades = realizedToday.filter(t => t.instrument_type !== 'mutual_fund');
 
-  // For HeroCard and BestSetups use the selected date's trades
+  // For HeroCard and BestSetups use selected date's trades
   const displayTrades = selectedDate === todayStr() ? todayTrades : selectedTrades;
   const bestTrade = displayTrades.find(t => t.is_best_trade);
 
@@ -106,9 +115,10 @@ export default function DailyDashboard() {
 
   return (
     <div>
-      {/* 1. P&L Summary — always today's numbers */}
+      {/* 1. P&L Summary tiles */}
       <PnlSummary
         trades={closedTodayTrades}
+        openTrades={openTrades}
         allTimePnl={allTimeStats?.total_pnl}
         unrealizedPnl={unrealizedPnl}
         todaysGain={todaysGain}
@@ -116,10 +126,10 @@ export default function DailyDashboard() {
         beforeMarketOpen={isBeforeMarketOpen()}
       />
 
-      {/* 2. Portfolio News — collapsed by default */}
+      {/* 2. Portfolio News */}
       <NewsWidget symbols={openSymbols} />
 
-      {/* 3. Open Positions — live prices */}
+      {/* 3. Open Positions */}
       <OpenPositions />
 
       {/* 4. Date picker + action buttons */}
