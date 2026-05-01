@@ -242,6 +242,61 @@ function strategyVWAPReclaim(candles) {
   return trades;
 }
 
+function calcATR(candles, period = 14) {
+  const tr = candles.map((c, i) => {
+    const prev = i > 0 ? candles[i - 1].close : c.close;
+    return Math.max(c.high - c.low, Math.abs(c.high - prev), Math.abs(c.low - prev));
+  });
+  const atr = Array(tr.length).fill(null);
+  atr[period - 1] = tr.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < tr.length; i++) atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period;
+  return atr;
+}
+
+function strategyCompositeSignal(candles) {
+  const closes  = candles.map(c => c.close);
+  const volumes = candles.map(c => c.volume);
+  const ema9    = calcEMA(closes, 9);
+  const ema20   = calcEMA(closes, 20);
+  const sma50   = calcSMA(closes, 50);
+  const rsi     = calcRSI(closes, 14);
+  const { macd, signal: macdSig } = calcMACD(closes);
+  const atr     = calcATR(candles, 14);
+  const trades  = [];
+  let inTrade = null, slPrice = null;
+
+  for (let i = 51; i < candles.length - 1; i++) {
+    if (!ema9[i] || !ema20[i] || !sma50[i] || !rsi[i] || macd[i] == null || macdSig[i] == null || !atr[i]) continue;
+    let score = 0;
+    score += ema9[i] > ema20[i] ? 1 : -1;
+    score += ema20[i] > sma50[i] ? 1 : -1;
+    score += closes[i] > ema20[i] ? 1 : -1;
+    const r = rsi[i];
+    if      (r > 75)             score -= 2;
+    else if (r > 65)             score -= 1;
+    else if (r >= 50 && r <= 65) score += 2;
+    else if (r >= 40)            score += 1;
+    else if (r < 30)             score -= 1;
+    const prevMacd = macd[i - 1], prevSig = macdSig[i - 1];
+    const freshCross = prevMacd != null && prevSig != null &&
+      Math.sign(macd[i] - macdSig[i]) !== Math.sign(prevMacd - prevSig);
+    score += macd[i] > macdSig[i] ? (freshCross ? 2 : 1) : (freshCross ? -2 : -1);
+    const avgVol = volumes.slice(Math.max(0, i - 21), i).reduce((a, b) => a + b, 0) / 20;
+    if (avgVol > 0 && volumes[i] / avgVol > 1.5)
+      score += candles[i].close > candles[i].open ? 1 : -1;
+
+    if (!inTrade && score >= 3) { inTrade = i + 1; slPrice = closes[i] - atr[i] * 1.5; }
+    if (inTrade) {
+      if (score <= -2 || closes[i] <= slPrice) {
+        trades.push({ entryIdx: inTrade, exitIdx: i + 1 });
+        inTrade = null; slPrice = null;
+      }
+    }
+  }
+  if (inTrade) trades.push({ entryIdx: inTrade, exitIdx: candles.length - 1 });
+  return trades;
+}
+
 // --- Results builder ---
 
 function buildResults(candles, signalPairs) {
@@ -347,13 +402,14 @@ router.post('/', async (req, res) => {
     }
 
     let signals;
-    if      (strategy === 'ema_cross')    signals = strategyEMACross(candles);
-    else if (strategy === 'rsi_pullback') signals = strategyRSIPullback(candles);
-    else if (strategy === 'breakout_vol') signals = strategyBreakout(candles);
-    else if (strategy === 'macd_cross')   signals = strategyMACDCross(candles);
-    else if (strategy === 'bb_squeeze')   signals = strategyBBSqueeze(candles);
-    else if (strategy === 'sma200_trend') signals = strategySMA200Trend(candles);
-    else if (strategy === 'vwap_reclaim') signals = strategyVWAPReclaim(candles);
+    if      (strategy === 'ema_cross')         signals = strategyEMACross(candles);
+    else if (strategy === 'rsi_pullback')       signals = strategyRSIPullback(candles);
+    else if (strategy === 'breakout_vol')       signals = strategyBreakout(candles);
+    else if (strategy === 'macd_cross')         signals = strategyMACDCross(candles);
+    else if (strategy === 'bb_squeeze')         signals = strategyBBSqueeze(candles);
+    else if (strategy === 'sma200_trend')       signals = strategySMA200Trend(candles);
+    else if (strategy === 'vwap_reclaim')       signals = strategyVWAPReclaim(candles);
+    else if (strategy === 'composite_signal')   signals = strategyCompositeSignal(candles);
     else return res.status(400).json({ error: 'Unknown strategy' });
 
     res.json(buildResults(candles, signals));

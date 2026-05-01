@@ -1,12 +1,30 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { tradesApi, pricesApi } from '../../api/client.js';
+import { tradesApi, pricesApi, signalsApi } from '../../api/client.js';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
 import { useCurrency } from '../../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../../utils/currency.js';
 import CurrencyToggle from '../shared/CurrencyToggle.jsx';
+import { speakSignal } from '../../utils/speakSignal.js';
+
+const SIG_BG = {
+  'STRONG BUY':  'rgba(0,255,136,0.15)', 'BUY':  'rgba(0,220,100,0.12)',
+  'WEAK BUY':    'rgba(80,200,120,0.10)', 'NEUTRAL': 'rgba(120,120,120,0.10)',
+  'WEAK SELL':   'rgba(255,120,80,0.10)', 'SELL': 'rgba(255,80,60,0.12)',
+  'STRONG SELL': 'rgba(255,51,85,0.15)',
+};
+const SIG_COLOR = {
+  'STRONG BUY': '#00ff88', 'BUY': '#00dc64', 'WEAK BUY': '#50c878',
+  'NEUTRAL': '#aaa', 'WEAK SELL': '#ff7850', 'SELL': '#ff503c', 'STRONG SELL': '#ff3355',
+};
+const SIG_BORDER = {
+  'STRONG BUY': 'rgba(0,255,136,0.4)', 'BUY': 'rgba(0,220,100,0.35)',
+  'WEAK BUY': 'rgba(80,200,120,0.3)', 'NEUTRAL': 'rgba(150,150,150,0.3)',
+  'WEAK SELL': 'rgba(255,120,80,0.3)', 'SELL': 'rgba(255,80,60,0.35)',
+  'STRONG SELL': 'rgba(255,51,85,0.4)',
+};
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
@@ -40,6 +58,8 @@ export default function OpenPositions() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+  const [signals, setSignals] = useState({});
+  const [scanLoading, setScanLoading] = useState(false);
 
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
@@ -78,6 +98,20 @@ export default function OpenPositions() {
       setSortKey(key);
       setSortDir('asc');
     }
+  }
+
+  async function scanSignals() {
+    setScanLoading(true);
+    const results = {};
+    await Promise.allSettled(tradeSymbols.map(async sym => {
+      try {
+        const data = await signalsApi.get(sym);
+        results[sym] = data;
+        if (data.isBuy) speakSignal(data, sym);
+      } catch { results[sym] = null; }
+    }));
+    setSignals(results);
+    setScanLoading(false);
   }
 
   const thStyle = { cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' };
@@ -152,6 +186,14 @@ export default function OpenPositions() {
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Prices refresh every 60s</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button
+              onClick={scanSignals}
+              disabled={scanLoading}
+              style={{ padding: '4px 12px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
+                border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)' }}
+            >
+              {scanLoading ? '⟳ Scanning…' : '◈ Scan Signals'}
+            </button>
             <CurrencyToggle />
             <div>
               <span style={{ fontSize: 11, color: 'var(--text-dim)', marginRight: 8 }}>Unrealized:</span>
@@ -199,12 +241,13 @@ export default function OpenPositions() {
                 <th style={thStyle} onClick={() => toggleSort('today_gain')}>Today's Gain {SORT_ICON('today_gain', sortKey, sortDir)}</th>
                 <th style={thStyle} onClick={() => toggleSort('remaining')}>Remaining {SORT_ICON('remaining', sortKey, sortDir)}</th>
                 <th style={thStyle} onClick={() => toggleSort('pnl')}>Unrealized P&L {SORT_ICON('pnl', sortKey, sortDir)}</th>
+                <th>Signal</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 ? (
-                <tr><td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No positions found</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>No positions found</td></tr>
               ) : sorted.map(({ t, liveData, entryC, currentC, prevCloseC, pnlD, pnlP, todayGainC }) => {
                 const pnlColor = pnlD == null ? 'var(--text-dim)' : pnlD >= 0 ? 'var(--green)' : 'var(--red)';
                 const gainColor = todayGainC == null ? 'var(--text-dim)' : todayGainC >= 0 ? 'var(--green)' : 'var(--red)';
@@ -258,6 +301,25 @@ export default function OpenPositions() {
                       ) : (
                         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>
                       )}
+                    </td>
+                    <td>
+                      {(() => {
+                        const sig = signals[t.symbol];
+                        if (!sig) return <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>;
+                        return (
+                          <span
+                            onClick={() => openChart(t.symbol, t.entry_price)}
+                            title="View chart"
+                            style={{
+                              cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                              background: SIG_BG[sig.signal] || SIG_BG['NEUTRAL'],
+                              color: SIG_COLOR[sig.signal] || SIG_COLOR['NEUTRAL'],
+                              border: `1px solid ${SIG_BORDER[sig.signal] || SIG_BORDER['NEUTRAL']}`,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >{sig.signal}</span>
+                        );
+                      })()}
                     </td>
                     <td>
                       <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}

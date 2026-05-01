@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { signalsApi } from '../../api/client.js';
+import { speakSignal } from '../../utils/speakSignal.js';
 
 // Convert app symbol format → TradingView symbol format
 function toTvSymbol(symbol) {
@@ -45,8 +46,21 @@ function ScoreBar({ score, max = 8 }) {
   );
 }
 
+function SectionToggle({ label, open, onToggle }) {
+  return (
+    <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 0', userSelect: 'none' }}>
+      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+      <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{open ? '▼' : '▶'}</span>
+    </div>
+  );
+}
+
 function SignalPanel({ symbol }) {
   const [open, setOpen] = useState(true);
+  const [showReasons, setShowReasons] = useState(true);
+  const [showSLTargets, setShowSLTargets] = useState(true);
+  const [showIndicators, setShowIndicators] = useState(true);
+  const [showSmartMoney, setShowSmartMoney] = useState(true);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['signals', symbol],
@@ -56,15 +70,18 @@ function SignalPanel({ symbol }) {
   });
 
   const s = SIG_STYLE[data?.signal] || SIG_STYLE['NEUTRAL'];
+  const hasLux = data?.lux && (data.lux.sfp || data.lux.bsl || data.lux.ssl || data.lux.bullOB || data.lux.bearOB);
 
   return (
     <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
       {/* Collapsible header */}
       <div
-        onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', cursor: 'pointer', userSelect: 'none' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div
+          onClick={() => setOpen(o => !o)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}
+        >
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             ◈ Signal Analysis
           </span>
@@ -76,7 +93,16 @@ function SignalPanel({ symbol }) {
           {isLoading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Analysing…</span>}
           {isError && <span style={{ fontSize: 11, color: 'var(--red)' }}>Failed to load</span>}
         </div>
-        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{open ? '▼' : '▲'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {data && (
+            <button
+              onClick={e => { e.stopPropagation(); speakSignal(data, symbol); }}
+              title="Read signal aloud"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-dim)', padding: '2px 4px', lineHeight: 1 }}
+            >🔊</button>
+          )}
+          <span onClick={() => setOpen(o => !o)} style={{ fontSize: 12, color: 'var(--text-dim)' }}>{open ? '▼' : '▲'}</span>
+        </div>
       </div>
 
       {open && data && (
@@ -90,74 +116,113 @@ function SignalPanel({ symbol }) {
             </div>
             <ScoreBar score={data.score} max={data.maxScore} />
 
-            {/* Reasons */}
-            <div style={{ marginTop: 10 }}>
-              {data.reasons.map((r, i) => (
-                <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                  <span style={{ color: data.isBuy ? '#00ff88' : '#ff3355', flexShrink: 0 }}>{data.isBuy ? '✓' : '✗'}</span>
-                  <span>{r}</span>
-                </div>
-              ))}
-              {data.risks.length > 0 && (
-                <div style={{ marginTop: 6 }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Risks / Counter</div>
-                  {data.risks.slice(0, 2).map((r, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                      <span style={{ color: '#ffd700', flexShrink: 0 }}>⚠</span>
+            {/* Reasons — toggleable */}
+            <div style={{ marginTop: 8 }}>
+              <SectionToggle label="Reasons" open={showReasons} onToggle={() => setShowReasons(o => !o)} />
+              {showReasons && (
+                <div style={{ marginTop: 4 }}>
+                  {data.reasons.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                      <span style={{ color: data.isBuy ? '#00ff88' : '#ff3355', flexShrink: 0 }}>{data.isBuy ? '✓' : '✗'}</span>
                       <span>{r}</span>
                     </div>
                   ))}
+                  {data.risks.length > 0 && (
+                    <div style={{ marginTop: 6 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Risks / Counter</div>
+                      {data.risks.slice(0, 2).map((r, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                          <span style={{ color: '#ffd700', flexShrink: 0 }}>⚠</span>
+                          <span>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Smart Money — toggleable, only shown when lux data present */}
+            {hasLux && (
+              <div style={{ marginTop: 10 }}>
+                <SectionToggle label="◈ Smart Money" open={showSmartMoney} onToggle={() => setShowSmartMoney(o => !o)} />
+                {showSmartMoney && (
+                  <div style={{ marginTop: 4, padding: '6px 8px', background: 'var(--bg-base)', borderRadius: 5, fontSize: 11 }}>
+                    {data.lux.sfp && (
+                      <div style={{ color: data.lux.sfp === 'bullish' ? '#00ff88' : '#ff3355', marginBottom: 3 }}>
+                        SFP: {data.lux.sfp} — stop hunt detected
+                      </div>
+                    )}
+                    {data.lux.bsl && (
+                      <div style={{ color: '#ff7850', marginBottom: 3 }}>BSL (equal highs): {data.lux.bsl}</div>
+                    )}
+                    {data.lux.ssl && (
+                      <div style={{ color: '#00ccff', marginBottom: 3 }}>SSL (equal lows): {data.lux.ssl}</div>
+                    )}
+                    {data.lux.bullOB && (
+                      <div style={{ color: '#00ff88', marginBottom: 3 }}>Bull OB: {data.lux.bullOB.bottom}–{data.lux.bullOB.top}</div>
+                    )}
+                    {data.lux.bearOB && (
+                      <div style={{ color: '#ff3355' }}>Bear OB: {data.lux.bearOB.bottom}–{data.lux.bearOB.top}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* RIGHT: SL / Targets + indicator strip */}
           <div>
-            {/* Entry / SL */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-              <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Current Price</div>
-                <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{data.price}</div>
-              </div>
-              <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 6, padding: '8px 10px' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Stop Loss</div>
-                <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: '#ff3355' }}>
-                  {data.sl} <span style={{ fontSize: 10, opacity: 0.8 }}>({data.slPct}%)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Targets */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
-              {data.targets.map((t, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 5, padding: '5px 10px' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.label}</span>
-                  <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, fontWeight: 600, color: '#00ff88' }}>
-                    {t.price} <span style={{ fontSize: 10, opacity: 0.8 }}>(+{t.pct}%)</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Indicator strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-              {[
-                { label: 'EMA 9',  val: data.indicators.ema9  },
-                { label: 'EMA 20', val: data.indicators.ema20 },
-                { label: 'SMA 50', val: data.indicators.sma50 },
-                { label: 'RSI 14', val: data.indicators.rsi, suffix: '', color: data.indicators.rsi > 70 ? '#ff3355' : data.indicators.rsi < 30 ? '#ffd700' : '#00ff88' },
-                { label: 'ATR 14', val: data.indicators.atr  },
-                { label: 'Vol ×',  val: data.indicators.volRatio, decimals: 1 },
-              ].map(({ label, val, suffix = '', color, decimals = 2 }) => (
-                <div key={label} style={{ background: 'var(--bg-base)', borderRadius: 5, padding: '5px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--text-mono)', fontSize: 11, fontWeight: 600, color: color || 'var(--text-primary)', marginTop: 2 }}>
-                    {val != null ? Number(val).toFixed(decimals) : '—'}{suffix}
+            {/* SL / Targets — toggleable */}
+            <SectionToggle label="SL & Targets" open={showSLTargets} onToggle={() => setShowSLTargets(o => !o)} />
+            {showSLTargets && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8, marginTop: 4 }}>
+                  <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Current Price</div>
+                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{data.price}</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 6, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Stop Loss</div>
+                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: '#ff3355' }}>
+                      {data.sl} <span style={{ fontSize: 10, opacity: 0.8 }}>({data.slPct}%)</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+                  {data.targets.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 5, padding: '5px 10px' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.label}</span>
+                      <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, fontWeight: 600, color: '#00ff88' }}>
+                        {t.price} <span style={{ fontSize: 10, opacity: 0.8 }}>(+{t.pct}%)</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Indicator strip — toggleable */}
+            <SectionToggle label="Indicators" open={showIndicators} onToggle={() => setShowIndicators(o => !o)} />
+            {showIndicators && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 4 }}>
+                {[
+                  { label: 'EMA 9',  val: data.indicators.ema9  },
+                  { label: 'EMA 20', val: data.indicators.ema20 },
+                  { label: 'SMA 50', val: data.indicators.sma50 },
+                  { label: 'RSI 14', val: data.indicators.rsi, color: data.indicators.rsi > 70 ? '#ff3355' : data.indicators.rsi < 30 ? '#ffd700' : '#00ff88' },
+                  { label: 'ATR 14', val: data.indicators.atr  },
+                  { label: 'Vol ×',  val: data.indicators.volRatio, decimals: 1 },
+                ].map(({ label, val, color, decimals = 2 }) => (
+                  <div key={label} style={{ background: 'var(--bg-base)', borderRadius: 5, padding: '5px 8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 11, fontWeight: 600, color: color || 'var(--text-primary)', marginTop: 2 }}>
+                      {val != null ? Number(val).toFixed(decimals) : '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

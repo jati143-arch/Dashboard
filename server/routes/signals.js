@@ -84,6 +84,51 @@ function calcATR(candles, period = 14) {
   return atr;
 }
 
+// --- Lux Algo-style detection functions ---
+
+function detectSFP(candles) {
+  const n = candles.length - 1;
+  const recent = candles.slice(-11);
+  const swingHigh = Math.max(...recent.slice(0, -1).map(c => c.high));
+  const swingLow  = Math.min(...recent.slice(0, -1).map(c => c.low));
+  const last = candles[n];
+  const bearSFP = last.high > swingHigh && last.close < swingHigh && (last.high - last.close) > (last.close - last.low);
+  const bullSFP = last.low < swingLow && last.close > swingLow && (last.close - last.low) > (last.high - last.close);
+  return { bearSFP, bullSFP, swingHigh, swingLow };
+}
+
+function detectLiquidity(candles) {
+  const recent = candles.slice(-20);
+  const highs = recent.map(c => c.high);
+  const lows  = recent.map(c => c.low);
+  let bsl = null, ssl = null;
+  outer1: for (let i = 0; i < highs.length - 1; i++)
+    for (let j = i + 1; j < highs.length; j++)
+      if (Math.abs(highs[i] - highs[j]) / highs[i] < 0.002) { bsl = (highs[i] + highs[j]) / 2; break outer1; }
+  outer2: for (let i = 0; i < lows.length - 1; i++)
+    for (let j = i + 1; j < lows.length; j++)
+      if (Math.abs(lows[i] - lows[j]) / lows[i] < 0.002) { ssl = (lows[i] + lows[j]) / 2; break outer2; }
+  return { bsl, ssl };
+}
+
+function detectOrderBlock(candles, atr) {
+  const n = candles.length - 1;
+  const price = candles[n].close;
+  let bullOB = null, bearOB = null;
+  for (let i = n - 3; i >= Math.max(0, n - 30); i--) {
+    const body = Math.abs(candles[i].close - candles[i].open);
+    if (body < atr * 0.3) continue;
+    const impulse = (candles[i + 1] && candles[i + 2])
+      ? Math.abs(candles[i + 2].close - candles[i + 1].open) : 0;
+    if (!bullOB && candles[i].close < candles[i].open && impulse > atr * 1.5 && candles[i].high < price)
+      bullOB = { top: candles[i].open, bottom: candles[i].close };
+    if (!bearOB && candles[i].close > candles[i].open && impulse > atr * 1.5 && candles[i].low > price)
+      bearOB = { top: candles[i].close, bottom: candles[i].open };
+    if (bullOB && bearOB) break;
+  }
+  return { bullOB, bearOB };
+}
+
 // --- Fetch OHLCV (120 days daily = enough for SMA50 + MACD signal warmup) ---
 async function fetchCandles(symbol) {
   const period1 = new Date();
@@ -270,6 +315,31 @@ router.get('/:symbol', async (req, res) => {
       }
     }
 
+    // ── Lux Algo: SFP, Liquidity Levels, Order Blocks ─────────────────────────
+    const sfp  = detectSFP(candles);
+    const liq  = detectLiquidity(candles);
+    const obs  = detectOrderBlock(candles, curAtr || price * 0.01);
+
+    // SFP score adjustments
+    if (sfp.bearSFP) {
+      score -= 1;
+      bearReasons.push(`Bearish SFP — candle wicked above prior high (${sfp.swingHigh.toFixed(2)}) then closed inside. Potential stop hunt reversal.`);
+    }
+    if (sfp.bullSFP) {
+      score += 1;
+      bullReasons.push(`Bullish SFP — candle wicked below prior low (${sfp.swingLow.toFixed(2)}) then closed above. Stop hunt complete, reversal likely.`);
+    }
+
+    // Liquidity level warnings
+    if (liq.bsl && Math.abs(price - liq.bsl) / price < 0.01)
+      bearReasons.push(`Price near Buy-Side Liquidity (equal highs at ${liq.bsl.toFixed(2)}) — potential liquidity grab before reversal.`);
+    if (liq.ssl && Math.abs(price - liq.ssl) / price < 0.01)
+      bullReasons.push(`Price near Sell-Side Liquidity (equal lows at ${liq.ssl.toFixed(2)}) — stops may have been swept, bounce possible.`);
+
+    // Order block context
+    if (obs.bullOB) bullReasons.push(`Bullish Order Block below price: ${obs.bullOB.bottom.toFixed(2)}–${obs.bullOB.top.toFixed(2)} — strong support zone.`);
+    if (obs.bearOB) bearReasons.push(`Bearish Order Block above price: ${obs.bearOB.bottom.toFixed(2)}–${obs.bearOB.top.toFixed(2)} — resistance zone, caution.`);
+
     const slPct = sl != null ? +(((price - sl) / price) * 100).toFixed(1) : null;
 
     res.json({
@@ -297,6 +367,13 @@ router.get('/:symbol', async (req, res) => {
         volume:     Math.round(volumes[n]),
         avgVolume:  Math.round(avgVol),
         volRatio:   +volRatio.toFixed(2),
+      },
+      lux: {
+        sfp:    sfp.bearSFP ? 'bearish' : sfp.bullSFP ? 'bullish' : null,
+        bsl:    liq.bsl ? +liq.bsl.toFixed(2) : null,
+        ssl:    liq.ssl ? +liq.ssl.toFixed(2) : null,
+        bullOB: obs.bullOB ? { top: +obs.bullOB.top.toFixed(2), bottom: +obs.bullOB.bottom.toFixed(2) } : null,
+        bearOB: obs.bearOB ? { top: +obs.bearOB.top.toFixed(2), bottom: +obs.bearOB.bottom.toFixed(2) } : null,
       },
     });
   } catch (err) {

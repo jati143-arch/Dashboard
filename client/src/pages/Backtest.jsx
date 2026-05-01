@@ -14,7 +14,8 @@ const STRATEGIES = [
   { value: 'macd_cross',   label: 'MACD Crossover',            desc: 'Buy when MACD line crosses above signal, sell on cross below' },
   { value: 'bb_squeeze',   label: 'Bollinger Band Squeeze',    desc: 'Buy when price breaks above upper BB, sell below middle' },
   { value: 'sma200_trend', label: '200 SMA Trend Filter',      desc: 'Buy 9/20 EMA crossover only when above 200 SMA' },
-  { value: 'vwap_reclaim', label: 'VWAP Reclaim',              desc: 'Buy when price crosses above VWAP, sell on cross below' },
+  { value: 'vwap_reclaim',       label: 'VWAP Reclaim',                        desc: 'Buy when price crosses above VWAP, sell on cross below' },
+  { value: 'composite_signal',  label: 'Composite: EMA + RSI + MACD + Vol',   desc: 'Buy when composite score ≥ 3, exit on score ≤ -2 or ATR stop loss' },
 ];
 
 const TIMEFRAMES = [
@@ -223,7 +224,7 @@ export default function Backtest() {
         <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-dim)' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⊕</div>
           <div style={{ fontSize: 14 }}>Enter a symbol, select a strategy and timeframe, then click Run Backtest</div>
-          <div style={{ fontSize: 12, marginTop: 6 }}>Supports NSE (.NS), US stocks, crypto · 7 strategies available</div>
+          <div style={{ fontSize: 12, marginTop: 6 }}>Supports NSE (.NS), US stocks, crypto · 8 strategies available</div>
         </div>
       )}
     </div>
