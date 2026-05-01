@@ -3,24 +3,15 @@ const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
-// Use chart() — stable in yahoo-finance2 v3; meta contains live price
+// Use quote() — provides regularMarketChange/changePercent directly, no manual calculation
 async function fetchPrice(symbol) {
-  const period1 = new Date();
-  period1.setDate(period1.getDate() - 5); // go back 5 days to ensure we get data on weekends
-  const data = await yf.chart(symbol, {
-    period1: period1.toISOString().slice(0, 10),
-    interval: '1d',
-  }, { validateResult: false });
-
-  const meta = data?.meta;
-  if (!meta?.regularMarketPrice) throw new Error('no price in response');
-
-  const prev = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+  const r = await yf.quote(symbol);
+  if (!r?.regularMarketPrice) throw new Error('no price in response');
   return {
-    price:         meta.regularMarketPrice,
-    currency:      meta.currency || 'USD',
-    change:        meta.regularMarketPrice - prev,
-    changePercent: prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0,
+    price:         r.regularMarketPrice,
+    currency:      r.currency || 'USD',
+    change:        r.regularMarketChange        ?? 0,
+    changePercent: r.regularMarketChangePercent ?? 0,
   };
 }
 

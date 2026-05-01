@@ -1,10 +1,12 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer, ComposedChart, Area, Line,
   XAxis, YAxis, Tooltip, Legend, CartesianGrid,
 } from 'recharts';
 import { statsApi, tradesApi, pricesApi } from '../../api/client.js';
+import { useCurrency } from '../../context/CurrencyContext.jsx';
+import { CUR_SYMBOL } from '../../utils/currency.js';
 
 const TIMEFRAMES = [
   {
@@ -42,6 +44,17 @@ const TIMEFRAMES = [
 
 const INTRADAY = new Set(['1min','5min','10min','15min','30min','1h','2h','4h']);
 
+// Snapshots keyed by date so they auto-clear each new day
+const SESSION_KEY = `pf_snapshots_${new Date().toISOString().slice(0, 10)}`;
+
+function loadSnapshots() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || '[]'); } catch { return []; }
+}
+
+function saveSnapshots(snaps) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(snaps)); } catch { /* quota */ }
+}
+
 function tfToFrom(tf) {
   const today = new Date().toISOString().slice(0, 10);
   if (INTRADAY.has(tf)) return today;
@@ -51,10 +64,13 @@ function tfToFrom(tf) {
   return '2000-01-01';
 }
 
-function fmtY(v) {
-  if (Math.abs(v) >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
-  if (Math.abs(v) >= 1000)   return `₹${(v / 1000).toFixed(1)}K`;
-  return `₹${v}`;
+function fmtY(sym) {
+  return v => {
+    if (Math.abs(v) >= 10_000_000) return `${sym}${(v / 10_000_000).toFixed(1)}Cr`;
+    if (Math.abs(v) >= 100_000)    return `${sym}${(v / 100_000).toFixed(1)}L`;
+    if (Math.abs(v) >= 1_000)      return `${sym}${(v / 1_000).toFixed(1)}K`;
+    return `${sym}${v}`;
+  };
 }
 
 function fmtDate(dateStr, tf) {
@@ -66,14 +82,14 @@ function fmtDate(dateStr, tf) {
   return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
 }
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, sym }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 12 }}>
       <div style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</div>
       {payload.map(p => (
         <div key={p.dataKey} style={{ color: p.color, fontFamily: 'var(--text-mono)', marginBottom: 2 }}>
-          {p.name}: ₹{Number(p.value).toLocaleString('en-IN')}
+          {p.name}: {sym}{Number(p.value).toLocaleString('en-IN')}
         </div>
       ))}
     </div>
@@ -85,10 +101,12 @@ export default function PortfolioChart() {
   const today = new Date().toISOString().slice(0, 10);
   const from = useMemo(() => tfToFrom(tf), [tf]);
   const isIntraday = INTRADAY.has(tf);
+  const { currency } = useCurrency();
+  const sym = CUR_SYMBOL[currency] || '₹';
 
-  // Accumulate live snapshots for intraday mode
-  const snapshotsRef = useRef([]);
-  const [tickCount, setTickCount] = useState(0);
+  // Persist snapshots across page navigations via sessionStorage
+  const snapshotsRef = useRef(loadSnapshots());
+  const [tickCount, setTickCount] = useState(snapshotsRef.current.length);
 
   // Historical data query (non-intraday)
   const { data: histData = [], isLoading: histLoading } = useQuery({
@@ -127,10 +145,9 @@ export default function PortfolioChart() {
     staleTime: 60_000,
   });
 
-  // Append a snapshot each time live prices refresh
-  useEffect(() => {
-    if (!isIntraday) return;
+  const appendSnapshot = useCallback(() => {
     const nonMf = openTrades.filter(t => t.instrument_type !== 'mutual_fund');
+    if (nonMf.length === 0 && !allTimeStats) return;
     const invested = nonMf.reduce((s, t) => s + t.entry_price * (t.remaining_size ?? t.size), 0);
     const unrealized = nonMf.reduce((s, t) => {
       const cp = livePrices[t.symbol]?.price;
@@ -140,22 +157,28 @@ export default function PortfolioChart() {
     }, 0);
     const realized = allTimeStats?.total_pnl || 0;
     const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-    snapshotsRef.current = [
+    // Avoid duplicate timestamps
+    if (snapshotsRef.current.at(-1)?.time === time) return;
+    const next = [
       ...snapshotsRef.current,
-      {
-        time,
-        portfolio: Math.round(invested + unrealized + realized),
-        invested:   Math.round(invested),
-        realizedPnl: Math.round(realized),
-      },
+      { time, portfolio: Math.round(invested + unrealized + realized), invested: Math.round(invested), realizedPnl: Math.round(realized) },
     ];
+    snapshotsRef.current = next;
+    saveSnapshots(next);
     setTickCount(c => c + 1);
+  }, [openTrades, livePrices, allTimeStats]);
+
+  // Append snapshot each time live prices refresh
+  useEffect(() => {
+    if (!isIntraday) return;
+    appendSnapshot();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUpdatedAt, allTimeStats?.total_pnl, isIntraday]);
 
-  // Clear snapshots when switching away from intraday
+  // Immediately show a snapshot when switching to intraday (uses cached data, no 60s wait)
   useEffect(() => {
-    if (!isIntraday) { snapshotsRef.current = []; setTickCount(0); }
+    if (isIntraday) appendSnapshot();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIntraday]);
 
   const chartData = isIntraday ? snapshotsRef.current : histData;
@@ -220,13 +243,13 @@ export default function PortfolioChart() {
               tickLine={false}
             />
             <YAxis
-              tickFormatter={fmtY}
+              tickFormatter={fmtY(sym)}
               tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
               axisLine={false}
               tickLine={false}
               width={64}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip sym={sym} />} />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             <Area
               type="monotone"

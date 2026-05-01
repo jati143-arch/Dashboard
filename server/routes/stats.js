@@ -90,6 +90,16 @@ router.get('/portfolio-series', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const { from = '2000-01-01', to = today } = req.query;
 
+  // Baseline: cumulative deployed/realized from ALL trades before the from date
+  // This ensures 1-Month/1-Year charts start from the correct portfolio value, not from 0
+  const baseline = db.prepare(`
+    SELECT
+      SUM(CASE WHEN parent_trade_id IS NULL THEN entry_price * size ELSE 0 END) AS baseDeployed,
+      SUM(CASE WHEN status = 'closed' THEN COALESCE(pnl_dollar, 0) ELSE 0 END) AS baseRealized
+    FROM trades
+    WHERE instrument_type != 'mutual_fund' AND date < ?
+  `).get(from);
+
   const rows = db.prepare(`
     SELECT date,
       SUM(CASE WHEN parent_trade_id IS NULL THEN entry_price * size ELSE 0 END) AS deployed,
@@ -99,7 +109,8 @@ router.get('/portfolio-series', (req, res) => {
     GROUP BY date ORDER BY date ASC
   `).all(from, to);
 
-  let cumDeployed = 0, cumRealized = 0;
+  let cumDeployed = baseline?.baseDeployed || 0;
+  let cumRealized = baseline?.baseRealized || 0;
   res.json(rows.map(r => {
     cumDeployed += r.deployed || 0;
     cumRealized += r.realized || 0;
