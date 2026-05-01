@@ -1,0 +1,244 @@
+# Trading Dashboard — Session Summary
+
+**Branch:** `claude/trading-dashboard-setup-ynlz1`  
+**Repo:** `jati143-arch/dashboard`
+
+---
+
+## What Was Built (All Phases)
+
+### Phase 1 — Core App
+- Express + SQLite backend, React (Vite) frontend
+- Dark terminal theme (CSS variables: `--bg-base`, `--green`, `--red`, etc.)
+- Trade CRUD, daily records, pattern library, AI insights via Claude API
+
+### Phase 2 — Daily Dashboard
+- HeroCard (best trade of day), PnlSummary tiles, BestSetups, DailyNotes
+- NewsWidget (Yahoo Finance RSS, collapsed by default)
+
+### Phase 3 — Partial Closes + Mobile + Currency
+- `remaining_size` + `parent_trade_id` columns in trades table
+- `POST /api/trades/:id/partial-close` endpoint
+- ClosePositionForm component (separate from TradeForm)
+- Collapsible sidebar, hamburger button, mobile CSS media queries
+- Currency toggle: USD / INR / EUR per tab, persisted in localStorage
+
+### Phase 4 — CSV Import + Indian P&L Fix
+- ₹/$ symbol auto-detected from `.NS`/`.BO` suffix in ClosePositionForm
+- CSV import sets `remaining_size` and respects open/closed status
+- Import CSV button added to Dashboard
+
+### Phase 5 — MF/ETF Tabs + News Feed + P&L Tiles
+- `mutual_fund` and `etf` added to `instrument_type` CHECK constraint (migration)
+- AMFI NAV proxy: `GET /api/mf/:schemeCode` → mfapi.in
+- Yahoo Finance RSS news: `GET /api/news?symbols=...`
+- Dashboard: Realized P&L tile + Unrealized P&L tile (separate)
+- IST market-open gate: Realized P&L shows `—` before 9:15 AM
+- Investments page: Indian MF tab, US ETF tab
+
+### Phase 6 — Chart Modal + SMC + NSE Deals + Backtester
+- TradingView Lightweight Charts dropped in favour of **TradingView embedded widget** (free, full-featured)
+- `ChartContext` — global `openChart(symbol, entryPrice)` callable from any component
+- `ChartModal` — TradingView chart widget + Signal Analysis panel below
+- Signal panel: score bar, reasons, risks, SL, 3 targets (1.5/2.5/4× R/R), indicator strip
+- NSE bulk/block deals: `GET /api/nse/deals?symbol=...`
+- Backtester page: `POST /api/backtest` — 7 strategies, equity curve, trade list
+- Symbols clickable in Open Positions → opens chart with entry price line
+
+### Phase 7 — Multi-User Auth + Admin Panel
+- `users` table, JWT auth, bcryptjs password hashing
+- Auto-seeded admin account on first run (temp password printed to console)
+- Force password change on first login
+- Admin panel: create users, block/unblock, reset passwords
+- All trades/daily_records filtered by `user_id`
+- Login page, ChangePassword page, ProtectedRoute wrapper
+
+### Phase 8 — Dashboard Reorder + More Chart Timeframes
+- Dashboard order: PnlSummary → News → Open Positions → date picker → HeroCard → BestSetups → AI
+- `TodayTradeTable` removed from dashboard (lives in Trade Log only)
+- Chart timeframes: added 2H/4H/6H/8H/12H via 60m fetch + client-side candle aggregation
+- Backtest: added TickerInput autocomplete, timeframe selector, 4 new strategies (MACD cross, BB squeeze, SMA200 trend, VWAP reclaim)
+
+### Phase 9 — CSV Export + Google Sheets Import + Market Ticker
+- `GET /api/trades/export?market=&status=` — CSV download
+- Google Sheets portfolio format auto-detected (`GOOGLE CODES` column, `nse:` prefix stripped, `.NS` appended)
+- Scrolling `MarketTicker` bar: NIFTY, SENSEX, BANK NIFTY, S&P 500, NASDAQ, DOW, GOLD, CRUDE, USD/INR
+- Investments page: Export CSV + Import CSV buttons per tab
+
+### Phase 10 — SMC Overhaul (ChartModal)
+- Replaced `createPriceLine` with `LineSeries` zones starting at OB/FVG candle time
+- ATR-based significance filter: OB body ≥ 0.3× ATR, impulse ≥ 1.5× ATR
+- Only unmitigated OBs / unfilled FVGs shown
+- New detection: Breaker Blocks, SFP markers, Liquidity Levels (BSL/SSL equal highs/lows), Dynamic OB
+- Multi-Timeframe (MTF) selector — fetch 4H OBs while on 1H chart
+- CDV pane (Cumulative Delta Volume)
+- Legend redesign: standard indicators row + SMC layers row, all toggleable
+
+### Phase 11 — Portfolio Performance Charts
+- `GET /api/stats/portfolio-series?from=&to=` endpoint
+- `PortfolioChart` component: 3-line Recharts ComposedChart (Invested / Realized P&L / Portfolio Value)
+- Intraday TFs build live from open position prices (snapshots every 60s, persisted in sessionStorage by date)
+- `PnlHeatmap` component: 52-week GitHub-style calendar (green = profit days, red = loss days)
+- "Overall P&L" dashboard tile = realized + unrealized combined
+
+---
+
+## Current Sprint — What Was Done in This Session
+
+### 1. Composite Backtest Strategy (`server/routes/backtest.js`)
+- Added `calcATR(candles, period=14)` — Wilder smoothing
+- Added `strategyCompositeSignal(candles)` — mirrors signal panel scoring exactly:
+  - EMA9 vs EMA20: ±1
+  - EMA20 vs SMA50: ±1
+  - Price vs EMA20: ±1
+  - RSI zones: −2/−1/+1/+2
+  - MACD fresh cross: ±2, existing alignment: ±1
+  - Volume (>1.5× avg): ±1
+  - Entry: score ≥ 3 → buy next bar
+  - Exit: score ≤ −2 OR close ≤ entry − ATR×1.5
+- Dispatch: `else if (strategy === 'composite_signal') signals = strategyCompositeSignal(candles)`
+
+### 2. Lux Algo Indicators (`server/routes/signals.js`)
+Three new detection functions added before the route handler:
+
+**`detectSFP(candles)`**
+- Looks at last 10 candles for swing high/low
+- Bearish SFP: wick above swing high but closes inside → score −1
+- Bullish SFP: wick below swing low but closes above → score +1
+
+**`detectLiquidity(candles)`**
+- Scans last 20 candles for equal highs (BSL) and equal lows (SSL) within 0.2% tolerance
+- BSL near current price → bear warning reason added
+- SSL near current price → bull reason added
+
+**`detectOrderBlock(candles, atr)`**
+- Scans last 30 candles for bullish OB (bearish candle before impulse > 1.5×ATR, below price)
+- And bearish OB (bullish candle before impulse, above price)
+- Body must be ≥ 0.3×ATR to qualify
+
+New `lux` field in every `/api/signals/:symbol` response:
+```json
+{
+  "lux": {
+    "sfp": "bearish" | "bullish" | null,
+    "bsl": 2450.25 | null,
+    "ssl": 2380.10 | null,
+    "bullOB": { "top": 2340, "bottom": 2310 } | null,
+    "bearOB": { "top": 2510, "bottom": 2490 } | null
+  }
+}
+```
+
+### 3. Voice Readout (`client/src/utils/speakSignal.js`) — NEW FILE
+```js
+speakSignal(data, symbol)
+// Speaks: "buy signal for Reliance. Current price 2450. Stop loss at 2380,
+//          that is 2.8 percent below. target 1 at 2558, target 2 at 2720.
+//          Bullish order block support at 2310."
+```
+- Uses `window.speechSynthesis` (browser-native, no library)
+- Cancels any current speech before starting
+- Includes Lux Algo context (SFP, OB) in the spoken text
+
+### 4. Chart Modal Updates (`client/src/components/chart/ChartModal.jsx`)
+- Imported `speakSignal` — 🔊 button appears in Signal Analysis header
+- Clicking 🔊 reads the full signal aloud (does not trigger panel collapse)
+- Signal panel sections are now **individually toggleable**:
+  - ▶ Reasons
+  - ▶ ◈ Smart Money (hidden when no Lux data detected)
+  - ▶ SL & Targets
+  - ▶ Indicators
+- Smart Money section shows: SFP type, BSL price, SSL price, Bull OB range, Bear OB range
+
+### 5. Open Positions Updates (`client/src/components/dashboard/OpenPositions.jsx`)
+- **"◈ Scan Signals" button** — fetches signals for all portfolio symbols in parallel
+- BUY signals auto-spoken via `speakSignal` on scan
+- **Signal badge column** added to table — colored by signal type (STRONG BUY → green, STRONG SELL → red, etc.)
+- Badge is clickable → opens chart for that symbol
+- **"⟷ TV Tickers" button** → modal showing Yahoo Finance → TradingView symbol mapping for all positions, with per-symbol copy + "Copy All" button
+- **"◉ Add Position" button** in header (shown when `onAddPosition` prop passed from DailyDashboard)
+- `colSpan` updated 11 → 12
+
+### 6. Backtest Page (`client/src/pages/Backtest.jsx`)
+- Composite strategy added to `STRATEGIES` array
+- Empty state hint updated: "7 strategies" → "8 strategies"
+
+### 7. TradingView Ticker Converter (`client/src/utils/tvSymbol.js`) — NEW FILE
+Shared utility used by ChartModal, TickerInput, OpenPositions:
+```
+RELIANCE.NS   → NSE:RELIANCE
+TATASTEEL.BO  → BSE:TATASTEEL
+^NSEI         → NSE:NIFTY
+^NSEBANK      → NSE:BANKNIFTY
+^BSESN        → BSE:SENSEX
+^GSPC         → SP:SPX
+^IXIC         → NASDAQ:COMP
+^DJI          → DJ:DJI
+GC=F          → COMEX:GC1!
+CL=F          → NYMEX:CL1!
+USDINR=X      → FX_IDC:USDINR
+EURUSD=X      → FX:EURUSD
+BTC-USD       → BINANCE:BTCUSDT
+ETH-USD       → BINANCE:ETHUSDT
+```
+
+### 8. TickerInput Search (`client/src/components/trades/TickerInput.jsx`)
+Each search result now shows the TradingView equivalent below the Yahoo symbol:
+```
+RELIANCE.NS    Reliance Industries Limited    NSE
+TV: NSE:RELIANCE
+```
+
+---
+
+## File Map — Every Changed File
+
+| File | Status | Change |
+|------|--------|--------|
+| `server/routes/signals.js` | Modified | detectSFP, detectLiquidity, detectOrderBlock; lux field in response |
+| `server/routes/backtest.js` | Modified | calcATR, strategyCompositeSignal, dispatch case |
+| `client/src/utils/speakSignal.js` | **NEW** | Web Speech API utility |
+| `client/src/utils/tvSymbol.js` | **NEW** | Yahoo→TradingView symbol converter |
+| `client/src/components/chart/ChartModal.jsx` | Modified | 🔊 button, Smart Money section, section toggles, import tvSymbol utility |
+| `client/src/components/dashboard/OpenPositions.jsx` | Modified | Scan Signals, TV Tickers modal, Add Position button, signal badges |
+| `client/src/pages/Backtest.jsx` | Modified | Composite strategy in list |
+| `client/src/components/trades/TickerInput.jsx` | Modified | TV symbol sub-label in results |
+| `client/src/pages/DailyDashboard.jsx` | Modified | Pass onAddPosition to OpenPositions |
+
+---
+
+## Key Architecture Decisions
+
+- **Yahoo Finance for all price/candle data** — `yahoo-finance2` npm package handles auth automatically. Symbols stored in Yahoo format (RELIANCE.NS, ^NSEI, BTC-USD). `toTvSymbol()` converts on-the-fly for display/TradingView use only — stored symbols never change format.
+- **TradingView widget (free)** — embedded via `tv.js`. Cannot draw custom lines/shapes from outside (sealed iframe). All custom analysis lives in the React Signal Panel below the chart.
+- **Lux Algo server-side** — SFP/BSL/SSL/OB computed on the Node server from candle data, returned in the signals API response. No TradingView overlay needed.
+- **Voice via Web Speech API** — zero dependencies, browser-native. Works on Chrome/Edge/Safari.
+- **Signal scan = portfolio-only** — `tradeSymbols` derived from open trades only, never scans arbitrary symbols.
+
+---
+
+## Deferred / Not Yet Done
+
+- **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy (for use in TradingView Strategy Tester). Deferred by user.
+- **Backtest price chart with entry/exit markers** — show candle chart with ▲▼ trade markers overlaid on price chart in Backtest results.
+- **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of reading from CurrencyContext.
+
+---
+
+## How to Run
+
+```bash
+# Server
+cd server && node index.js
+
+# Client (dev)
+cd client && npm run dev
+
+# Client (production build)
+cd client && npm run build
+# Then restart server — it serves client/dist statically
+```
+
+Server runs on port 3001. In dev, Vite proxies `/api` to `localhost:3001`.
+
+Environment: `server/.env` needs `PORT=3001` and optionally `ANTHROPIC_API_KEY=sk-ant-...`
