@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const { toYahoo } = require('../utils/symbolConvert');
 
 // --- Indicator helpers ---
 
@@ -380,7 +381,7 @@ router.post('/', async (req, res) => {
   const toDate = (!isIntraday && to) ? to : new Date().toISOString().slice(0, 10);
 
   try {
-    const data = await yf.chart(symbol, {
+    const data = await yf.chart(toYahoo(symbol), {
       period1:  fromDate,
       period2:  toDate,
       interval,

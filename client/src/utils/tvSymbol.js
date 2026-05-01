@@ -53,5 +53,8 @@ export function tvTimezone(symbol) {
   if (symbol.endsWith('.NS') || symbol.endsWith('.BO') ||
       symbol === '^NSEI' || symbol === '^NSEBANK' || symbol === '^BSESN')
     return 'Asia/Kolkata';
+  // TV-format Indian symbols
+  if (symbol.startsWith('NSE:') || symbol.startsWith('BSE:'))
+    return 'Asia/Kolkata';
   return 'Etc/UTC';
 }

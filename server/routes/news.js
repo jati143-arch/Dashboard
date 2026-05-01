@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { toYahoo } = require('../utils/symbolConvert');
 
 // GET /api/news?symbols=RELIANCE.NS,SBIN.NS
 // Fetches Yahoo Finance RSS headlines for each symbol (no API key required)
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
 
   const results = await Promise.all(symbolList.map(async (sym) => {
     try {
-      const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(sym)}&region=US&lang=en-US`;
+      const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(toYahoo(sym))}&region=US&lang=en-US`;
       const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
       if (!resp.ok) return [];
       const xml = await resp.text();

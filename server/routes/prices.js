@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const { toYahoo } = require('../utils/symbolConvert');
 
 // Use quote() — provides regularMarketChange/changePercent directly, no manual calculation
 async function fetchPrice(symbol) {
-  const r = await yf.quote(symbol);
+  const r = await yf.quote(toYahoo(symbol));
   if (!r?.regularMarketPrice) throw new Error('no price in response');
   return {
     price:         r.regularMarketPrice,

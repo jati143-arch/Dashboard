@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { searchApi } from '../../api/client.js';
-import { toTvSymbol } from '../../utils/tvSymbol.js';
+
+const TYPE_STYLE = {
+  stock:       { bg: 'var(--accent-dim)',  color: 'var(--accent)'  },
+  crypto:      { bg: 'var(--yellow-dim)',  color: 'var(--yellow)'  },
+  etf:         { bg: 'rgba(100,180,255,0.12)', color: '#64b4ff'    },
+  fund:        { bg: 'rgba(180,120,255,0.12)', color: '#b478ff'    },
+};
 
 export default function TickerInput({ value, onChange, onSelect }) {
   const [results, setResults] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]       = useState(false);
   const [loading, setLoading] = useState(false);
-  const timer = useRef(null);
-  const wrapRef = useRef(null);
+  const timer      = useRef(null);
+  const wrapRef    = useRef(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -15,7 +21,6 @@ export default function TickerInput({ value, onChange, onSelect }) {
     return () => { mountedRef.current = false; };
   }, []);
 
-  // Close on outside click
   useEffect(() => {
     function handler(e) {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
@@ -32,11 +37,11 @@ export default function TickerInput({ value, onChange, onSelect }) {
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
-        const data = await searchApi.search(v);
+        const data = await searchApi.tv(v);
         if (!mountedRef.current) return;
-        const safeData = Array.isArray(data) ? data : [];
-        setResults(safeData);
-        setOpen(safeData.length > 0);
+        const safe = Array.isArray(data) ? data : [];
+        setResults(safe);
+        setOpen(safe.length > 0);
       } catch {
         if (mountedRef.current) setResults([]);
       } finally {
@@ -46,7 +51,14 @@ export default function TickerInput({ value, onChange, onSelect }) {
   }
 
   function handleSelect(item) {
-    onSelect(item.symbol, item.type);
+    // Store TradingView format: NSE:RELIANCE, NASDAQ:AAPL, BINANCE:BTCUSDT
+    const tvSym = item.tvSymbol || item.symbol;
+    const type  = item.type === 'crypto' ? 'crypto'
+                : item.type === 'fund'   ? 'mutual_fund'
+                : item.type === 'dr'     ? 'stock'
+                : item.type || 'stock';
+    onChange(tvSym);
+    onSelect(tvSym, type);
     setOpen(false);
     setResults([]);
   }
@@ -57,7 +69,7 @@ export default function TickerInput({ value, onChange, onSelect }) {
         value={value}
         onChange={handleChange}
         onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
-        placeholder="AAPL, RELIANCE.NS, BTC-USD..."
+        placeholder="Search TradingView symbols…"
         required
         autoComplete="off"
       />
@@ -72,13 +84,13 @@ export default function TickerInput({ value, onChange, onSelect }) {
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius)', marginTop: 3,
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          maxHeight: 280, overflowY: 'auto',
+          maxHeight: 300, overflowY: 'auto',
         }}>
           {results.map((r) => {
-            const tvSym = toTvSymbol(r.symbol);
+            const ts = TYPE_STYLE[r.type] || TYPE_STYLE.stock;
             return (
               <div
-                key={r.symbol}
+                key={r.tvSymbol || r.symbol}
                 onClick={() => handleSelect(r)}
                 style={{
                   padding: '9px 12px', cursor: 'pointer',
@@ -88,24 +100,23 @@ export default function TickerInput({ value, onChange, onSelect }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <div style={{ minWidth: 90 }}>
+                <div style={{ minWidth: 110 }}>
                   <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 13, color: 'var(--accent)' }}>
-                    {r.symbol}
+                    {r.tvSymbol || r.symbol}
                   </div>
-                  {tvSym && tvSym !== r.symbol && (
-                    <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>TV: {tvSym}</div>
-                  )}
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>
+                    {r.exchange}
+                  </div>
                 </div>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {r.name}
                 </span>
                 <span style={{
                   fontSize: 9, padding: '2px 5px', borderRadius: 3,
-                  background: r.type === 'crypto' ? 'var(--yellow-dim)' : 'var(--accent-dim)',
-                  color: r.type === 'crypto' ? 'var(--yellow)' : 'var(--accent)',
+                  background: ts.bg, color: ts.color,
                   fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                 }}>
-                  {r.exchange || r.type}
+                  {r.type || 'stock'}
                 </span>
               </div>
             );

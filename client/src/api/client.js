@@ -51,6 +51,7 @@ export const aiApi = {
 
 export const searchApi = {
   search: (q) => api.get('/search', { params: { q } }).then(r => r.data),
+  tv:     (q) => api.get('/search/tv', { params: { q } }).then(r => r.data),
 };
 
 export const pricesApi = {

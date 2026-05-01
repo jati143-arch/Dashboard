@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const { toYahoo } = require('../utils/symbolConvert');
 
 // --- Indicator math ---
 
@@ -133,7 +134,7 @@ function detectOrderBlock(candles, atr) {
 async function fetchCandles(symbol) {
   const period1 = new Date();
   period1.setDate(period1.getDate() - 120);
-  const data = await yf.chart(symbol, {
+  const data = await yf.chart(toYahoo(symbol), {
     period1: period1.toISOString().slice(0, 10),
     interval: '1d',
   }, { validateResult: false });

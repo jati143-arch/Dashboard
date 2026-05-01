@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const { toYahoo } = require('../utils/symbolConvert');
 
 // Yahoo Finance limits: 1m/2m=7d, 5m/15m/30m=60d, 60m=2yr, daily+=unlimited
 // Multi-hour (2h/4h/6h/8h/12h) are synthesised from 60m on the client side
@@ -52,7 +53,7 @@ router.get('/:symbol', async (req, res) => {
   period1.setDate(period1.getDate() - cfg.days);
 
   try {
-    const data = await yf.chart(req.params.symbol, {
+    const data = await yf.chart(toYahoo(req.params.symbol), {
       period1: period1.toISOString().slice(0, 10),
       interval: cfg.interval,
     }, { validateResult: false });
