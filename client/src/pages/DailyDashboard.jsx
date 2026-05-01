@@ -130,7 +130,7 @@ export default function DailyDashboard() {
       <NewsWidget symbols={openSymbols} />
 
       {/* 3. Open Positions */}
-      <OpenPositions />
+      <OpenPositions onAddPosition={() => { setEditingTrade(null); setShowForm(true); }} />
 
       {/* 4. Date picker + action buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 8 }}>

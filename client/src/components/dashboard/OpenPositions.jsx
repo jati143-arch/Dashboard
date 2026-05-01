@@ -8,6 +8,7 @@ import { useCurrency } from '../../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../../utils/currency.js';
 import CurrencyToggle from '../shared/CurrencyToggle.jsx';
 import { speakSignal } from '../../utils/speakSignal.js';
+import { toTvSymbol } from '../../utils/tvSymbol.js';
 
 const SIG_BG = {
   'STRONG BUY':  'rgba(0,255,136,0.15)', 'BUY':  'rgba(0,220,100,0.12)',
@@ -49,7 +50,7 @@ const SORT_ICON = (key, sortKey, sortDir) => {
   return <span style={{ marginLeft: 3, fontSize: 9 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
 };
 
-export default function OpenPositions() {
+export default function OpenPositions({ onAddPosition }) {
   const qc = useQueryClient();
   const { openChart } = useChart();
   const { currency: displayCurrency, rates } = useCurrency();
@@ -60,6 +61,8 @@ export default function OpenPositions() {
   const [sortDir, setSortDir] = useState('desc');
   const [signals, setSignals] = useState({});
   const [scanLoading, setScanLoading] = useState(false);
+  const [showTvModal, setShowTvModal] = useState(false);
+  const [copied, setCopied] = useState(null);
 
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
@@ -98,6 +101,13 @@ export default function OpenPositions() {
       setSortKey(key);
       setSortDir('asc');
     }
+  }
+
+  function copySymbol(text, key) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    });
   }
 
   async function scanSignals() {
@@ -185,7 +195,16 @@ export default function OpenPositions() {
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Prices refresh every 60s</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {onAddPosition && (
+              <button
+                onClick={onAddPosition}
+                style={{ padding: '4px 12px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
+                  border: 'none', background: 'var(--accent)', color: '#000' }}
+              >
+                ◉ Add Position
+              </button>
+            )}
             <button
               onClick={scanSignals}
               disabled={scanLoading}
@@ -193,6 +212,13 @@ export default function OpenPositions() {
                 border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)' }}
             >
               {scanLoading ? '⟳ Scanning…' : '◈ Scan Signals'}
+            </button>
+            <button
+              onClick={() => setShowTvModal(true)}
+              style={{ padding: '4px 12px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
+                border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)' }}
+            >
+              ⟷ TV Tickers
             </button>
             <CurrencyToggle />
             <div>
@@ -342,6 +368,35 @@ export default function OpenPositions() {
             currentPrice={closingTrade.currentPrice}
             onClose={() => setClosingTrade(null)}
           />
+        </Modal>
+      )}
+
+      {showTvModal && (
+        <Modal title="TradingView Symbol Reference" onClose={() => setShowTvModal(false)} width={520}>
+          <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-dim)' }}>
+            Use these symbols in TradingView search or Pine Script. Click any symbol to copy.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tradeSymbols.map(sym => {
+              const tv = toTvSymbol(sym);
+              const key = `all_${sym}`;
+              return (
+                <div key={sym} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--bg-base)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                  <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-dim)', width: 140, flexShrink: 0 }}>{sym}</span>
+                  <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>→</span>
+                  <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 13, color: 'var(--accent)', flex: 1 }}>{tv}</span>
+                  <button
+                    onClick={() => copySymbol(tv, key)}
+                    style={{ padding: '3px 10px', fontSize: 10, borderRadius: 3, cursor: 'pointer', fontWeight: 600, border: '1px solid var(--border)', background: copied === key ? 'rgba(0,255,136,0.15)' : 'transparent', color: copied === key ? 'var(--green)' : 'var(--text-secondary)' }}
+                  >{copied === key ? '✓ Copied' : 'Copy'}</button>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => copySymbol(tradeSymbols.map(toTvSymbol).join(','), 'all')}
+            style={{ marginTop: 14, width: '100%', padding: '8px', fontSize: 12, borderRadius: 5, cursor: 'pointer', fontWeight: 600, border: '1px solid var(--border)', background: copied === 'all' ? 'rgba(0,255,136,0.15)' : 'transparent', color: copied === 'all' ? 'var(--green)' : 'var(--text-secondary)' }}
+          >{copied === 'all' ? '✓ All Copied!' : '⎘ Copy All as Comma-Separated'}</button>
         </Modal>
       )}
     </>

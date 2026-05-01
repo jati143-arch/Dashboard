@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { searchApi } from '../../api/client.js';
+import { toTvSymbol } from '../../utils/tvSymbol.js';
 
 export default function TickerInput({ value, onChange, onSelect }) {
   const [results, setResults] = useState([]);
@@ -73,34 +74,42 @@ export default function TickerInput({ value, onChange, onSelect }) {
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           maxHeight: 280, overflowY: 'auto',
         }}>
-          {results.map((r) => (
-            <div
-              key={r.symbol}
-              onClick={() => handleSelect(r)}
-              style={{
-                padding: '9px 12px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 10,
-                borderBottom: '1px solid var(--border-subtle)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 13, color: 'var(--accent)', minWidth: 90 }}>
-                {r.symbol}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {r.name}
-              </span>
-              <span style={{
-                fontSize: 9, padding: '2px 5px', borderRadius: 3,
-                background: r.type === 'crypto' ? 'var(--yellow-dim)' : 'var(--accent-dim)',
-                color: r.type === 'crypto' ? 'var(--yellow)' : 'var(--accent)',
-                fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-              }}>
-                {r.exchange || r.type}
-              </span>
-            </div>
-          ))}
+          {results.map((r) => {
+            const tvSym = toTvSymbol(r.symbol);
+            return (
+              <div
+                key={r.symbol}
+                onClick={() => handleSelect(r)}
+                style={{
+                  padding: '9px 12px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  borderBottom: '1px solid var(--border-subtle)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ minWidth: 90 }}>
+                  <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 13, color: 'var(--accent)' }}>
+                    {r.symbol}
+                  </div>
+                  {tvSym && tvSym !== r.symbol && (
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>TV: {tvSym}</div>
+                  )}
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.name}
+                </span>
+                <span style={{
+                  fontSize: 9, padding: '2px 5px', borderRadius: 3,
+                  background: r.type === 'crypto' ? 'var(--yellow-dim)' : 'var(--accent-dim)',
+                  color: r.type === 'crypto' ? 'var(--yellow)' : 'var(--accent)',
+                  fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                }}>
+                  {r.exchange || r.type}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
