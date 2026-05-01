@@ -15,6 +15,7 @@ const mfRouter = require('./routes/mf');
 const chartRouter = require('./routes/chart');
 const nseRouter = require('./routes/nse');
 const backtestRouter = require('./routes/backtest');
+const signalsRouter  = require('./routes/signals');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,7 @@ app.use('/api/mf', mfRouter);
 app.use('/api/chart', chartRouter);
 app.use('/api/nse', nseRouter);
 app.use('/api/backtest', backtestRouter);
+app.use('/api/signals',  signalsRouter);
 
 // Serve built React app if dist folder exists
 const distPath = path.join(__dirname, '../client/dist');

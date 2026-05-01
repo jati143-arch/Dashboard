@@ -77,3 +77,7 @@ export const backtestApi = {
   run: (symbol, strategy, from, to, timeframe = '1d') =>
     api.post('/backtest', { symbol, strategy, from, to, timeframe }).then(r => r.data),
 };
+
+export const signalsApi = {
+  get: (symbol) => api.get(`/signals/${encodeURIComponent(symbol)}`).then(r => r.data),
+};
