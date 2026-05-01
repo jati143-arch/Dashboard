@@ -243,7 +243,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         enable_publishing:   false,
         withdateranges:      true,
         hide_side_toolbar:   false,
-        allow_symbol_change: false,
+        allow_symbol_change: true,
         save_image:          false,
         container_id:        containerId,
         studies: [
@@ -296,6 +296,13 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>{symbol}</span>
           <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{tvSymbol}</span>
+          <a
+            href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 10, color: 'var(--text-dim)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px' }}
+            title="Open in TradingView"
+          >↗ TV</a>
           {entryPrice != null && (
             <span style={{ fontSize: 11, background: 'rgba(0,255,136,0.12)', color: 'var(--green)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--text-mono)' }}>
               Entry @ {entryPrice}
