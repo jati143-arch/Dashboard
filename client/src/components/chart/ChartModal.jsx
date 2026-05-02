@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { signalsApi } from '../../api/client.js';
+import { createChart, CandlestickSeries } from 'lightweight-charts';
+import { signalsApi, searchApi, chartApi } from '../../api/client.js';
 import { speakSignal } from '../../utils/speakSignal.js';
 import { toTvSymbol, tvTimezone } from '../../utils/tvSymbol.js';
 
@@ -216,16 +217,120 @@ function SignalPanel({ symbol }) {
   );
 }
 
+// ── Lightweight Charts fallback (Yahoo Finance OHLCV data) ────────────────────
+
+const RANGES = ['3mo', '6mo', '1y', '2y', '5y'];
+
+function LightweightChart({ symbol }) {
+  const containerRef = useRef(null);
+  const chartRef     = useRef(null);
+  const [range, setRange] = useState('1y');
+
+  const { data: candles = [], isLoading, isError } = useQuery({
+    queryKey: ['ohlcv', symbol, range],
+    queryFn: () => chartApi.ohlcv(symbol, range),
+    staleTime: 5 * 60_000,
+  });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !candles.length) return;
+
+    if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; }
+
+    const chart = createChart(el, {
+      layout: { background: { color: '#141414' }, textColor: '#c0c0c0' },
+      grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
+      timeScale: { borderColor: '#2a2a2a', timeVisible: false },
+      rightPriceScale: { borderColor: '#2a2a2a' },
+      crosshair: { mode: 1 },
+      width: el.clientWidth,
+      height: el.clientHeight || 400,
+    });
+    chartRef.current = chart;
+
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor:        '#00ff88',
+      downColor:      '#ff3355',
+      borderUpColor:  '#00ff88',
+      borderDownColor:'#ff3355',
+      wickUpColor:    '#00ff88',
+      wickDownColor:  '#ff3355',
+    });
+    series.setData(candles);
+    chart.timeScale().fitContent();
+
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (chartRef.current) chartRef.current.resize(width, height);
+    });
+    ro.observe(el);
+
+    return () => { ro.disconnect(); if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
+  }, [candles]);
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* Range selector */}
+      <div style={{ display: 'flex', gap: 6, padding: '6px 12px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-dim)', marginRight: 4 }}>Yahoo Finance data</span>
+        {RANGES.map(r => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            style={{
+              background: range === r ? 'var(--accent-dim)' : 'none',
+              border: `1px solid ${range === r ? 'var(--accent)' : 'var(--border)'}`,
+              color: range === r ? 'var(--accent)' : 'var(--text-secondary)',
+              padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
+            }}
+          >{r}</button>
+        ))}
+      </div>
+      {isLoading && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+          Loading chart data…
+        </div>
+      )}
+      {isError && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontSize: 13 }}>
+          Failed to load chart data
+        </div>
+      )}
+      {!isLoading && !isError && candles.length === 0 && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+          No chart data available
+        </div>
+      )}
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0, display: (!isLoading && !isError && candles.length > 0) ? 'block' : 'none' }} />
+    </div>
+  );
+}
+
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 let widgetSeq = 0;
 
 export default function ChartModal({ symbol, entryPrice, onClose }) {
-  const tvSymbol   = toTvSymbol(symbol);
+  const tvSymbol    = toTvSymbol(symbol);
   const containerId = useRef(`tv_chart_${++widgetSeq}`).current;
   const containerRef = useRef(null);
+  const [chartMode, setChartMode] = useState('checking'); // 'checking' | 'tv' | 'lightweight'
 
+  // Check TradingView availability for this symbol
   useEffect(() => {
+    const ticker = tvSymbol.includes(':') ? tvSymbol.split(':')[1] : tvSymbol;
+    searchApi.tv(ticker)
+      .then(results => {
+        const found = results.some(r => r.tvSymbol?.toUpperCase() === tvSymbol.toUpperCase());
+        setChartMode(found ? 'tv' : 'lightweight');
+      })
+      .catch(() => setChartMode('lightweight'));
+  }, [tvSymbol]);
+
+  // TradingView widget — only created when mode is 'tv'
+  useEffect(() => {
+    if (chartMode !== 'tv') return;
     const el = containerRef.current;
     if (!el) return;
 
@@ -274,13 +379,19 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     }
 
     return () => { if (el) el.innerHTML = ''; };
-  }, [tvSymbol, containerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chartMode, tvSymbol, containerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const modeBadge = {
+    checking:    { bg: 'var(--bg-base)',              color: 'var(--text-dim)',    label: 'Checking…'    },
+    tv:          { bg: 'rgba(0,255,136,0.12)',         color: 'var(--green)',       label: 'TradingView'  },
+    lightweight: { bg: 'rgba(255,215,0,0.12)',         color: 'var(--yellow)',      label: 'Yahoo Charts' },
+  }[chartMode];
 
   return (
     <div
@@ -291,6 +402,9 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>{symbol}</span>
+          <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: modeBadge.bg, color: modeBadge.color }}>
+            {modeBadge.label}
+          </span>
           <a
             href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`}
             target="_blank"
@@ -307,8 +421,18 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13, flexShrink: 0 }}>✕</button>
       </div>
 
-      {/* TradingView chart */}
-      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
+      {/* Chart area */}
+      {chartMode === 'checking' && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+          Checking chart availability…
+        </div>
+      )}
+      {chartMode === 'tv' && (
+        <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
+      )}
+      {chartMode === 'lightweight' && (
+        <LightweightChart symbol={symbol} />
+      )}
 
       {/* Signal analysis panel */}
       <SignalPanel symbol={symbol} />

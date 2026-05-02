@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { searchApi } from '../../api/client.js';
+import { toTvSymbol } from '../../utils/tvSymbol.js';
 
 const TYPE_STYLE = {
-  stock:       { bg: 'var(--accent-dim)',  color: 'var(--accent)'  },
-  crypto:      { bg: 'var(--yellow-dim)',  color: 'var(--yellow)'  },
-  etf:         { bg: 'rgba(100,180,255,0.12)', color: '#64b4ff'    },
-  fund:        { bg: 'rgba(180,120,255,0.12)', color: '#b478ff'    },
+  stock:  { bg: 'var(--accent-dim)',        color: 'var(--accent)'  },
+  crypto: { bg: 'var(--yellow-dim)',        color: 'var(--yellow)'  },
+  etf:    { bg: 'rgba(100,180,255,0.12)',   color: '#64b4ff'        },
+  fund:   { bg: 'rgba(180,120,255,0.12)',   color: '#b478ff'        },
 };
 
 export default function TickerInput({ value, onChange, onSelect }) {
@@ -37,7 +38,7 @@ export default function TickerInput({ value, onChange, onSelect }) {
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
-        const data = await searchApi.tv(v);
+        const data = await searchApi.search(v);
         if (!mountedRef.current) return;
         const safe = Array.isArray(data) ? data : [];
         setResults(safe);
@@ -51,11 +52,10 @@ export default function TickerInput({ value, onChange, onSelect }) {
   }
 
   function handleSelect(item) {
-    // Store TradingView format: NSE:RELIANCE, NASDAQ:AAPL, BINANCE:BTCUSDT
-    const tvSym = item.tvSymbol || item.symbol;
+    // Convert Yahoo Finance symbol to TradingView format for storage
+    const tvSym = toTvSymbol(item.symbol);
     const type  = item.type === 'crypto' ? 'crypto'
                 : item.type === 'fund'   ? 'mutual_fund'
-                : item.type === 'dr'     ? 'stock'
                 : item.type || 'stock';
     onChange(tvSym);
     onSelect(tvSym, type);
@@ -69,7 +69,7 @@ export default function TickerInput({ value, onChange, onSelect }) {
         value={value}
         onChange={handleChange}
         onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
-        placeholder="Search TradingView symbols…"
+        placeholder="Search symbol… (e.g. RELIANCE, AAPL)"
         required
         autoComplete="off"
       />
@@ -88,9 +88,10 @@ export default function TickerInput({ value, onChange, onSelect }) {
         }}>
           {results.map((r) => {
             const ts = TYPE_STYLE[r.type] || TYPE_STYLE.stock;
+            const displaySym = toTvSymbol(r.symbol);
             return (
               <div
-                key={r.tvSymbol || r.symbol}
+                key={r.symbol}
                 onClick={() => handleSelect(r)}
                 style={{
                   padding: '9px 12px', cursor: 'pointer',
@@ -102,7 +103,7 @@ export default function TickerInput({ value, onChange, onSelect }) {
               >
                 <div style={{ minWidth: 110 }}>
                   <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 13, color: 'var(--accent)' }}>
-                    {r.tvSymbol || r.symbol}
+                    {displaySym}
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 1 }}>
                     {r.exchange}
