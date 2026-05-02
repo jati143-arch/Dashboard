@@ -230,15 +230,18 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
     const el = containerRef.current;
     if (!el) return;
     el.innerHTML = '';
+    el.style.height = '100%';
 
+    // Widget target div — 32px reserved for TradingView's footer bar
     const widgetDiv = document.createElement('div');
     widgetDiv.className = 'tradingview-widget-container__widget';
-    widgetDiv.style.cssText = 'height:100%;width:100%';
+    widgetDiv.style.cssText = 'height:calc(100% - 32px);width:100%';
     el.appendChild(widgetDiv);
 
+    // Script must be a sibling of widgetDiv (both children of el)
     const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src  = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.type  = 'text/javascript';
+    script.src   = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
     script.textContent = JSON.stringify({
       autosize:            true,
@@ -252,7 +255,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       calendar:            false,
       support_host:        'https://www.tradingview.com',
     });
-    widgetDiv.appendChild(script);
+    el.appendChild(script); // sibling of widgetDiv, NOT inside it
 
     return () => { el.innerHTML = ''; };
   }, [tvSymbol, seqRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -292,7 +295,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       <div
         ref={containerRef}
         className="tradingview-widget-container"
-        style={{ flex: 1, minHeight: 0 }}
+        style={{ flex: 1, minHeight: 0, height: '100%' }}
       />
 
       {/* Signal analysis panel */}
