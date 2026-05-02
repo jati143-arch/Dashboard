@@ -221,44 +221,60 @@ function SignalPanel({ symbol }) {
 let widgetSeq = 0;
 
 export default function ChartModal({ symbol, entryPrice, onClose }) {
-  const tvSymbol    = toTvSymbol(symbol);
+  const tvSymbol   = toTvSymbol(symbol);
+  const containerId = useRef(`tv_chart_${++widgetSeq}`).current;
   const containerRef = useRef(null);
-  const seqRef       = useRef(++widgetSeq);
 
-  // Inject TradingView Advanced Chart widget
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    el.innerHTML = '';
-    el.style.height = '100%';
 
-    // Widget target div — 32px reserved for TradingView's footer bar
-    const widgetDiv = document.createElement('div');
-    widgetDiv.className = 'tradingview-widget-container__widget';
-    widgetDiv.style.cssText = 'height:calc(100% - 32px);width:100%';
-    el.appendChild(widgetDiv);
+    function createWidget() {
+      if (!window.TradingView) return;
+      el.innerHTML = `<div id="${containerId}" style="height:100%"></div>`;
+      new window.TradingView.widget({
+        autosize:            true,
+        symbol:              tvSymbol,
+        interval:            'D',
+        timezone:            tvTimezone(symbol),
+        theme:               'dark',
+        style:               '1',
+        locale:              'en',
+        enable_publishing:   false,
+        withdateranges:      true,
+        hide_side_toolbar:   false,
+        allow_symbol_change: true,
+        save_image:          false,
+        container_id:        containerId,
+        studies: ['RSI@tv-basicstudies', 'MAExp@tv-basicstudies', 'MACD@tv-basicstudies'],
+        overrides: {
+          'paneProperties.background':               '#141414',
+          'paneProperties.backgroundType':           'solid',
+          'paneProperties.vertGridProperties.color': '#1e1e1e',
+          'paneProperties.horzGridProperties.color': '#1e1e1e',
+        },
+      });
+    }
 
-    // Script must be a sibling of widgetDiv (both children of el)
-    const script = document.createElement('script');
-    script.type  = 'text/javascript';
-    script.src   = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.textContent = JSON.stringify({
-      autosize:            true,
-      symbol:              tvSymbol,
-      interval:            'D',
-      timezone:            tvTimezone(symbol),
-      theme:               'dark',
-      style:               '1',
-      locale:              'en',
-      allow_symbol_change: true,
-      calendar:            false,
-      support_host:        'https://www.tradingview.com',
-    });
-    el.appendChild(script); // sibling of widgetDiv, NOT inside it
+    if (window.TradingView) {
+      createWidget();
+    } else {
+      const existing = document.getElementById('tv-script');
+      if (!existing) {
+        const script = document.createElement('script');
+        script.id    = 'tv-script';
+        script.src   = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = createWidget;
+        document.head.appendChild(script);
+      } else {
+        existing.addEventListener('load', createWidget, { once: true });
+        if (window.TradingView) createWidget();
+      }
+    }
 
-    return () => { el.innerHTML = ''; };
-  }, [tvSymbol, seqRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { if (el) el.innerHTML = ''; };
+  }, [tvSymbol, containerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -291,12 +307,8 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13, flexShrink: 0 }}>✕</button>
       </div>
 
-      {/* TradingView Advanced Chart */}
-      <div
-        ref={containerRef}
-        className="tradingview-widget-container"
-        style={{ flex: 1, minHeight: 0, height: '100%' }}
-      />
+      {/* TradingView chart */}
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
 
       {/* Signal analysis panel */}
       <SignalPanel symbol={symbol} />
