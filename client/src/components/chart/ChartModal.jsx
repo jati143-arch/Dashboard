@@ -163,6 +163,33 @@ function SignalPanel({ symbol }) {
             <SectionToggle label="SL & Targets" open={showSLTargets} onToggle={() => setShowSLTargets(o => !o)} />
             {showSLTargets && (
               <>
+                {/* Entry suggestion row */}
+                {data.entryType && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8, marginTop: 4 }}>
+                    <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '6px 8px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Entry Type</div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: data.entryType.includes('Breakout') || data.entryType.includes('Breakdown') ? '#00ff88'
+                             : data.entryType.includes('Market') ? '#aaa'
+                             : '#ffd700',
+                      }}>{data.entryType}</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 6, padding: '6px 8px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Suggested Entry</div>
+                      <div style={{ fontFamily: 'var(--text-mono)', fontSize: 13, fontWeight: 700, color: '#ffd700' }}>{data.suggestedEntry}</div>
+                    </div>
+                    <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '6px 8px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Position Size</div>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: data.positionSize === 'Full' ? '#00ff88'
+                             : data.positionSize?.includes('75') ? '#00ccff'
+                             : '#ffd700',
+                      }}>{data.positionSize}</div>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8, marginTop: 4 }}>
                   <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '8px 10px' }}>
                     <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Current Price</div>
@@ -219,9 +246,10 @@ function SignalPanel({ symbol }) {
 
 // ── Lightweight Charts fallback (Yahoo Finance OHLCV data) ────────────────────
 
-const RANGES = ['3mo', '6mo', '1y', '2y', '5y'];
+const INTRADAY_RANGES = ['1m', '2m', '5m', '15m', '30m', '1h', '2h', '4h', '12h'];
+const SWING_RANGES    = ['3mo', '6mo', '1y', '2y', '5y'];
 
-function LightweightChart({ symbol }) {
+function LightweightChart({ symbol, entryPrice }) {
   const containerRef = useRef(null);
   const chartRef     = useRef(null);
   const [range, setRange] = useState('1y');
@@ -230,6 +258,14 @@ function LightweightChart({ symbol }) {
     queryKey: ['ohlcv', symbol, range],
     queryFn: () => chartApi.ohlcv(symbol, range),
     staleTime: 5 * 60_000,
+  });
+
+  // Reuse the same query key as SignalPanel — React Query deduplicates the fetch
+  const { data: sig } = useQuery({
+    queryKey: ['signals', symbol],
+    queryFn: () => signalsApi.get(symbol),
+    staleTime: 5 * 60_000,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -241,7 +277,7 @@ function LightweightChart({ symbol }) {
     const chart = createChart(el, {
       layout: { background: { color: '#141414' }, textColor: '#c0c0c0' },
       grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
-      timeScale: { borderColor: '#2a2a2a', timeVisible: false },
+      timeScale: { borderColor: '#2a2a2a', timeVisible: range !== '3mo' && range !== '6mo' && range !== '1y' && range !== '2y' && range !== '5y' },
       rightPriceScale: { borderColor: '#2a2a2a' },
       crosshair: { mode: 1 },
       width: el.clientWidth,
@@ -250,14 +286,39 @@ function LightweightChart({ symbol }) {
     chartRef.current = chart;
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor:        '#00ff88',
-      downColor:      '#ff3355',
-      borderUpColor:  '#00ff88',
-      borderDownColor:'#ff3355',
-      wickUpColor:    '#00ff88',
-      wickDownColor:  '#ff3355',
+      upColor:         '#00ff88',
+      downColor:       '#ff3355',
+      borderUpColor:   '#00ff88',
+      borderDownColor: '#ff3355',
+      wickUpColor:     '#00ff88',
+      wickDownColor:   '#ff3355',
     });
     series.setData(candles);
+
+    // ── Price lines ───────────────────────────────────────────────────────────
+    if (sig) {
+      // Stop loss — red dashed
+      if (sig.sl) series.createPriceLine({
+        price: sig.sl, color: '#ff3355', lineWidth: 1, lineStyle: 2,
+        title: `SL  −${sig.slPct}%`,
+      });
+      // Take profit targets — green dashed
+      (sig.targets || []).forEach(t => series.createPriceLine({
+        price: t.price, color: '#00ff88', lineWidth: 1, lineStyle: 2,
+        title: t.label,
+      }));
+      // Suggested signal entry — yellow solid
+      if (sig.suggestedEntry) series.createPriceLine({
+        price: sig.suggestedEntry, color: '#ffd700', lineWidth: 2, lineStyle: 0,
+        title: `▶ ${sig.entryType}`,
+      });
+    }
+    // Actual trade entry — cyan solid
+    if (entryPrice != null) series.createPriceLine({
+      price: entryPrice, color: '#00ccff', lineWidth: 2, lineStyle: 0,
+      title: 'Your Entry',
+    });
+
     chart.timeScale().fitContent();
 
     const ro = new ResizeObserver(entries => {
@@ -267,25 +328,36 @@ function LightweightChart({ symbol }) {
     ro.observe(el);
 
     return () => { ro.disconnect(); if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; } };
-  }, [candles]);
+  }, [candles, sig, entryPrice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function RangeBtn({ r }) {
+    const active = range === r;
+    return (
+      <button
+        onClick={() => setRange(r)}
+        style={{
+          background: active ? 'var(--accent-dim)' : 'none',
+          border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+          color: active ? 'var(--accent)' : 'var(--text-secondary)',
+          padding: '2px 7px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
+        }}
+      >{r}</button>
+    );
+  }
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {/* Range selector */}
-      <div style={{ display: 'flex', gap: 6, padding: '6px 12px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', alignItems: 'center', flexShrink: 0 }}>
-        <span style={{ fontSize: 10, color: 'var(--text-dim)', marginRight: 4 }}>Yahoo Finance data</span>
-        {RANGES.map(r => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            style={{
-              background: range === r ? 'var(--accent-dim)' : 'none',
-              border: `1px solid ${range === r ? 'var(--accent)' : 'var(--border)'}`,
-              color: range === r ? 'var(--accent)' : 'var(--text-secondary)',
-              padding: '2px 8px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
-            }}
-          >{r}</button>
-        ))}
+      {/* Timeframe selector — two rows */}
+      <div style={{ padding: '5px 12px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Intraday</span>
+          {INTRADAY_RANGES.map(r => <RangeBtn key={r} r={r} />)}
+        </div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Swing</span>
+          {SWING_RANGES.map(r => <RangeBtn key={r} r={r} />)}
+          <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 6 }}>Yahoo Finance</span>
+        </div>
       </div>
       {isLoading && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
@@ -431,7 +503,7 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
         <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
       )}
       {chartMode === 'lightweight' && (
-        <LightweightChart symbol={symbol} />
+        <LightweightChart symbol={symbol} entryPrice={entryPrice} />
       )}
 
       {/* Signal analysis panel */}

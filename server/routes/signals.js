@@ -343,6 +343,39 @@ router.get('/:symbol', async (req, res) => {
 
     const slPct = sl != null ? +(((price - sl) / price) * 100).toFixed(1) : null;
 
+    // ── Entry suggestion ──────────────────────────────────────────────────────
+    let suggestedEntry = +price.toFixed(2);
+    let entryType      = 'Market Entry';
+    let positionSize   = 'Partial (75%)';
+
+    if (isBuy) {
+      if (curEma20 != null && price > curEma20 * 1.01) {
+        suggestedEntry = +curEma20.toFixed(2);
+        entryType      = 'Wait — Retest EMA20';
+        positionSize   = 'Scale-in (50%)';
+      } else if (curEma9 != null && price > curEma9 * 1.005) {
+        suggestedEntry = +curEma9.toFixed(2);
+        entryType      = 'Pullback to EMA9';
+        positionSize   = 'Partial (75%)';
+      } else {
+        entryType    = score >= 5 ? 'Breakout Entry' : 'Market Entry';
+        positionSize = score >= 5 ? 'Full' : 'Partial (75%)';
+      }
+    } else if (isSell) {
+      if (curEma20 != null && price < curEma20 * 0.99) {
+        suggestedEntry = +curEma20.toFixed(2);
+        entryType      = 'Wait — Retest EMA20';
+        positionSize   = 'Scale-in (50%)';
+      } else if (curEma9 != null && price < curEma9 * 0.995) {
+        suggestedEntry = +curEma9.toFixed(2);
+        entryType      = 'Pullback to EMA9';
+        positionSize   = 'Partial (75%)';
+      } else {
+        entryType    = score <= -5 ? 'Breakdown Entry' : 'Market Entry';
+        positionSize = score <= -5 ? 'Full' : 'Partial (75%)';
+      }
+    }
+
     res.json({
       symbol:     req.params.symbol,
       price:      +price.toFixed(2),
@@ -376,6 +409,9 @@ router.get('/:symbol', async (req, res) => {
         bullOB: obs.bullOB ? { top: +obs.bullOB.top.toFixed(2), bottom: +obs.bullOB.bottom.toFixed(2) } : null,
         bearOB: obs.bearOB ? { top: +obs.bearOB.top.toFixed(2), bottom: +obs.bearOB.bottom.toFixed(2) } : null,
       },
+      suggestedEntry,
+      entryType,
+      positionSize,
     });
   } catch (err) {
     console.error('[signals]', err.message);
