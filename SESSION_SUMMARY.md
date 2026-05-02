@@ -81,9 +81,109 @@
 - `PnlHeatmap` component: 52-week GitHub-style calendar (green = profit days, red = loss days)
 - "Overall P&L" dashboard tile = realized + unrealized combined
 
+### Phase 12 — Symbol System Overhaul (TV Format + Server Conversion)
+
+- **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT` instead of Yahoo Finance format (`RELIANCE.NS`, `AAPL`, `BTC-USD`)
+- **`server/utils/symbolConvert.js`** — NEW file; `toYahoo(symbol)` converts TV format → Yahoo format for all backend data calls (prices, charts, news, signals, backtest). Backward-compatible: symbols without `:` pass through unchanged
+- **All backend routes updated** — `prices.js`, `chart.js`, `signals.js`, `backtest.js`, `news.js` now wrap every Yahoo Finance call with `toYahoo()`
+- **`tvSymbol.js` expanded** — added 9 Indian sector indices to lookup table (`^CNXMIDCP`, `^CNXIT`, `^CNXPHARMA`, etc.); unknown `^` indices now fall back to `TVC:` prefix; crypto quote uppercased
+- **`tvTimezone()` updated** — handles TV-format Indian symbols (`NSE:*`, `BSE:*` → `Asia/Kolkata`)
+- **`GET /api/search/tv`** — new route proxying TradingView symbol-search API; returns `{ tvSymbol, symbol, name, exchange, type }`
+- **TickerInput** — search reverted to Yahoo Finance (`searchApi.search()`) after TV search proved unreliable; selected symbol is converted to TV format via `toTvSymbol()` before storage so DB format stays consistent
+
+### Phase 13 — Win/Loss Stats + Trade Table Filter Bar
+
+- **`GET /api/stats/winloss`** — new endpoint counting only fully closed trades (`parent_trade_id IS NULL AND pnl_dollar IS NOT NULL AND status='closed'`); excludes mutual funds and partial closes
+- **`statsApi.winloss()`** added to `client/src/api/client.js`
+- **PnlSummary tiles updated** — Win Rate and Wins/Losses tiles now show all-time stats from the new endpoint with "all closed trades" subtitle
+- **DailyDashboard** — fetches `winlossStats` via React Query and passes `overallWins/overallLosses/overallWinRate/overallTotal` props to PnlSummary
+- **TradeTable filter bar** — inline symbol search with autocomplete dropdown appears above the table; shows unique matching symbols from currently loaded trades; filters rows client-side as you type; "Clear" button resets; displays "X of Y" count when active; works for both open and closed trade views
+
+### Phase 14 — Hybrid Chart System + Full Timeframes + Signal Entry Lines
+
+- **Hybrid chart mode** — `ChartModal` now checks TradingView availability before rendering:
+  1. Queries `/api/search/tv?q={ticker}` on mount
+  2. If exact `tvSymbol` found → loads TradingView widget (existing behaviour)
+  3. If not found → falls back to `LightweightChart` (Yahoo Finance OHLCV)
+  4. Header badge shows "TradingView", "Yahoo Charts", or "Checking…" live
+
+- **Full timeframe selector** (Yahoo/Lightweight Charts mode) — two grouped rows of buttons:
+  - *Intraday:* `1m`, `2m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `12h`
+  - *Swing:* `3mo`, `6mo`, `1y`, `2y`, `5y`
+  - Backend `RANGE_MAP` in `chart.js` already supported all keys; only the frontend UI was expanded
+  - `timeVisible` on the chart's time axis auto-toggles: shown for intraday ranges, hidden for daily+
+
+- **Price lines on Lightweight Charts** — after candlestick data loads, horizontal lines are drawn via `series.createPriceLine()`:
+  - 🔴 Red dashed — Stop Loss (`SL −X%`)
+  - 🟢 Green dashed — T1 / T2 / T3 take-profit targets
+  - 🟡 Yellow solid — Algorithm's suggested entry price + entry type label (`▶ Breakout Entry`)
+  - 🔵 Cyan solid — Your actual trade entry price (only when chart opened from a trade row)
+  - Signal data is fetched inside `LightweightChart` using the same React Query key `['signals', symbol]` as `SignalPanel` — no duplicate network request
+
+- **Signal entry algorithm** (`server/routes/signals.js`) — three new fields added to every `/api/signals/:symbol` response:
+  ```json
+  {
+    "suggestedEntry": 2340.50,
+    "entryType": "Breakout Entry | Pullback to EMA9 | Wait — Retest EMA20 | Market Entry",
+    "positionSize": "Full | Partial (75%) | Scale-in (50%)"
+  }
+  ```
+  Logic: compares `price` vs `ema9 × 1.005` and `ema20 × 1.01`; mirrors for sell signals
+
+- **SignalPanel entry cards** — three new cards appear above SL & Targets:
+  - *Entry Type* — color-coded (green = Breakout/Breakdown, yellow = Pullback/Retest, grey = Market)
+  - *Suggested Entry* — specific price to enter at
+  - *Position Size* — Full / Partial (75%) / Scale-in (50%)
+
 ---
 
-## Current Sprint — What Was Done in This Session
+## Current Sprint — What Was Done in This Session (Phase 14)
+
+> Phases 12 & 13 were completed in an earlier session. This section covers Phase 14 work.
+
+### 1. Hybrid Chart Mode (`client/src/components/chart/ChartModal.jsx`)
+
+- `chartMode` state: `'checking'` → `'tv'` or `'lightweight'`
+- On mount: extracts ticker from `tvSymbol`, calls `searchApi.tv(ticker)`, checks for exact match
+- `'tv'` mode: existing TradingView widget code (unchanged)
+- `'lightweight'` mode: `LightweightChart` component with Yahoo OHLCV data
+- Mode badge rendered in modal header
+
+### 2. Full Timeframe Selector in LightweightChart
+
+- Replaced single `RANGES` array with `INTRADAY_RANGES` and `SWING_RANGES`
+- Inline `RangeBtn` sub-component for DRY button rendering
+- `timeVisible` on `timeScale` set to `true` for intraday, `false` for daily ranges
+- Default range kept as `'1y'`
+
+### 3. Price Lines on LightweightChart
+
+- Added `useQuery(['signals', symbol])` inside `LightweightChart` (React Query deduplicates with SignalPanel)
+- Added `entryPrice` prop; passed from `ChartModal` down: `<LightweightChart symbol={symbol} entryPrice={entryPrice} />`
+- Lines created with `series.createPriceLine()` after `series.setData(candles)`:
+  - SL line (red dashed)
+  - T1/T2/T3 target lines (green dashed)
+  - `suggestedEntry` line (yellow solid, titled `▶ {entryType}`)
+  - `entryPrice` line (cyan solid, titled "Your Entry")
+- Price lines included in `useEffect` deps: `[candles, sig, entryPrice]`
+
+### 4. Signal Entry Fields (`server/routes/signals.js`)
+
+Added after `slPct` calculation, before `res.json()`:
+- `suggestedEntry` — `+price.toFixed(2)` by default; `+curEma20.toFixed(2)` if price extended > EMA20×1.01; `+curEma9.toFixed(2)` if price extended > EMA9×1.005
+- `entryType` — `'Wait — Retest EMA20'` / `'Pullback to EMA9'` / `'Breakout Entry'` / `'Market Entry'` (sell mirrors: `'Breakdown Entry'`)
+- `positionSize` — `'Scale-in (50%)'` / `'Partial (75%)'` / `'Full'`
+
+### 5. SignalPanel Entry Cards (`client/src/components/chart/ChartModal.jsx`)
+
+Three new cards inserted above the SL/Targets grid, inside `showSLTargets` block, only when `data.entryType` is present:
+- Entry Type card — color: green (Breakout/Breakdown), yellow (Retest/Pullback), grey (Market)
+- Suggested Entry card — yellow `ffd700`, monospace font
+- Position Size card — green (Full), cyan (75%), yellow (50%)
+
+---
+
+## Previous Sprint Details
 
 ### 1. Composite Backtest Strategy (`server/routes/backtest.js`)
 - Added `calcATR(candles, period=14)` — Wilder smoothing
@@ -193,6 +293,39 @@ TV: NSE:RELIANCE
 
 ## File Map — Every Changed File
 
+### Phase 14 (latest)
+
+| File | Status | Change |
+|------|--------|--------|
+| `client/src/components/chart/ChartModal.jsx` | Modified | Hybrid mode (chartMode state, TV availability check, LightweightChart component with full timeframes + price lines + entry cards) |
+| `server/routes/signals.js` | Modified | suggestedEntry, entryType, positionSize fields added |
+
+### Phase 13
+
+| File | Status | Change |
+|------|--------|--------|
+| `server/routes/stats.js` | Modified | `GET /api/stats/winloss` endpoint |
+| `client/src/api/client.js` | Modified | `statsApi.winloss()`, `searchApi.tv()` |
+| `client/src/components/dashboard/PnlSummary.jsx` | Modified | overallWins/Losses/WinRate/Total props |
+| `client/src/pages/DailyDashboard.jsx` | Modified | winlossStats query, props to PnlSummary |
+| `client/src/components/trades/TradeTable.jsx` | Modified | inline symbol filter bar with autocomplete dropdown |
+
+### Phase 12
+
+| File | Status | Change |
+|------|--------|--------|
+| `server/utils/symbolConvert.js` | **NEW** | `toYahoo()` TV→Yahoo converter |
+| `server/routes/prices.js` | Modified | `toYahoo()` wrapping |
+| `server/routes/chart.js` | Modified | `toYahoo()` wrapping |
+| `server/routes/signals.js` | Modified | `toYahoo()` wrapping |
+| `server/routes/backtest.js` | Modified | `toYahoo()` wrapping |
+| `server/routes/news.js` | Modified | `toYahoo()` wrapping |
+| `client/src/utils/tvSymbol.js` | Modified | sector indices, TVC fallback, crypto uppercase, IST timezone for TV-format symbols |
+| `client/src/components/trades/TickerInput.jsx` | Modified | search reverted to Yahoo; `toTvSymbol()` on select |
+| `server/routes/search.js` | Modified | `GET /api/search/tv` proxy route added |
+
+### Previous Sprint (Phases 10–11)
+
 | File | Status | Change |
 |------|--------|--------|
 | `server/routes/signals.js` | Modified | detectSFP, detectLiquidity, detectOrderBlock; lux field in response |
@@ -209,11 +342,13 @@ TV: NSE:RELIANCE
 
 ## Key Architecture Decisions
 
-- **Yahoo Finance for all price/candle data** — `yahoo-finance2` npm package handles auth automatically. Symbols stored in Yahoo format (RELIANCE.NS, ^NSEI, BTC-USD). `toTvSymbol()` converts on-the-fly for display/TradingView use only — stored symbols never change format.
-- **TradingView widget (free)** — embedded via `tv.js`. Cannot draw custom lines/shapes from outside (sealed iframe). All custom analysis lives in the React Signal Panel below the chart.
+- **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT`. Backend converts via `toYahoo()` (in `server/utils/symbolConvert.js`) for every Yahoo Finance call. Old Yahoo-format trades still work because `toYahoo()` is a no-op if there is no `:`.
+- **Hybrid chart auto-detection** — on every chart open, the app queries `/api/search/tv?q={ticker}`; if the exact `tvSymbol` appears in results → TradingView widget; otherwise → Lightweight Charts (Yahoo data). User always sees which source is active via the header badge.
+- **TradingView widget (free)** — embedded via `tv.js`. Cannot draw custom lines/shapes from outside (sealed iframe). All custom analysis (SL lines, targets, entry suggestion) is rendered as Lightweight Charts `createPriceLine()` in the Yahoo fallback mode; the Signal Panel below the TV widget shows the same data as text.
 - **Lux Algo server-side** — SFP/BSL/SSL/OB computed on the Node server from candle data, returned in the signals API response. No TradingView overlay needed.
 - **Voice via Web Speech API** — zero dependencies, browser-native. Works on Chrome/Edge/Safari.
 - **Signal scan = portfolio-only** — `tradeSymbols` derived from open trades only, never scans arbitrary symbols.
+- **React Query deduplication** — `LightweightChart` and `SignalPanel` both call `useQuery(['signals', symbol])`. React Query serves both from the same cache entry — only one network request is made.
 
 ---
 
@@ -222,6 +357,8 @@ TV: NSE:RELIANCE
 - **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy (for use in TradingView Strategy Tester). Deferred by user.
 - **Backtest price chart with entry/exit markers** — show candle chart with ▲▼ trade markers overlaid on price chart in Backtest results.
 - **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of reading from CurrencyContext.
+- **Third-party GitHub stock analysis integration** — user requested integrating an external GitHub project for stock analysis; deferred until user provides the repository URL.
+- **Price lines in TradingView widget mode** — SL/target/entry lines are only drawn in Yahoo/Lightweight Charts mode; TradingView's free widget does not expose a public API for external line drawing.
 
 ---
 
