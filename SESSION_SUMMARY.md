@@ -81,6 +81,22 @@
 - `PnlHeatmap` component: 52-week GitHub-style calendar (green = profit days, red = loss days)
 - "Overall P&L" dashboard tile = realized + unrealized combined
 
+### Phase 16 — DCA / Position Averaging
+
+- When adding a new **open** position for a symbol+direction that already has an open position, the server now merges instead of inserting a duplicate row
+- **Weighted average entry price**: `(existing_price × existing_qty + new_price × new_qty) / total_qty`
+- `size` and `remaining_size` on the original row are incremented by the new quantity
+- A DCA note is appended to `notes` to preserve history: `DCA +50 @ 338.70 on 2026-05-04`
+- Returns HTTP 200 (updated) instead of 201 (created)
+- Closed trades unaffected — each closed trade still gets its own row
+- Only merges top-level open positions (`parent_trade_id IS NULL`); partial-close children never touched
+
+### Phase 15 — Currency Detection Fix for TV-Format Symbols
+
+- **Root cause**: all Indian symbol currency checks only matched `.NS`/`.BO` endings (Yahoo Finance format); symbols are now stored as `NSE:RELIANCE` (TradingView format), so every Indian stock was misidentified as USD
+- **Effect**: prices and P&L were multiplied by the USD/INR rate (~84×), showing ₹12,65,722 instead of ₹12,657 for Maruti etc.
+- **Fix applied to 6 files**: every `endsWith('.NS') || endsWith('.BO')` check now also includes `startsWith('NSE:') || startsWith('BSE:')`
+
 ### Phase 12 — Symbol System Overhaul (TV Format + Server Conversion)
 
 - **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT` instead of Yahoo Finance format (`RELIANCE.NS`, `AAPL`, `BTC-USD`)
@@ -293,7 +309,24 @@ TV: NSE:RELIANCE
 
 ## File Map — Every Changed File
 
-### Phase 14 (latest)
+### Phase 16 (latest)
+
+| File | Status | Change |
+|------|--------|--------|
+| `server/routes/trades.js` | Modified | DCA auto-merge: POST checks for existing open position, merges with weighted avg entry price |
+
+### Phase 15
+
+| File | Status | Change |
+|------|--------|--------|
+| `client/src/utils/currency.js` | Modified | `nativeOf()` — added `NSE:`/`BSE:` prefix checks alongside `.NS`/`.BO` |
+| `client/src/components/dashboard/OpenPositions.jsx` | Modified | `detectRegion()` — same fix |
+| `client/src/components/trades/ClosePositionForm.jsx` | Modified | `detectRegion()` — same fix |
+| `client/src/components/dashboard/TodayTradeTable.jsx` | Modified | `nativeCs()` — same fix |
+| `client/src/components/dashboard/PnlSummary.jsx` | Modified | `portfolioNative` detection — same fix |
+| `client/src/pages/Investments.jsx` | Modified | region detection — same fix |
+
+### Phase 14
 
 | File | Status | Change |
 |------|--------|--------|
@@ -349,6 +382,8 @@ TV: NSE:RELIANCE
 - **Voice via Web Speech API** — zero dependencies, browser-native. Works on Chrome/Edge/Safari.
 - **Signal scan = portfolio-only** — `tradeSymbols` derived from open trades only, never scans arbitrary symbols.
 - **React Query deduplication** — `LightweightChart` and `SignalPanel` both call `useQuery(['signals', symbol])`. React Query serves both from the same cache entry — only one network request is made.
+- **DCA merges server-side** — the `POST /api/trades` route handles averaging logic; the frontend submits a normal "Add Trade" form and transparently receives back the merged position. No UI changes needed.
+- **Indian symbol detection** — all currency/region checks in the frontend must match both `.NS`/`.BO` (Yahoo format) and `NSE:`/`BSE:` (TradingView format) since the DB may contain either depending on when the trade was entered.
 
 ---
 
