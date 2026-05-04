@@ -5,6 +5,9 @@ const path = require('path');
 const dbPath = path.join(__dirname, 'data', 'trading.db');
 const schemaPath = path.join(__dirname, 'schema.sql');
 
+// Ensure the data directory exists (missing on a fresh clone)
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
