@@ -99,6 +99,43 @@ router.post('/', (req, res) => {
   } = req.body;
 
   const isOpen = status === 'open';
+  const sym = symbol.toUpperCase();
+
+  // ── DCA / Averaging logic ─────────────────────────────────────────────────
+  // If adding an open position, check for an existing open position in the
+  // same symbol + direction. If found, merge via weighted average entry price
+  // instead of creating a duplicate row.
+  if (isOpen) {
+    const existing = db.prepare(`
+      SELECT * FROM trades
+      WHERE symbol = ? AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
+      ORDER BY date ASC LIMIT 1
+    `).get(sym, direction);
+
+    if (existing) {
+      const prevSize  = existing.remaining_size ?? existing.size;
+      const newSize   = Number(size);
+      const totalSize = prevSize + newSize;
+      // Weighted average: (old_price × old_qty + new_price × new_qty) / total_qty
+      const avgEntry  = (existing.entry_price * prevSize + Number(entry_price) * newSize) / totalSize;
+
+      // Append a DCA note so history is preserved
+      const dcaNote = `DCA +${newSize} @ ${Number(entry_price).toFixed(2)} on ${date}`;
+      const mergedNotes = [existing.notes, dcaNote].filter(Boolean).join('\n');
+
+      db.prepare(`
+        UPDATE trades
+        SET entry_price    = ?,
+            size           = size + ?,
+            remaining_size = remaining_size + ?,
+            notes          = ?
+        WHERE id = ?
+      `).run(+avgEntry.toFixed(4), newSize, newSize, mergedNotes, existing.id);
+
+      return res.status(200).json(db.prepare('SELECT * FROM trades WHERE id = ?').get(existing.id));
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const result = db.prepare(`
     INSERT INTO trades (date, entry_time, exit_time, exit_date, symbol, instrument_type,
@@ -110,7 +147,7 @@ router.post('/', (req, res) => {
     entry_time || null,
     exit_time || null,
     exit_date || null,
-    symbol.toUpperCase(),
+    sym,
     instrument_type,
     direction,
     entry_price,
