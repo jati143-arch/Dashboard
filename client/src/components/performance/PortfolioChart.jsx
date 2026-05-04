@@ -44,6 +44,22 @@ const TIMEFRAMES = [
 
 const INTRADAY = new Set(['1min','5min','10min','15min','30min','1h','2h','4h']);
 
+const TF_INTERVAL_MS = {
+  '1min': 60_000, '5min': 5*60_000, '10min': 10*60_000,
+  '15min': 15*60_000, '30min': 30*60_000,
+  '1h': 60*60_000, '2h': 2*60*60_000, '4h': 4*60*60_000,
+};
+
+function snapTimeKey(tf) {
+  const now = new Date();
+  const totalMins = now.getHours() * 60 + now.getMinutes();
+  const interval = { '1min':1,'5min':5,'10min':10,'15min':15,'30min':30,'1h':60,'2h':120,'4h':240 }[tf] || 1;
+  const rounded = Math.floor(totalMins / interval) * interval;
+  const h = String(Math.floor(rounded / 60)).padStart(2, '0');
+  const m = String(rounded % 60).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 // Snapshots keyed by date so they auto-clear each new day
 const SESSION_KEY = `pf_snapshots_${new Date().toISOString().slice(0, 10)}`;
 
@@ -104,6 +120,8 @@ export default function PortfolioChart() {
   const { currency } = useCurrency();
   const sym = CUR_SYMBOL[currency] || '₹';
 
+  const refetchMs = isIntraday ? (TF_INTERVAL_MS[tf] || 60_000) : false;
+
   // Persist snapshots across page navigations via sessionStorage
   const snapshotsRef = useRef(loadSnapshots());
   const [tickCount, setTickCount] = useState(snapshotsRef.current.length);
@@ -121,8 +139,8 @@ export default function PortfolioChart() {
     queryKey: ['trades', { status: 'open' }],
     queryFn: () => tradesApi.list({ status: 'open' }),
     enabled: isIntraday,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: refetchMs || 60_000,
+    refetchInterval: refetchMs,
   });
 
   const liveSymbols = useMemo(
@@ -134,15 +152,16 @@ export default function PortfolioChart() {
     queryKey: ['live-prices', liveSymbols],
     queryFn: () => pricesApi.get(liveSymbols),
     enabled: isIntraday && liveSymbols.length > 0,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: refetchMs || 60_000,
+    refetchInterval: refetchMs,
   });
 
   const { data: allTimeStats } = useQuery({
     queryKey: ['stats', 'all', ''],
     queryFn: () => statsApi.summary('all', ''),
     enabled: isIntraday,
-    staleTime: 60_000,
+    staleTime: refetchMs || 60_000,
+    refetchInterval: refetchMs,
   });
 
   const appendSnapshot = useCallback(() => {
@@ -156,17 +175,18 @@ export default function PortfolioChart() {
       return s + (t.direction === 'long' ? (cp - t.entry_price) * qty : (t.entry_price - cp) * qty);
     }, 0);
     const realized = allTimeStats?.total_pnl || 0;
-    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-    // Avoid duplicate timestamps
-    if (snapshotsRef.current.at(-1)?.time === time) return;
-    const next = [
-      ...snapshotsRef.current,
-      { time, portfolio: Math.round(invested + unrealized + realized), invested: Math.round(invested), realizedPnl: Math.round(realized) },
-    ];
+    const timeKey = snapTimeKey(tf);
+    const point = { time: timeKey, portfolio: Math.round(invested + unrealized + realized), invested: Math.round(invested), realizedPnl: Math.round(realized) };
+    const prev = snapshotsRef.current;
+    // Replace last snapshot if same time-bucket (e.g. prices just arrived in same minute),
+    // otherwise append a new point.
+    const next = prev.length > 0 && prev[prev.length - 1].time === timeKey
+      ? [...prev.slice(0, -1), point]
+      : [...prev, point];
     snapshotsRef.current = next;
     saveSnapshots(next);
     setTickCount(c => c + 1);
-  }, [openTrades, livePrices, allTimeStats]);
+  }, [openTrades, livePrices, allTimeStats, tf]);
 
   // Append snapshot each time live prices refresh
   useEffect(() => {

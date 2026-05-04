@@ -246,8 +246,11 @@ function SignalPanel({ symbol }) {
 
 // ── Lightweight Charts fallback (Yahoo Finance OHLCV data) ────────────────────
 
-const INTRADAY_RANGES = ['1m', '2m', '5m', '15m', '30m', '1h', '2h', '4h', '12h'];
-const SWING_RANGES    = ['3mo', '6mo', '1y', '2y', '5y'];
+const INTRADAY_RANGES  = ['1m', '2m', '5m', '15m', '30m', '1h', '2h', '4h', '12h'];
+const MULTIDAY_RANGES  = ['1d', '2d', '3d', '4d', '5d', '6d'];
+const SWING_RANGES     = ['1w', '2w', '1mo', '2mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'max'];
+// Ranges that use date-only timestamps — hide the time part on the X-axis
+const DATE_ONLY_RANGES = new Set(['1w','2w','1mo','2mo','3mo','6mo','1y','2y','5y','10y','max']);
 
 function LightweightChart({ symbol, entryPrice }) {
   const containerRef = useRef(null);
@@ -277,7 +280,7 @@ function LightweightChart({ symbol, entryPrice }) {
     const chart = createChart(el, {
       layout: { background: { color: '#141414' }, textColor: '#c0c0c0' },
       grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
-      timeScale: { borderColor: '#2a2a2a', timeVisible: range !== '3mo' && range !== '6mo' && range !== '1y' && range !== '2y' && range !== '5y' },
+      timeScale: { borderColor: '#2a2a2a', timeVisible: !DATE_ONLY_RANGES.has(range) },
       rightPriceScale: { borderColor: '#2a2a2a' },
       crosshair: { mode: 1 },
       width: el.clientWidth,
@@ -347,13 +350,17 @@ function LightweightChart({ symbol, entryPrice }) {
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {/* Timeframe selector — two rows */}
+      {/* Timeframe selector — three rows */}
       <div style={{ padding: '5px 12px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
           <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Intraday</span>
           {INTRADAY_RANGES.map(r => <RangeBtn key={r} r={r} />)}
         </div>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Days</span>
+          {MULTIDAY_RANGES.map(r => <RangeBtn key={r} r={r} />)}
+        </div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 9, color: 'var(--text-dim)', width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Swing</span>
           {SWING_RANGES.map(r => <RangeBtn key={r} r={r} />)}
           <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 6 }}>Yahoo Finance</span>
