@@ -29,7 +29,11 @@ const SIG_BORDER = {
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
-  if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) return 'indian';
+  // Handle both Yahoo Finance format (.NS/.BO) and TradingView format (NSE:/BSE:)
+  if (
+    symbol.endsWith('.NS') || symbol.endsWith('.BO') ||
+    symbol.startsWith('NSE:') || symbol.startsWith('BSE:')
+  ) return 'indian';
   return 'us';
 }
 

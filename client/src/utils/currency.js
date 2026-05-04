@@ -1,8 +1,13 @@
 export const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
 
 // Determine the native stored currency from a trade's symbol / instrument type
+// Handles both Yahoo Finance format (RELIANCE.NS) and TradingView format (NSE:RELIANCE)
 export function nativeOf(symbol, instrumentType) {
-  if (instrumentType !== 'crypto' && (symbol?.endsWith('.NS') || symbol?.endsWith('.BO'))) return 'INR';
+  if (instrumentType === 'crypto') return 'USD';
+  if (
+    symbol?.endsWith('.NS') || symbol?.endsWith('.BO') ||
+    symbol?.startsWith('NSE:') || symbol?.startsWith('BSE:')
+  ) return 'INR';
   return 'USD';
 }
 

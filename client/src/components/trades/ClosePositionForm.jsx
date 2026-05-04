@@ -6,7 +6,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'crypto') return 'crypto';
-  if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) return 'indian';
+  if (
+    symbol.endsWith('.NS') || symbol.endsWith('.BO') ||
+    symbol.startsWith('NSE:') || symbol.startsWith('BSE:')
+  ) return 'indian';
   return 'us';
 }
 

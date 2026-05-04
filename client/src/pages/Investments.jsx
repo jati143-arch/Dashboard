@@ -10,7 +10,8 @@ function detectRegion(symbol, instrumentType) {
   if (instrumentType === 'mutual_fund') return 'mf';
   if (instrumentType === 'crypto') return 'crypto';
   if (instrumentType === 'etf') return 'etf';
-  if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) return 'indian';
+  if (symbol.endsWith('.NS') || symbol.endsWith('.BO') ||
+      symbol.startsWith('NSE:') || symbol.startsWith('BSE:')) return 'indian';
   return 'us';
 }
 

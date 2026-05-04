@@ -29,7 +29,8 @@ export default function PnlSummary({
   // Detect portfolio native currency from open positions
   const nonMfOpen = (openTrades || []).filter(t => t.instrument_type !== 'mutual_fund');
   const portfolioNative = nonMfOpen.length > 0 && nonMfOpen.every(t =>
-    t.symbol?.endsWith('.NS') || t.symbol?.endsWith('.BO'),
+    t.symbol?.endsWith('.NS') || t.symbol?.endsWith('.BO') ||
+    t.symbol?.startsWith('NSE:') || t.symbol?.startsWith('BSE:'),
   ) ? 'INR' : 'USD';
 
   // Convert all-time realized P&L to selected display currency

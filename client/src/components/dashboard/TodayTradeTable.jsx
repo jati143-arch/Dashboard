@@ -4,7 +4,10 @@ import PnlBadge from '../shared/PnlBadge.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
 
 function nativeCs(symbol, instrumentType) {
-  if (instrumentType !== 'crypto' && (symbol.endsWith('.NS') || symbol.endsWith('.BO'))) return '₹';
+  if (instrumentType !== 'crypto' && (
+    symbol.endsWith('.NS') || symbol.endsWith('.BO') ||
+    symbol.startsWith('NSE:') || symbol.startsWith('BSE:')
+  )) return '₹';
   return '$';
 }
 
