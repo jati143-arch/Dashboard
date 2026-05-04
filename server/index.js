@@ -41,8 +41,10 @@ app.use('/api/signals',  signalsRouter);
 const distPath = path.join(__dirname, '../client/dist');
 const fs = require('fs');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  // Cache hashed assets (JS/CSS) for 1 year; never cache index.html
+  app.use(express.static(distPath, { maxAge: '1y', immutable: true }));
   app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
