@@ -13,8 +13,8 @@ cd /d "%~dp0"
 REM ── Pull latest code ──────────────────────────────────────────────────────
 echo  [0/3] Pulling latest code from GitHub...
 git fetch --all
-git checkout claude/fix-performance-chart-ksm1z
-git pull origin claude/fix-performance-chart-ksm1z
+git checkout main
+git pull origin main
 echo.
 echo  Current branch:
 git branch --show-current
