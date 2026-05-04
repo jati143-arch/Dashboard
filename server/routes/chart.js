@@ -7,22 +7,37 @@ const { toYahoo } = require('../utils/symbolConvert');
 // Yahoo Finance limits: 1m/2m=7d, 5m/15m/30m=60d, 60m=2yr, daily+=unlimited
 // Multi-hour (2h/4h/6h/8h/12h) are synthesised from 60m on the client side
 const RANGE_MAP = {
-  '1m':  { days: 6,    interval: '1m',  intraday: true,  aggN: 1  },
-  '2m':  { days: 6,    interval: '2m',  intraday: true,  aggN: 1  },
-  '5m':  { days: 59,   interval: '5m',  intraday: true,  aggN: 1  },
-  '15m': { days: 59,   interval: '15m', intraday: true,  aggN: 1  },
-  '30m': { days: 59,   interval: '30m', intraday: true,  aggN: 1  },
-  '1h':  { days: 729,  interval: '60m', intraday: true,  aggN: 1  },
-  '2h':  { days: 729,  interval: '60m', intraday: true,  aggN: 2  },
-  '4h':  { days: 729,  interval: '60m', intraday: true,  aggN: 4  },
-  '6h':  { days: 729,  interval: '60m', intraday: true,  aggN: 6  },
-  '8h':  { days: 729,  interval: '60m', intraday: true,  aggN: 8  },
-  '12h': { days: 729,  interval: '60m', intraday: true,  aggN: 12 },
-  '3mo': { days: 90,   interval: '1d',  intraday: false, aggN: 1  },
-  '6mo': { days: 180,  interval: '1d',  intraday: false, aggN: 1  },
-  '1y':  { days: 365,  interval: '1d',  intraday: false, aggN: 1  },
-  '2y':  { days: 730,  interval: '1wk', intraday: false, aggN: 1  },
-  '5y':  { days: 1825, interval: '1mo', intraday: false, aggN: 1  },
+  // ── Intraday ──────────────────────────────────────────────────────────────
+  '1m':  { days: 6,     interval: '1m',  intraday: true,  aggN: 1  },
+  '2m':  { days: 6,     interval: '2m',  intraday: true,  aggN: 1  },
+  '5m':  { days: 59,    interval: '5m',  intraday: true,  aggN: 1  },
+  '15m': { days: 59,    interval: '15m', intraday: true,  aggN: 1  },
+  '30m': { days: 59,    interval: '30m', intraday: true,  aggN: 1  },
+  '1h':  { days: 729,   interval: '60m', intraday: true,  aggN: 1  },
+  '2h':  { days: 729,   interval: '60m', intraday: true,  aggN: 2  },
+  '4h':  { days: 729,   interval: '60m', intraday: true,  aggN: 4  },
+  '6h':  { days: 729,   interval: '60m', intraday: true,  aggN: 6  },
+  '8h':  { days: 729,   interval: '60m', intraday: true,  aggN: 8  },
+  '12h': { days: 729,   interval: '60m', intraday: true,  aggN: 12 },
+  // ── Multi-day (30m/1h candles, unlimited by Yahoo) ────────────────────────
+  '1d':  { days: 2,     interval: '30m', intraday: true,  aggN: 1  },
+  '2d':  { days: 3,     interval: '60m', intraday: true,  aggN: 1  },
+  '3d':  { days: 4,     interval: '60m', intraday: true,  aggN: 1  },
+  '4d':  { days: 5,     interval: '60m', intraday: true,  aggN: 1  },
+  '5d':  { days: 6,     interval: '60m', intraday: true,  aggN: 1  },
+  '6d':  { days: 7,     interval: '60m', intraday: true,  aggN: 1  },
+  // ── Swing / Long (daily+ candles, unlimited history) ─────────────────────
+  '1w':  { days: 7,     interval: '1d',  intraday: false, aggN: 1  },
+  '2w':  { days: 14,    interval: '1d',  intraday: false, aggN: 1  },
+  '1mo': { days: 30,    interval: '1d',  intraday: false, aggN: 1  },
+  '2mo': { days: 60,    interval: '1d',  intraday: false, aggN: 1  },
+  '3mo': { days: 90,    interval: '1d',  intraday: false, aggN: 1  },
+  '6mo': { days: 180,   interval: '1d',  intraday: false, aggN: 1  },
+  '1y':  { days: 365,   interval: '1d',  intraday: false, aggN: 1  },
+  '2y':  { days: 730,   interval: '1wk', intraday: false, aggN: 1  },
+  '5y':  { days: 1825,  interval: '1wk', intraday: false, aggN: 1  },
+  '10y': { days: 3650,  interval: '1mo', intraday: false, aggN: 1  },
+  'max': { days: 25000, interval: '1mo', intraday: false, aggN: 1  },
 };
 
 // Server-side aggregation for multi-hour candles (n 60m bars → 1 bar)
