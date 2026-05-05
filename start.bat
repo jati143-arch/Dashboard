@@ -23,12 +23,20 @@ REM ── Create .env if missing ───────────────�
 if not exist "server\.env" (
     if exist "server\.env.example" (
         copy "server\.env.example" "server\.env" >nul
-        echo  [SETUP] server\.env created. Edit it and add your ANTHROPIC_API_KEY.
+        echo  [SETUP] server\.env created from template.
         echo.
+        echo  IMPORTANT: Edit server\.env and fill in:
+        echo    ANTHROPIC_API_KEY   - your Anthropic key
+        echo    GOOGLE_CLIENT_ID    - from console.cloud.google.com
+        echo    GOOGLE_CLIENT_SECRET
+        echo    SESSION_SECRET      - any random string
+        echo.
+        echo  Press any key after you have edited server\.env ...
+        pause
     )
 )
 
-REM ── Create data folder so the DB can be created ───────────────────────────
+REM ── Create data folder ────────────────────────────────────────────────────
 if not exist "server\data" mkdir "server\data"
 
 REM ── Install server dependencies ───────────────────────────────────────────

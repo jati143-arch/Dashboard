@@ -13,6 +13,8 @@ import Backtest from './pages/Backtest.jsx';
 import { ChartProvider, useChart } from './context/ChartContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import ChartModal from './components/chart/ChartModal.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import SignIn from './components/SignIn.jsx';
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -48,7 +50,22 @@ function AppShell() {
   );
 }
 
-export default function App() {
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    const params = new URLSearchParams(window.location.search);
+    return <SignIn error={params.get('error')} />;
+  }
+
   return (
     <BrowserRouter>
       <ChartProvider>
@@ -57,6 +74,14 @@ export default function App() {
         </CurrencyProvider>
       </ChartProvider>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   );
 }
 
