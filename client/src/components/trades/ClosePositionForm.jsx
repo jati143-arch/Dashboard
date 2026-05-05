@@ -67,6 +67,8 @@ export default function ClosePositionForm({ trade, currentPrice, onClose }) {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
       setResult({ isFullClose, data });
     },
   });

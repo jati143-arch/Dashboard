@@ -17,12 +17,20 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
 
   const { mutate: toggleBest } = useMutation({
     mutationFn: (id) => tradesApi.toggleBest(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trades', date] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
+    },
   });
 
   const { mutate: remove } = useMutation({
     mutationFn: (id) => tradesApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trades', date] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
+    },
   });
 
   if (!trades.length) {

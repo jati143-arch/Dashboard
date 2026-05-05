@@ -29,7 +29,12 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
 
   const { mutate, isPending } = useMutation({
     mutationFn: trade ? (data) => tradesApi.update(trade.id, data) : (data) => tradesApi.create(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['trades'] }); onClose(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
+      onClose();
+    },
   });
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })); }

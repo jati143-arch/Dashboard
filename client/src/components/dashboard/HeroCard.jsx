@@ -7,7 +7,9 @@ export default function HeroCard({ trade, date }) {
   const { mutate: toggleBest } = useMutation({
     mutationFn: () => tradesApi.toggleBest(trade.id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['trades', date] });
+      qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
     },
   });
 

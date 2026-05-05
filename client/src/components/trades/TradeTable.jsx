@@ -32,7 +32,11 @@ export default function TradeTable({ trades, onEdit }) {
 
   const { mutate: remove } = useMutation({
     mutationFn: (id) => tradesApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trades'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trades'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+      qc.invalidateQueries({ queryKey: ['daily'] });
+    },
   });
 
   // Close dropdown on outside click
