@@ -1,14 +1,12 @@
-// Service worker — caches the app shell so it loads offline
-const CACHE = 'trading-dashboard-v1';
+// Service worker — network first, cache only as offline fallback
+const CACHE = 'trading-dashboard-v2';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(['/', '/index.html']))
-  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
+  // Delete all old caches on every new deploy
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
@@ -18,14 +16,16 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Only cache GET requests for the app shell; let API calls pass through
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('/api/')) return;
   if (e.request.url.includes('/auth/')) return;
 
+  // Network first — always try to get fresh content
+  // Only fall back to cache if offline
   e.respondWith(
     fetch(e.request)
       .then(res => {
+        // Cache a copy for offline use
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
