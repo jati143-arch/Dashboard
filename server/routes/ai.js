@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../db');
+const { readJSON, writeJSON } = require('../lib/driveStore');
 const { analyzeTrades, explainPattern } = require('../services/claude');
 
 const router = express.Router();
@@ -9,17 +9,19 @@ router.post('/daily-analysis', async (req, res) => {
   const { date } = req.body;
   if (!date) return res.status(400).json({ error: 'date is required' });
 
-  const trades = db.prepare('SELECT * FROM trades WHERE date = ? ORDER BY entry_time ASC').all(date);
-  const daily = db.prepare('SELECT * FROM daily_records WHERE date = ?').get(date);
-
   try {
-    const insight = await analyzeTrades(date, trades, daily);
+    const token  = req.user.accessToken;
+    const trades = await readJSON(token, 'dashboard-trades.json', []);
+    const daily  = await readJSON(token, 'dashboard-daily.json', {});
 
-    db.prepare(`
-      INSERT INTO daily_records (date, ai_insight, updated_at)
-      VALUES (?, ?, datetime('now'))
-      ON CONFLICT(date) DO UPDATE SET ai_insight = excluded.ai_insight, updated_at = excluded.updated_at
-    `).run(date, insight);
+    const dayTrades  = trades.filter(t => t.date === date);
+    const dailyRecord = daily[date] || {};
+
+    const insight = await analyzeTrades(date, dayTrades, dailyRecord);
+
+    // Save insight back to daily record in Drive
+    daily[date] = { ...dailyRecord, ai_insight: insight, updated_at: new Date().toISOString() };
+    await writeJSON(token, 'dashboard-daily.json', daily);
 
     res.json({ insight });
   } catch (err) {
@@ -32,10 +34,11 @@ router.post('/explain-pattern', async (req, res) => {
   const { slug } = req.body;
   if (!slug) return res.status(400).json({ error: 'slug is required' });
 
-  const pattern = db.prepare('SELECT * FROM patterns WHERE slug = ?').get(slug);
-  if (!pattern) return res.status(404).json({ error: 'Pattern not found' });
-
   try {
+    const patterns = await readJSON(req.user.accessToken, 'dashboard-patterns.json', []);
+    const pattern  = patterns.find(p => p.slug === slug);
+    if (!pattern) return res.status(404).json({ error: 'Pattern not found' });
+
     const explanation = await explainPattern(pattern);
     res.json({ explanation });
   } catch (err) {
