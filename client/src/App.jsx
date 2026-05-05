@@ -15,6 +15,7 @@ import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import ChartModal from './components/chart/ChartModal.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import SignIn from './components/SignIn.jsx';
+import MigrationBanner from './components/MigrationBanner.jsx';
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -46,6 +47,7 @@ function AppShell() {
           onClose={closeChart}
         />
       )}
+      <MigrationBanner />
     </div>
   );
 }

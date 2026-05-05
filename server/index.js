@@ -41,6 +41,7 @@ const tradesRouter   = require('./routes/trades-drive');
 const statsRouter    = require('./routes/stats-drive');
 const patternsRouter = require('./routes/patterns-drive');
 const dailyRouter    = require('./routes/daily-drive');
+const migrateRouter  = require('./routes/migrate');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -85,6 +86,7 @@ function requireAuth(req, res, next) {
   res.status(401).json({ error: 'Not authenticated' });
 }
 
+app.use('/api/migrate',  requireAuth, migrateRouter);
 app.use('/api/trades',   requireAuth, tradesRouter);
 app.use('/api/stats',    requireAuth, statsRouter);
 app.use('/api/patterns', requireAuth, patternsRouter);
