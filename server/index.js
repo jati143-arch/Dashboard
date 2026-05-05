@@ -46,6 +46,9 @@ const migrateRouter  = require('./routes/migrate');
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Render/proxy so secure cookies work over HTTPS
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
