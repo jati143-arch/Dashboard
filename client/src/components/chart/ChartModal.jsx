@@ -435,6 +435,7 @@ function LightweightChart({ symbol, entryPrice }) {
   });
 
   const [ohlcInfo, setOhlcInfo] = useState(null);
+  const [vobSignal, setVobSignal] = useState(null);
 
   useEffect(() => {
     const handle = () => setIsMobile(window.innerWidth < 640);
@@ -546,6 +547,23 @@ function LightweightChart({ symbol, entryPrice }) {
 
       bullOBs.forEach(ob => drawZone(ob, 'rgba(8,153,129,0.9)', 'rgba(8,153,129,0.5)'));
       bearOBs.forEach(ob => drawZone(ob, 'rgba(242,54,70,0.9)',  'rgba(242,54,70,0.5)'));
+
+      // ── VOB long entry suggestion ─────────────────────────────────────────
+      // If the most recent candle is wicking into a bull OB zone, show SL + TP (1:3)
+      const atrVob = indATR(candles, 14);
+      const atrLast = atrVob[candles.length - 1] || lastCandle.close * 0.01;
+      const activeOB = bullOBs.find(ob => lastCandle.low <= ob.top && lastCandle.close >= ob.bottom);
+      if (activeOB) {
+        const sl = +(activeOB.bottom - atrLast * 0.1).toFixed(2);
+        const tp = +(lastCandle.close + (lastCandle.close - sl) * 3).toFixed(2);
+        candleSeries.createPriceLine({ price: sl, color: '#ff3355', lineWidth: 1, lineStyle: 2, title: 'VOB SL', axisLabelVisible: true });
+        candleSeries.createPriceLine({ price: tp, color: '#00ff88', lineWidth: 1, lineStyle: 2, title: 'VOB TP 1:3', axisLabelVisible: true });
+        setVobSignal({ sl, tp, obTop: activeOB.top, obBot: activeOB.bottom });
+      } else {
+        setVobSignal(null);
+      }
+    } else {
+      setVobSignal(null);
     }
 
     // ── Signal marker + line ─────────────────────────────────────────────────
@@ -812,6 +830,23 @@ function LightweightChart({ symbol, entryPrice }) {
 
       {/* Chart + OHLC tooltip — flex column so chart div can use flex:1 for height */}
       <div style={{ flex: 1, minHeight: 0, display: candles.length > 0 && !isLoading && !isError ? 'flex' : 'none', flexDirection: 'column', position: 'relative' }}>
+        {/* VOB entry signal banner — top-right to avoid OHLC tooltip overlap */}
+        {ind.vob && vobSignal && (
+          <div style={{
+            position: 'absolute', top: 6, right: 70, zIndex: 11,
+            background: 'rgba(8,153,129,0.15)',
+            border: '1px solid rgba(8,153,129,0.5)',
+            borderRadius: 6, padding: '6px 10px',
+            fontSize: 11, color: '#4ecca3', lineHeight: 1.8,
+            pointerEvents: 'none', textAlign: 'right',
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 1 }}>▲ VOB Entry Zone</div>
+            <div>OB {vobSignal.obBot.toFixed(2)} – {vobSignal.obTop.toFixed(2)}</div>
+            <div>SL {vobSignal.sl.toFixed(2)}</div>
+            <div style={{ color: '#86efac' }}>TP {vobSignal.tp.toFixed(2)} <span style={{ opacity: 0.6, fontSize: 10 }}>1:3</span></div>
+          </div>
+        )}
+
         {/* OHLC tooltip */}
         {displayInfo && (
           <div style={{
