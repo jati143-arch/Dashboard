@@ -108,7 +108,14 @@ app.use('/api/ai',       requireAuth, aiRouter);
 const distPath = path.join(__dirname, '../client/dist');
 const fs = require('fs');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath, { maxAge: '1y', immutable: true }));
+  // Content-hashed Vite bundles — safe to cache for 1 year
+  app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+  }));
+  // Everything else (index.html, sw.js, manifest.json, favicon) — never cache
+  app.use(express.static(distPath, { maxAge: 0 }));
+  // SPA fallback
   app.get('*', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(distPath, 'index.html'));
