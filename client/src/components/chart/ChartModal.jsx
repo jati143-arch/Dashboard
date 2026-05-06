@@ -409,13 +409,12 @@ function LightweightChart({ symbol, entryPrice }) {
     if (mainChartRef.current) { mainChartRef.current.remove(); mainChartRef.current = null; }
 
     const chart = createChart(el, {
+      autoSize: true,
       layout: { background: { color: '#141414' }, textColor: '#c0c0c0' },
       grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
       timeScale: { borderColor: '#2a2a2a', timeVisible: !DATE_ONLY_RANGES.has(range) },
       rightPriceScale: { borderColor: '#2a2a2a' },
       crosshair: { mode: 1 },
-      width: el.clientWidth,
-      height: el.clientHeight || 400,
     });
     mainChartRef.current = chart;
 
@@ -481,7 +480,7 @@ function LightweightChart({ symbol, entryPrice }) {
     if (sig) {
       // Arrow marker on the last candle (where signal is computed from)
       if (sig.signal !== 'NEUTRAL') {
-        candleSeries.setMarkers([{
+        chart.setSeriesMarkers(candleSeries, [{
           time: lastCandle.time,
           position: sig.isBuy ? 'belowBar' : 'aboveBar',
           color: sig.isBuy ? '#00ff88' : '#ff3355',
@@ -562,14 +561,7 @@ function LightweightChart({ symbol, entryPrice }) {
 
     chart.timeScale().fitContent();
 
-    const ro = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect;
-      mainChartRef.current?.resize(width, height);
-    });
-    ro.observe(el);
-
     return () => {
-      ro.disconnect();
       mainChartRef.current?.remove();
       mainChartRef.current = null;
     };
@@ -582,13 +574,12 @@ function LightweightChart({ symbol, entryPrice }) {
     if (!ind.rsi || !el || !candles.length) return;
 
     const chart = createChart(el, {
+      autoSize: true,
       layout: { background: { color: '#141414' }, textColor: '#888' },
       grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
       timeScale: { visible: false, borderColor: '#2a2a2a' },
       rightPriceScale: { borderColor: '#2a2a2a', scaleMargins: { top: 0.1, bottom: 0.1 } },
       crosshair: { mode: 1 },
-      width: el.clientWidth,
-      height: el.clientHeight || 100,
     });
     rsiChartRef.current = chart;
 
@@ -599,20 +590,13 @@ function LightweightChart({ symbol, entryPrice }) {
     rsiSeries.createPriceLine({ price: 70, color: '#ff3355', lineWidth: 1, lineStyle: 2, title: 'OB' });
     rsiSeries.createPriceLine({ price: 30, color: '#00ff88', lineWidth: 1, lineStyle: 2, title: 'OS' });
 
-    // Sync back to main chart
     chart.timeScale().subscribeVisibleLogicalRangeChange(r => {
       if (!r) return;
       mainChartRef.current?.timeScale().setVisibleLogicalRange(r);
       macdChartRef.current?.timeScale().setVisibleLogicalRange(r);
     });
 
-    const ro = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect;
-      rsiChartRef.current?.resize(width, height);
-    });
-    ro.observe(el);
-
-    return () => { ro.disconnect(); rsiChartRef.current?.remove(); rsiChartRef.current = null; };
+    return () => { rsiChartRef.current?.remove(); rsiChartRef.current = null; };
   }, [candles, ind.rsi, per.rsi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── MACD sub-chart ──────────────────────────────────────────────────────────
@@ -622,13 +606,12 @@ function LightweightChart({ symbol, entryPrice }) {
     if (!ind.macd || !el || !candles.length) return;
 
     const chart = createChart(el, {
+      autoSize: true,
       layout: { background: { color: '#141414' }, textColor: '#888' },
       grid: { vertLines: { color: '#1a1a1a' }, horzLines: { color: '#1a1a1a' } },
       timeScale: { visible: false, borderColor: '#2a2a2a' },
       rightPriceScale: { borderColor: '#2a2a2a', scaleMargins: { top: 0.1, bottom: 0.1 } },
       crosshair: { mode: 1 },
-      width: el.clientWidth,
-      height: el.clientHeight || 100,
     });
     macdChartRef.current = chart;
 
@@ -655,13 +638,7 @@ function LightweightChart({ symbol, entryPrice }) {
       rsiChartRef.current?.timeScale().setVisibleLogicalRange(r);
     });
 
-    const ro = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect;
-      macdChartRef.current?.resize(width, height);
-    });
-    ro.observe(el);
-
-    return () => { ro.disconnect(); macdChartRef.current?.remove(); macdChartRef.current = null; };
+    return () => { macdChartRef.current?.remove(); macdChartRef.current = null; };
   }, [candles, ind.macd, per.macdFast, per.macdSlow, per.macdSig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // OHLC display — use hovered bar or fall back to last candle
@@ -753,17 +730,15 @@ function LightweightChart({ symbol, entryPrice }) {
         )}
       </div>
 
-      {/* ── Main chart area — always present so the chart can mount and resize ── */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        {/* Loading / error / empty states as overlays */}
-        {(isLoading || isError || (!isLoading && !isError && candles.length === 0)) && (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: isError ? 'var(--red)' : 'var(--text-dim)', fontSize: 13, zIndex: 5, background: '#141414' }}>
-            {isLoading ? 'Loading chart data…' : isError ? 'Failed to load chart data' : 'No chart data available'}
-          </div>
-        )}
+      {/* ── Main chart area ───────────────────────────────────────────────────── */}
+      {isLoading && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Loading chart data…</div>}
+      {isError   && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)',      fontSize: 13 }}>Failed to load chart data</div>}
+      {!isLoading && !isError && candles.length === 0 && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>No chart data available</div>}
 
-        {/* OHLC tooltip overlay */}
-        {displayInfo && candles.length > 0 && (
+      {/* Chart + OHLC tooltip — flex column so chart div can use flex:1 for height */}
+      <div style={{ flex: 1, minHeight: 0, display: candles.length > 0 && !isLoading && !isError ? 'flex' : 'none', flexDirection: 'column', position: 'relative' }}>
+        {/* OHLC tooltip */}
+        {displayInfo && (
           <div style={{
             position: 'absolute', top: 6, left: 6, zIndex: 10,
             background: 'rgba(0,0,0,0.72)', borderRadius: 4,
@@ -784,16 +759,15 @@ function LightweightChart({ symbol, entryPrice }) {
             )}
           </div>
         )}
-
-        {/* Chart mounts here — absolute fill so height always resolves on mobile */}
-        <div ref={mainContainerRef} style={{ position: 'absolute', inset: 0 }} />
+        {/* autoSize:true makes LW Charts observe this div's size automatically */}
+        <div ref={mainContainerRef} style={{ flex: 1, minHeight: 0 }} />
       </div>
 
       {/* ── RSI sub-pane ─────────────────────────────────────────────────────── */}
       {ind.rsi && candles.length > 0 && (
         <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#7b68ee', zIndex: 1, fontWeight: 600 }}>RSI {per.rsi}</span>
-          <div ref={rsiContainerRef} style={{ position: 'absolute', inset: 0 }} />
+          <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
 
@@ -803,7 +777,7 @@ function LightweightChart({ symbol, entryPrice }) {
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#00aaff', zIndex: 1, fontWeight: 600 }}>
             MACD {per.macdFast}/{per.macdSlow}/{per.macdSig}
           </span>
-          <div ref={macdContainerRef} style={{ position: 'absolute', inset: 0 }} />
+          <div ref={macdContainerRef} style={{ width: '100%', height: '100%' }} />
         </div>
       )}
     </div>
