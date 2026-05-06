@@ -31,8 +31,8 @@ async function analyzeTrades(date, trades, dailyRecord) {
   if (provider === 'groq') {
     const tradeLines = trades.map(t =>
       `  ${t.symbol} (${t.instrument_type}) | ${t.direction.toUpperCase()} | ` +
-      `Entry: $${t.entry_price} → Exit: $${t.exit_price} | ` +
-      `Size: ${t.size} | P&L: $${t.pnl_dollar.toFixed(2)} (${t.pnl_percent.toFixed(1)}%) | ` +
+      `Entry: $${t.entry_price} → Exit: ${t.exit_price ?? 'open'} | ` +
+      `Size: ${t.size} | P&L: $${(t.pnl_dollar ?? 0).toFixed(2)} (${(t.pnl_percent ?? 0).toFixed(1)}%) | ` +
       `Pattern: ${t.pattern_tag || 'none'} | Notes: ${t.notes || 'none'}`
     ).join('\n');
 
