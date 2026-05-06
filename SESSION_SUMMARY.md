@@ -1,7 +1,9 @@
 # Trading Dashboard — Session Summary
 
-**Repo:** `jati143-arch/dashboard`  
-**Live URL:** `https://trading-dashboard-i4zw.onrender.com`
+**Branch:** `main`  
+**Repo:** `jati143-arch/dashboard`
+
+> **Rule:** All changes must be pushed to `main`. When user says "update MD file" they mean this file (`SESSION_SUMMARY.md`).
 
 ---
 
@@ -429,6 +431,48 @@ SESSION_SECRET=any-random-string
 | `start.bat` | **Modified** | Google OAuth env var prompts, updated pull branch |
 | `README.md` | **Rewritten** | New architecture: Drive + Render + PWA |
 | `server/.env.example` | **Modified** | Added Google OAuth + session vars |
+
+---
+
+## Phase 18 — Chart Overhaul (Indicators, OHLC Tooltip, Signal Lines, Trailing SL, Candle-Interval TF)
+
+### What Changed
+
+**`client/src/components/chart/ChartModal.jsx`** — full `LightweightChart` rewrite:
+
+- **OHLC tooltip**: floating overlay (top-left of chart) showing O / H / L / C / Vol / Chg% on crosshair hover; falls back to last candle when cursor leaves
+- **Toggleable indicators on chart** (each with editable period):
+  - EMA×2 (cyan + orange), SMA (purple) — `LineSeries` overlaid on candles
+  - Bollinger Bands (3 `LineSeries`: upper/mid/lower) — period + std-dev inputs
+  - Volume histogram — bottom 15% of main pane, color-coded green/red, hidden scale axis
+  - RSI — separate synchronized sub-chart below main; overbought (70) / oversold (30) dashed lines; collapsible via toggle
+  - MACD — separate synchronized sub-chart; MACD line + signal line + green/red histogram; 3 period inputs (fast/slow/signal); collapsible
+- **Signal line from signal-fire candle**: finds last EMA9/EMA20 crossover date (`signalStartDate` from API); draws `LineSeries` from that candle → last candle instead of spanning full history
+- **Arrow marker** on last candle showing signal type and entry label
+- **Trailing SL** (orange dashed, `lastClose − 2×ATR` for longs / `lastClose + 2×ATR` for shorts) — shown when `entryPrice` prop is present (user is in a trade). Regular SL (red dashed) shown alongside. Suggested entry line hidden when already in position.
+- **Timeframe selector redesigned**: two groups on one row — `1m 5m 15m 30m 1h 2h 4h` (intraday, minute/hour candles) + `1D 1W 1M` (candle-interval: each bar = 1 day / 1 week / 1 month). Collapses to single `<select>` on mobile (<640px).
+- Sub-chart (RSI, MACD) scroll/zoom syncs bidirectionally with main chart via `subscribeVisibleLogicalRangeChange`
+- Signals query `refetchInterval: 60_000` for live updates every minute
+
+**`server/routes/signals.js`**:
+- `signalStartDate` — scans backwards up to 60 candles for last EMA9/EMA20 crossover; returned in API response
+- Entry algorithm improved: ATR-based "extended" thresholds (`price > EMA + 1.5×ATR`) replace fixed-% checks (eliminates false "Wait" labels when price is only slightly above EMA)
+- Fresh MACD bull cross + RSI > 55 → immediately "Breakout Entry" (skips "wait for pullback" when momentum is real)
+- "At Entry Zone — Enter Now" when price is within 0.3% of EMA9
+
+**`server/routes/chart.js`**:
+- Added `D`, `W`, `M` keys to `RANGE_MAP`:
+  - `D` → `interval: '1d'`, 2yr history (daily bars)
+  - `W` → `interval: '1wk'`, 10yr history (weekly bars)
+  - `M` → `interval: '1mo'`, full history (monthly bars)
+
+### File Map — Phase 18
+
+| File | Change |
+|------|--------|
+| `client/src/components/chart/ChartModal.jsx` | Full LightweightChart rewrite — indicators, OHLC, signal line, trailing SL, new TF selector |
+| `server/routes/signals.js` | signalStartDate, ATR-based entry algo, Breakout shortcut |
+| `server/routes/chart.js` | D/W/M candle-interval RANGE_MAP keys |
 
 ---
 
