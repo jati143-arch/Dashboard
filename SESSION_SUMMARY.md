@@ -353,6 +353,79 @@ FRED_API_KEY=...             # free: fred.stlouisfed.org
 
 ---
 
+---
+
+## Phase 20 — Per-User API Key Settings + AI Portfolio Chat
+
+### Phase 20a — User API Key Settings Page (`/settings`)
+**`server/lib/userSettings.js`** (new) — per-user settings cache layer:
+- `getSettings(token, userId)` — reads `dashboard-settings.json` from user's Drive; 5-min in-memory cache per user
+- `saveSettings(token, userId, updates)` — merges and writes back to Drive, refreshes cache
+
+**`server/routes/settings.js`** (new):
+- `GET /api/settings` — returns masked keys (`••••last4`) + selected AI provider
+- `PUT /api/settings` — saves keys/provider; skips values starting with `••••` (unchanged masked value); empty string clears the key
+- `POST /api/settings/test-ai` — sends a test prompt to the configured provider; returns `{ ok, provider, model, response }` or `{ ok: false, error }`
+
+**`client/src/pages/Settings.jsx`** (new) — `/settings` route:
+- AI provider selector (radio buttons): Groq, Claude, Gemini Flash, OpenRouter
+- API key inputs (password type) for: Groq, Anthropic, Gemini, OpenRouter, Finnhub, FRED
+- Shows masked hint on load; user types new key to update; clear input + save to remove
+- "Test AI Connection" button verifies the key works inline
+- Helper links to get each key (all pointing to free signup pages)
+
+**Sidebar + App.jsx**: Settings nav item (`⚙`) added at bottom; `/settings` route wired up.
+
+### Phase 20b — Multi-Provider AI Support
+**`server/services/aiProvider.js`** fully rewritten:
+- **4 providers supported**: Groq, Claude (Anthropic), Gemini Flash (Google), OpenRouter
+- `activeProvider(userSettings)` — reads user key first, falls back to `process.env`; respects `ai_provider` preference; auto-fallback chain if no preference set
+- `singleChat(systemPrompt, userContent, maxTokens, userSettings)` — single-turn prompt for analysis/explain
+- `chatWithHistory(systemPrompt, messages, userSettings)` — multi-turn chat (sends full message history)
+- Gemini and OpenRouter use Node.js built-in `fetch` (no new packages needed)
+- All functions accept `userSettings` — user key takes priority over env var
+
+**`server/routes/ai.js`** updated:
+- All handlers fetch `userSettings` and pass to AI functions
+- `GET /api/ai/provider` reads user's preferred provider before returning active info
+- `POST /api/ai/chat` — new endpoint for free-form portfolio chat (see below)
+
+**`server/routes/market.js`** + **`server/routes/calendar.js`** updated:
+- Finnhub and FRED key now read from user's Drive settings first; env var is fallback
+
+### Phase 20c — AI Portfolio Chat Window
+**`POST /api/ai/chat`** (new endpoint):
+- Accepts `{ messages: [{ role, content }] }` — full conversation history from client
+- Server prepends a system prompt with live portfolio summary (`buildPortfolioSummary()`) as context
+- AI can answer any question about the user's real trade data
+
+**`client/src/pages/AiInsights.jsx`** updated — new "Chat With AI About Your Portfolio" section:
+- Free-form conversation window with message bubbles (user = right/accent, AI = left/surface)
+- Full message history sent to server on each turn (multi-turn context maintained)
+- 3 suggested starter questions shown before first message
+- Auto-scroll to latest message; Enter to send, Shift+Enter for newline
+- "Clear" button resets conversation
+- Error shown inline if AI key missing
+
+### Key Design Decisions
+- **User keys in Drive** — never stored on the server; each user's keys live only in their own Google Drive account
+- **5-min per-user cache** — avoids a Drive read on every API request; keyed by Google user ID
+- **Masked display** — GET returns `••••last4`; server skips saving unchanged masked values on PUT
+- **Graceful fallback** — user key → `process.env` key → "Add key in Settings" error; no breaking change for existing deployments using env vars
+- **No new npm packages** — Gemini and OpenRouter use Node's built-in `fetch` (Node 18+)
+- **Chat history in client state** — server stateless; full `messages[]` array sent on each POST
+
+### AI Provider Options Added
+
+| Provider | Model | Cost | Where to get key |
+|----------|-------|------|-----------------|
+| Groq | llama-3.3-70b-versatile | Free — 14,400 req/day | console.groq.com |
+| Claude | claude-haiku-4-5-20251001 | Paid | console.anthropic.com |
+| Gemini Flash | gemini-1.5-flash | Free — 1,500 req/day | aistudio.google.com |
+| OpenRouter | mistral-7b-instruct:free | Free models available | openrouter.ai |
+
+---
+
 ## Deferred / Not Yet Done
 
 - **Upstox OAuth scaffolding** — real-time NSE quotes (needs Upstox developer account)
