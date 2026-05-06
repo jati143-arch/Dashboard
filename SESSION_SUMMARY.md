@@ -1,7 +1,7 @@
 # Trading Dashboard — Session Summary
 
-**Branch:** `claude/trading-dashboard-setup-ynlz1`  
-**Repo:** `jati143-arch/dashboard`
+**Repo:** `jati143-arch/dashboard`  
+**Live URL:** `https://trading-dashboard-i4zw.onrender.com`
 
 ---
 
@@ -81,336 +81,465 @@
 - `PnlHeatmap` component: 52-week GitHub-style calendar (green = profit days, red = loss days)
 - "Overall P&L" dashboard tile = realized + unrealized combined
 
-### Phase 16 — DCA / Position Averaging
-
-- When adding a new **open** position for a symbol+direction that already has an open position, the server now merges instead of inserting a duplicate row
-- **Weighted average entry price**: `(existing_price × existing_qty + new_price × new_qty) / total_qty`
-- `size` and `remaining_size` on the original row are incremented by the new quantity
-- A DCA note is appended to `notes` to preserve history: `DCA +50 @ 338.70 on 2026-05-04`
-- Returns HTTP 200 (updated) instead of 201 (created)
-- Closed trades unaffected — each closed trade still gets its own row
-- Only merges top-level open positions (`parent_trade_id IS NULL`); partial-close children never touched
-
-### Phase 15 — Currency Detection Fix for TV-Format Symbols
-
-- **Root cause**: all Indian symbol currency checks only matched `.NS`/`.BO` endings (Yahoo Finance format); symbols are now stored as `NSE:RELIANCE` (TradingView format), so every Indian stock was misidentified as USD
-- **Effect**: prices and P&L were multiplied by the USD/INR rate (~84×), showing ₹12,65,722 instead of ₹12,657 for Maruti etc.
-- **Fix applied to 6 files**: every `endsWith('.NS') || endsWith('.BO')` check now also includes `startsWith('NSE:') || startsWith('BSE:')`
-
 ### Phase 12 — Symbol System Overhaul (TV Format + Server Conversion)
 
-- **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT` instead of Yahoo Finance format (`RELIANCE.NS`, `AAPL`, `BTC-USD`)
-- **`server/utils/symbolConvert.js`** — NEW file; `toYahoo(symbol)` converts TV format → Yahoo format for all backend data calls (prices, charts, news, signals, backtest). Backward-compatible: symbols without `:` pass through unchanged
+- **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT` instead of Yahoo Finance format
+- **`server/utils/symbolConvert.js`** — NEW file; `toYahoo(symbol)` converts TV format → Yahoo format for all backend data calls
 - **All backend routes updated** — `prices.js`, `chart.js`, `signals.js`, `backtest.js`, `news.js` now wrap every Yahoo Finance call with `toYahoo()`
-- **`tvSymbol.js` expanded** — added 9 Indian sector indices to lookup table (`^CNXMIDCP`, `^CNXIT`, `^CNXPHARMA`, etc.); unknown `^` indices now fall back to `TVC:` prefix; crypto quote uppercased
-- **`tvTimezone()` updated** — handles TV-format Indian symbols (`NSE:*`, `BSE:*` → `Asia/Kolkata`)
-- **`GET /api/search/tv`** — new route proxying TradingView symbol-search API; returns `{ tvSymbol, symbol, name, exchange, type }`
-- **TickerInput** — search reverted to Yahoo Finance (`searchApi.search()`) after TV search proved unreliable; selected symbol is converted to TV format via `toTvSymbol()` before storage so DB format stays consistent
+- **`GET /api/search/tv`** — new route proxying TradingView symbol-search API
 
 ### Phase 13 — Win/Loss Stats + Trade Table Filter Bar
 
-- **`GET /api/stats/winloss`** — new endpoint counting only fully closed trades (`parent_trade_id IS NULL AND pnl_dollar IS NOT NULL AND status='closed'`); excludes mutual funds and partial closes
-- **`statsApi.winloss()`** added to `client/src/api/client.js`
-- **PnlSummary tiles updated** — Win Rate and Wins/Losses tiles now show all-time stats from the new endpoint with "all closed trades" subtitle
-- **DailyDashboard** — fetches `winlossStats` via React Query and passes `overallWins/overallLosses/overallWinRate/overallTotal` props to PnlSummary
-- **TradeTable filter bar** — inline symbol search with autocomplete dropdown appears above the table; shows unique matching symbols from currently loaded trades; filters rows client-side as you type; "Clear" button resets; displays "X of Y" count when active; works for both open and closed trade views
+- **`GET /api/stats/winloss`** — new endpoint counting only fully closed trades
+- **PnlSummary tiles updated** — Win Rate and Wins/Losses tiles now show all-time stats
+- **TradeTable filter bar** — inline symbol search with autocomplete dropdown
 
 ### Phase 14 — Hybrid Chart System + Full Timeframes + Signal Entry Lines
 
-- **Hybrid chart mode** — `ChartModal` now checks TradingView availability before rendering:
-  1. Queries `/api/search/tv?q={ticker}` on mount
-  2. If exact `tvSymbol` found → loads TradingView widget (existing behaviour)
-  3. If not found → falls back to `LightweightChart` (Yahoo Finance OHLCV)
-  4. Header badge shows "TradingView", "Yahoo Charts", or "Checking…" live
+- **Hybrid chart mode** — `ChartModal` checks TradingView availability; falls back to LightweightChart (Yahoo Finance OHLCV)
+- **Full timeframe selector** — Intraday: `1m`, `2m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `12h` / Swing: `3mo`, `6mo`, `1y`, `2y`, `5y`
+- **Price lines on Lightweight Charts** — SL (red), T1/T2/T3 (green), suggested entry (yellow), your entry (cyan)
+- **Signal entry algorithm** — `suggestedEntry`, `entryType`, `positionSize` added to `/api/signals/:symbol` response
 
-- **Full timeframe selector** (Yahoo/Lightweight Charts mode) — two grouped rows of buttons:
-  - *Intraday:* `1m`, `2m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `12h`
-  - *Swing:* `3mo`, `6mo`, `1y`, `2y`, `5y`
-  - Backend `RANGE_MAP` in `chart.js` already supported all keys; only the frontend UI was expanded
-  - `timeVisible` on the chart's time axis auto-toggles: shown for intraday ranges, hidden for daily+
+### Phase 15 — Currency Detection Fix for TV-Format Symbols
 
-- **Price lines on Lightweight Charts** — after candlestick data loads, horizontal lines are drawn via `series.createPriceLine()`:
-  - 🔴 Red dashed — Stop Loss (`SL −X%`)
-  - 🟢 Green dashed — T1 / T2 / T3 take-profit targets
-  - 🟡 Yellow solid — Algorithm's suggested entry price + entry type label (`▶ Breakout Entry`)
-  - 🔵 Cyan solid — Your actual trade entry price (only when chart opened from a trade row)
-  - Signal data is fetched inside `LightweightChart` using the same React Query key `['signals', symbol]` as `SignalPanel` — no duplicate network request
+- **Root cause**: all Indian symbol currency checks only matched `.NS`/`.BO` endings; symbols stored as `NSE:RELIANCE` were misidentified as USD
+- **Fix applied to 6 files**: every `endsWith('.NS') || endsWith('.BO')` check now also includes `startsWith('NSE:') || startsWith('BSE:')`
 
-- **Signal entry algorithm** (`server/routes/signals.js`) — three new fields added to every `/api/signals/:symbol` response:
-  ```json
-  {
-    "suggestedEntry": 2340.50,
-    "entryType": "Breakout Entry | Pullback to EMA9 | Wait — Retest EMA20 | Market Entry",
-    "positionSize": "Full | Partial (75%) | Scale-in (50%)"
+### Phase 16 — DCA / Position Averaging
+
+- When adding a new **open** position for a symbol+direction that already has an open position, the server merges instead of inserting a duplicate row
+- **Weighted average entry price**: `(existing_price × existing_qty + new_price × new_qty) / total_qty`
+- A DCA note is appended to `notes`: `DCA +50 @ 338.70 on 2026-05-04`
+
+---
+
+## Phase 17 — Google Drive Migration + PWA + Render Deployment
+
+This phase completely replaced the local SQLite + JWT auth system with Google Drive storage and Google OAuth. The app now runs at `https://trading-dashboard-i4zw.onrender.com` and is installable as an Android PWA.
+
+### Architecture Change
+
+**Before:** Express + SQLite + JWT/bcrypt local auth + Termux/localhost  
+**After:** Express + Google Drive JSON storage + Google OAuth (Passport.js) + Render free tier + PWA
+
+All trade data is stored in the user's own Google Drive as JSON files:
+- `dashboard-trades.json` — array of all trades
+- `dashboard-patterns.json` — custom patterns
+- `dashboard-daily.json` — daily records keyed by date string
+
+The API surface stays **identical** — same endpoints (`/api/trades`, `/api/stats`, etc.) — so no React components needed changing.
+
+---
+
+### New Files
+
+#### `server/lib/driveStore.js`
+Core Google Drive I/O helper used by all route files:
+```js
+getClient(accessToken)       // returns authenticated googleapis Drive client
+findFileId(drive, name)      // searches Drive for file by name, returns fileId or null
+readJSON(accessToken, name, fallback)  // reads JSON file from Drive via stream
+writeJSON(accessToken, name, data)     // creates or updates Drive file (media upload)
+```
+- Uses Google Drive Files API v3
+- `readJSON` handles missing files (returns fallback), parse errors (returns fallback)
+- `writeJSON` checks if file exists; uses `update` (PATCH) if found, `create` (POST) if not
+
+#### `server/routes/trades-drive.js`
+Full trades CRUD backed by Drive instead of SQLite:
+- Same endpoints as old `trades.js`: GET, POST, PUT, DELETE, PATCH `/:id/best`, POST `/:id/partial-close`, POST `/import-csv`, GET `/export`, GET `/symbol-stats`
+- `nextId(trades)` = `Math.max(...trades.map(t => t.id || 0)) + 1`
+- DCA merge logic preserved
+- **Bug fixed in this phase**: PUT route was updating `size` but not `remaining_size` for open positions, causing dashboard to show stale position size. Fix: `remaining_size: isOpen ? Number(size) : null` added to the PUT handler.
+
+#### `server/routes/stats-drive.js`
+All stats endpoints rewritten as JavaScript array operations (no SQL):
+- `GET /api/stats/summary` — total trades, win rate, P&L totals, avg winner/loser
+- `GET /api/stats/winloss` — closed trade win/loss counts
+- `GET /api/stats/pnl-series` — P&L by date for chart
+- `GET /api/stats/by-pattern` — performance grouped by pattern tag
+- `GET /api/stats/portfolio-series` — cumulative portfolio value curve
+
+#### `server/routes/patterns-drive.js`
+- 10 built-in patterns hardcoded as `BUILTINS` array
+- Custom patterns stored in `dashboard-patterns.json` on Drive
+- GET returns built-ins merged with user's customs (built-ins first)
+- POST/PUT/DELETE only affect custom patterns
+
+#### `server/routes/daily-drive.js`
+- Stored as object keyed by date: `{ "2026-05-01": { lesson_of_day, best_setups, updated_at } }`
+- `GET /api/daily?date=YYYY-MM-DD` — returns one record or empty object
+- `PUT /api/daily` — upserts by date
+- `GET /api/daily/range?from=&to=` — returns records for date range
+
+#### `server/routes/migrate.js`
+One-time SQLite → Drive migration route:
+- `GET /api/migrate/status` — checks if `trading.db` exists and has trades; wraps `require('better-sqlite3')` in try-catch so it works gracefully when SQLite is not installed
+- `POST /api/migrate/run` — reads all trades/patterns/daily from SQLite, writes to user's Drive
+- Returns `{ trades, patterns, daily }` counts
+
+#### `server/routes/auth.js`
+Google OAuth 2.0 routes via Passport.js:
+- `GET /auth/google` — redirects to Google consent with `drive.file` scope
+- `GET /auth/callback` — OAuth callback; creates session; redirects to `/`
+- `GET /auth/me` — returns `{ id, name, email, photo }` or 401
+- `POST /auth/logout` — destroys session
+
+#### `client/src/context/AuthContext.jsx`
+```jsx
+const { user, loading, logout } = useAuth();
+```
+- On mount: `GET /auth/me`
+- `loading` true while fetching
+- `logout()`: calls `POST /auth/logout`, clears user state
+
+#### `client/src/components/SignIn.jsx`
+- Shown when user is not authenticated
+- "Sign in with Google" button → `window.location.href = '/auth/google'`
+- Shows error message if `?error=` param present in URL
+
+#### `client/src/components/MigrationBanner.jsx`
+- Fetches `/api/migrate/status` on mount
+- Shows yellow banner: "Found X trades in your local database. Move them to Google Drive?"
+- "Move to Google Drive" button calls `POST /api/migrate/run`
+- Dismissal stored in `localStorage` (doesn't reappear after dismissed or migrated)
+
+#### `build.sh`
+Shell script for Render builds (required because `npm run build --prefix client` didn't set PATH correctly):
+```sh
+cd client && npm install && npm run build
+cd ../server && npm install
+```
+
+---
+
+### Modified Files
+
+#### `server/index.js`
+- Added `app.set('trust proxy', 1)` — **critical** for Render; without this, Express thinks all requests are HTTP (Render's proxy terminates HTTPS), so secure session cookies were never sent back to the browser, causing login loops
+- Added Passport.js middleware: `passport.initialize()`, `passport.session()`
+- Added all Drive-backed routes: trades-drive, stats-drive, patterns-drive, daily-drive
+- Added auth routes: `/auth`
+- Added migrate route: `/api/migrate`
+- Removed all SQLite routes and `db.js` import
+
+#### `server/routes/ai.js`
+Completely rewritten to use Drive instead of SQLite:
+```js
+const token = req.user.accessToken;
+const trades = await readJSON(token, 'dashboard-trades.json', []);
+const daily = await readJSON(token, 'dashboard-daily.json', {});
+const dayTrades = trades.filter(t => t.date === date);
+const insight = await analyzeTrades(date, dayTrades, daily[date] || {});
+daily[date] = { ...daily[date], ai_insight: insight, updated_at: new Date().toISOString() };
+await writeJSON(token, 'dashboard-daily.json', daily);
+```
+
+#### `server/package.json`
+Removed:
+- `better-sqlite3` (incompatible with Node.js v24 native compilation)
+- `bcryptjs` (no longer needed — Google handles auth)
+- `jsonwebtoken` (no longer needed — sessions replace JWTs)
+
+Added:
+- `googleapis` — Drive API client
+- `passport`, `passport-google-oauth20` — Google OAuth
+- `express-session` — server-side session storage
+
+#### `client/package.json`
+- Moved `vite` and `@vitejs/plugin-react` from `devDependencies` to `dependencies`
+- Reason: Render sets `NODE_ENV=production` during build, which makes npm skip devDependencies, so `vite` was unavailable for `npm run build`
+
+#### `client/vite.config.js`
+Added `/auth` to the dev proxy alongside `/api`:
+```js
+proxy: { '/api': 'http://localhost:3001', '/auth': 'http://localhost:3001' }
+```
+
+#### `client/src/App.jsx`
+Restructured with auth gate:
+```jsx
+function AuthGate() {
+  const { user, loading } = useAuth();
+  if (loading) return <LoadingSpinner />;
+  if (!user) {
+    const params = new URLSearchParams(window.location.search);
+    return <SignIn error={params.get('error')} />;
   }
-  ```
-  Logic: compares `price` vs `ema9 × 1.005` and `ema20 × 1.01`; mirrors for sell signals
+  return (
+    <BrowserRouter>
+      <ChartProvider><CurrencyProvider>
+        <AppShell />  {/* includes MigrationBanner */}
+      </CurrencyProvider></ChartProvider>
+    </BrowserRouter>
+  );
+}
+export default function App() {
+  return <AuthProvider><AuthGate /></AuthProvider>;
+}
+```
+- `BrowserRouter` moved inside `AuthGate` — only rendered for authenticated users
+- `MigrationBanner` added inside `AppShell`
 
-- **SignalPanel entry cards** — three new cards appear above SL & Targets:
-  - *Entry Type* — color-coded (green = Breakout/Breakdown, yellow = Pullback/Retest, grey = Market)
-  - *Suggested Entry* — specific price to enter at
-  - *Position Size* — Full / Partial (75%) / Scale-in (50%)
+#### `client/src/components/layout/TopBar.jsx`
+Rewritten to show logged-in user:
+- User photo (or initial pill) button top-right corner
+- Click opens dropdown: full name, email, "Sign out" button
+- Uses `useAuth()` for user data and `logout()` function
 
----
+#### `client/public/sw.js`
+Rewritten to v3 — **no caching at all**:
+```js
+// v3 — no caching, always fetch fresh, keeps PWA installable
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+// No fetch handler — browser handles everything normally
+```
+- Exists only to keep the app installable as a PWA
+- On activate: deletes ALL caches from previous versions
+- No fetch interception — browser always fetches fresh from server
 
-## Current Sprint — What Was Done in This Session (Phase 14)
+#### `client/public/manifest.json`
+PWA manifest:
+```json
+{ "name": "Trading Dashboard", "short_name": "Trades",
+  "start_url": "/", "display": "standalone",
+  "background_color": "#0d0d0d", "theme_color": "#00e676",
+  "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+```
 
-> Phases 12 & 13 were completed in an earlier session. This section covers Phase 14 work.
+#### React Query cache invalidation fixes (5 components)
+**Problem**: Mutation success handlers in 5 components only invalidated `['trades']` but not `['stats']` or `['daily']`. After editing a trade, the dashboard P&L tiles and daily summary didn't refresh.
 
-### 1. Hybrid Chart Mode (`client/src/components/chart/ChartModal.jsx`)
+**Fixed in:**
+- `client/src/components/trades/TradeForm.jsx` — add/edit trade
+- `client/src/components/trades/TradeTable.jsx` — delete trade
+- `client/src/components/trades/ClosePositionForm.jsx` — partial close
+- `client/src/components/dashboard/TodayTradeTable.jsx` — star/delete from dashboard
+- `client/src/components/dashboard/HeroCard.jsx` — unstar best trade
 
-- `chartMode` state: `'checking'` → `'tv'` or `'lightweight'`
-- On mount: extracts ticker from `tvSymbol`, calls `searchApi.tv(ticker)`, checks for exact match
-- `'tv'` mode: existing TradingView widget code (unchanged)
-- `'lightweight'` mode: `LightweightChart` component with Yahoo OHLCV data
-- Mode badge rendered in modal header
+Each now runs:
+```js
+qc.invalidateQueries({ queryKey: ['trades'] });
+qc.invalidateQueries({ queryKey: ['stats'] });
+qc.invalidateQueries({ queryKey: ['daily'] });
+```
 
-### 2. Full Timeframe Selector in LightweightChart
-
-- Replaced single `RANGES` array with `INTRADAY_RANGES` and `SWING_RANGES`
-- Inline `RangeBtn` sub-component for DRY button rendering
-- `timeVisible` on `timeScale` set to `true` for intraday, `false` for daily ranges
-- Default range kept as `'1y'`
-
-### 3. Price Lines on LightweightChart
-
-- Added `useQuery(['signals', symbol])` inside `LightweightChart` (React Query deduplicates with SignalPanel)
-- Added `entryPrice` prop; passed from `ChartModal` down: `<LightweightChart symbol={symbol} entryPrice={entryPrice} />`
-- Lines created with `series.createPriceLine()` after `series.setData(candles)`:
-  - SL line (red dashed)
-  - T1/T2/T3 target lines (green dashed)
-  - `suggestedEntry` line (yellow solid, titled `▶ {entryType}`)
-  - `entryPrice` line (cyan solid, titled "Your Entry")
-- Price lines included in `useEffect` deps: `[candles, sig, entryPrice]`
-
-### 4. Signal Entry Fields (`server/routes/signals.js`)
-
-Added after `slPct` calculation, before `res.json()`:
-- `suggestedEntry` — `+price.toFixed(2)` by default; `+curEma20.toFixed(2)` if price extended > EMA20×1.01; `+curEma9.toFixed(2)` if price extended > EMA9×1.005
-- `entryType` — `'Wait — Retest EMA20'` / `'Pullback to EMA9'` / `'Breakout Entry'` / `'Market Entry'` (sell mirrors: `'Breakdown Entry'`)
-- `positionSize` — `'Scale-in (50%)'` / `'Partial (75%)'` / `'Full'`
-
-### 5. SignalPanel Entry Cards (`client/src/components/chart/ChartModal.jsx`)
-
-Three new cards inserted above the SL/Targets grid, inside `showSLTargets` block, only when `data.entryType` is present:
-- Entry Type card — color: green (Breakout/Breakdown), yellow (Retest/Pullback), grey (Market)
-- Suggested Entry card — yellow `ffd700`, monospace font
-- Position Size card — green (Full), cyan (75%), yellow (50%)
-
----
-
-## Previous Sprint Details
-
-### 1. Composite Backtest Strategy (`server/routes/backtest.js`)
-- Added `calcATR(candles, period=14)` — Wilder smoothing
-- Added `strategyCompositeSignal(candles)` — mirrors signal panel scoring exactly:
-  - EMA9 vs EMA20: ±1
-  - EMA20 vs SMA50: ±1
-  - Price vs EMA20: ±1
-  - RSI zones: −2/−1/+1/+2
-  - MACD fresh cross: ±2, existing alignment: ±1
-  - Volume (>1.5× avg): ±1
-  - Entry: score ≥ 3 → buy next bar
-  - Exit: score ≤ −2 OR close ≤ entry − ATR×1.5
-- Dispatch: `else if (strategy === 'composite_signal') signals = strategyCompositeSignal(candles)`
-
-### 2. Lux Algo Indicators (`server/routes/signals.js`)
-Three new detection functions added before the route handler:
-
-**`detectSFP(candles)`**
-- Looks at last 10 candles for swing high/low
-- Bearish SFP: wick above swing high but closes inside → score −1
-- Bullish SFP: wick below swing low but closes above → score +1
-
-**`detectLiquidity(candles)`**
-- Scans last 20 candles for equal highs (BSL) and equal lows (SSL) within 0.2% tolerance
-- BSL near current price → bear warning reason added
-- SSL near current price → bull reason added
-
-**`detectOrderBlock(candles, atr)`**
-- Scans last 30 candles for bullish OB (bearish candle before impulse > 1.5×ATR, below price)
-- And bearish OB (bullish candle before impulse, above price)
-- Body must be ≥ 0.3×ATR to qualify
-
-New `lux` field in every `/api/signals/:symbol` response:
+#### `package.json` (root)
+Updated build and start scripts for Render:
 ```json
 {
-  "lux": {
-    "sfp": "bearish" | "bullish" | null,
-    "bsl": 2450.25 | null,
-    "ssl": 2380.10 | null,
-    "bullOB": { "top": 2340, "bottom": 2310 } | null,
-    "bearOB": { "top": 2510, "bottom": 2490 } | null
+  "scripts": {
+    "build": "sh build.sh",
+    "start": "node server/index.js"
   }
 }
 ```
 
-### 3. Voice Readout (`client/src/utils/speakSignal.js`) — NEW FILE
-```js
-speakSignal(data, symbol)
-// Speaks: "buy signal for Reliance. Current price 2450. Stop loss at 2380,
-//          that is 2.8 percent below. target 1 at 2558, target 2 at 2720.
-//          Bullish order block support at 2310."
+#### `start.bat` (Windows launcher)
+Updated for new architecture:
+- `git pull origin main`
+- Added client `npm install` step before build
+- Prompts to set up `server/.env` with Google OAuth vars on first run
+- Opens browser to `http://localhost:3001`
+
+---
+
+### Bug Fixes in Phase 17
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| Login loop on mobile after OAuth | Missing `app.set('trust proxy', 1)` — Render's HTTPS proxy caused Express to think requests were HTTP, so secure session cookies were not sent | Added `trust proxy` before session middleware in `server/index.js` |
+| `vite: not found` during Render build | `vite` was in `devDependencies`; Render sets `NODE_ENV=production` so npm skips them | Moved `vite` and `@vitejs/plugin-react` to `dependencies` in `client/package.json` |
+| `better-sqlite3` compile error on Node 24 | C++ native module incompatible with Node v24 headers | Removed `better-sqlite3` from `server/package.json` entirely |
+| `Cannot find module 'better-sqlite3'` at runtime | `ai.js` still imported `db.js` which required SQLite | Rewrote `ai.js` to use `driveStore.js` |
+| Dashboard not updating position size after trade edit | PUT route updated `size` but not `remaining_size` for open positions; dashboard shows `remaining_size ?? size` | Added `remaining_size: isOpen ? Number(size) : null` to PUT handler in `trades-drive.js` |
+| Stale JS served on mobile after deploys | Old service worker (v1/v2) cached HTML and JS files | Rewrote `sw.js` to v3 with zero caching — deletes all old caches on activate |
+| "Insufficient authentication scopes" during Drive migration | User token lacked `drive.file` scope (different Google account or Drive API not enabled) | Re-authenticate via `/auth/google` to get fresh token with correct scopes |
+| `GOOGLE_CALLBACK_URL` pointed to localhost | User set env var to `localhost:3001` instead of Render URL | Changed to `https://trading-dashboard-i4zw.onrender.com/auth/callback` |
+| npm build installing only 75 packages, vite still not found | `npm run build --prefix client` doesn't add `client/node_modules/.bin` to PATH | Created `build.sh` that explicitly `cd client && npm install && npm run build` |
+
+---
+
+### Deployment — Render (free tier)
+
+- **URL**: `https://trading-dashboard-i4zw.onrender.com`
+- **Build Command**: `sh build.sh`
+- **Start Command**: `node server/index.js`
+- **Auto-deploy**: on every push to `main`
+- **Free tier note**: sleeps after 15 min of inactivity; first load after sleep takes ~30 seconds
+
+Required environment variables on Render:
 ```
-- Uses `window.speechSynthesis` (browser-native, no library)
-- Cancels any current speech before starting
-- Includes Lux Algo context (SFP, OB) in the spoken text
-
-### 4. Chart Modal Updates (`client/src/components/chart/ChartModal.jsx`)
-- Imported `speakSignal` — 🔊 button appears in Signal Analysis header
-- Clicking 🔊 reads the full signal aloud (does not trigger panel collapse)
-- Signal panel sections are now **individually toggleable**:
-  - ▶ Reasons
-  - ▶ ◈ Smart Money (hidden when no Lux data detected)
-  - ▶ SL & Targets
-  - ▶ Indicators
-- Smart Money section shows: SFP type, BSL price, SSL price, Bull OB range, Bear OB range
-
-### 5. Open Positions Updates (`client/src/components/dashboard/OpenPositions.jsx`)
-- **"◈ Scan Signals" button** — fetches signals for all portfolio symbols in parallel
-- BUY signals auto-spoken via `speakSignal` on scan
-- **Signal badge column** added to table — colored by signal type (STRONG BUY → green, STRONG SELL → red, etc.)
-- Badge is clickable → opens chart for that symbol
-- **"⟷ TV Tickers" button** → modal showing Yahoo Finance → TradingView symbol mapping for all positions, with per-symbol copy + "Copy All" button
-- **"◉ Add Position" button** in header (shown when `onAddPosition` prop passed from DailyDashboard)
-- `colSpan` updated 11 → 12
-
-### 6. Backtest Page (`client/src/pages/Backtest.jsx`)
-- Composite strategy added to `STRATEGIES` array
-- Empty state hint updated: "7 strategies" → "8 strategies"
-
-### 7. TradingView Ticker Converter (`client/src/utils/tvSymbol.js`) — NEW FILE
-Shared utility used by ChartModal, TickerInput, OpenPositions:
-```
-RELIANCE.NS   → NSE:RELIANCE
-TATASTEEL.BO  → BSE:TATASTEEL
-^NSEI         → NSE:NIFTY
-^NSEBANK      → NSE:BANKNIFTY
-^BSESN        → BSE:SENSEX
-^GSPC         → SP:SPX
-^IXIC         → NASDAQ:COMP
-^DJI          → DJ:DJI
-GC=F          → COMEX:GC1!
-CL=F          → NYMEX:CL1!
-USDINR=X      → FX_IDC:USDINR
-EURUSD=X      → FX:EURUSD
-BTC-USD       → BINANCE:BTCUSDT
-ETH-USD       → BINANCE:ETHUSDT
-```
-
-### 8. TickerInput Search (`client/src/components/trades/TickerInput.jsx`)
-Each search result now shows the TradingView equivalent below the Yahoo symbol:
-```
-RELIANCE.NS    Reliance Industries Limited    NSE
-TV: NSE:RELIANCE
+PORT=3001
+NODE_ENV=production
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+GOOGLE_CALLBACK_URL=https://trading-dashboard-i4zw.onrender.com/auth/callback
+SESSION_SECRET=any-random-string
 ```
 
 ---
 
-## File Map — Every Changed File
+### PWA Installation (Android)
 
-### Phase 16 (latest)
+1. Open `https://trading-dashboard-i4zw.onrender.com` in Chrome on Android
+2. Tap three-dot menu → "Add to Home Screen"
+3. App icon appears on home screen — works like a native app
+4. Sign in with Google → all trades load from your Drive
+
+---
+
+## File Map — Phase 17
 
 | File | Status | Change |
 |------|--------|--------|
-| `server/routes/trades.js` | Modified | DCA auto-merge: POST checks for existing open position, merges with weighted avg entry price |
+| `server/lib/driveStore.js` | **NEW** | Google Drive read/write helper |
+| `server/routes/auth.js` | **NEW** | Google OAuth routes (Passport.js) |
+| `server/routes/trades-drive.js` | **NEW** | Full trades CRUD via Drive |
+| `server/routes/stats-drive.js` | **NEW** | Stats computed from Drive trades (JS, no SQL) |
+| `server/routes/patterns-drive.js` | **NEW** | Patterns via Drive |
+| `server/routes/daily-drive.js` | **NEW** | Daily records via Drive |
+| `server/routes/migrate.js` | **NEW** | One-click SQLite → Drive migration |
+| `build.sh` | **NEW** | Render build script |
+| `railway.json` | **NEW** | Railway config (unused, kept for reference) |
+| `client/src/context/AuthContext.jsx` | **NEW** | Google auth state + logout |
+| `client/src/components/SignIn.jsx` | **NEW** | Google sign-in screen |
+| `client/src/components/MigrationBanner.jsx` | **NEW** | SQLite → Drive migration UI |
+| `server/routes/ai.js` | **Rewritten** | Uses driveStore instead of db.js |
+| `server/index.js` | **Modified** | trust proxy, Passport, Drive routes, auth routes |
+| `server/package.json` | **Modified** | Removed sqlite3/bcrypt/jwt; added googleapis/passport |
+| `client/package.json` | **Modified** | vite moved to dependencies |
+| `client/vite.config.js` | **Modified** | Added /auth proxy |
+| `client/src/App.jsx` | **Modified** | AuthProvider, AuthGate, BrowserRouter inside gate |
+| `client/src/components/layout/TopBar.jsx` | **Rewritten** | User photo/name/logout dropdown |
+| `client/public/sw.js` | **Rewritten** | v3, zero caching, deletes old caches |
+| `client/public/manifest.json` | **Modified** | PWA display/theme/icons |
+| `client/src/components/trades/TradeForm.jsx` | **Modified** | Invalidates stats + daily on success |
+| `client/src/components/trades/TradeTable.jsx` | **Modified** | Invalidates stats + daily on delete |
+| `client/src/components/trades/ClosePositionForm.jsx` | **Modified** | Invalidates stats + daily on success |
+| `client/src/components/dashboard/TodayTradeTable.jsx` | **Modified** | Invalidates stats + daily |
+| `client/src/components/dashboard/HeroCard.jsx` | **Modified** | Invalidates stats + daily |
+| `package.json` (root) | **Modified** | build = sh build.sh, start = node server/index.js |
+| `start.bat` | **Modified** | Google OAuth env var prompts, updated pull branch |
+| `README.md` | **Rewritten** | New architecture: Drive + Render + PWA |
+| `server/.env.example` | **Modified** | Added Google OAuth + session vars |
 
-### Phase 15
+---
 
-| File | Status | Change |
-|------|--------|--------|
-| `client/src/utils/currency.js` | Modified | `nativeOf()` — added `NSE:`/`BSE:` prefix checks alongside `.NS`/`.BO` |
-| `client/src/components/dashboard/OpenPositions.jsx` | Modified | `detectRegion()` — same fix |
-| `client/src/components/trades/ClosePositionForm.jsx` | Modified | `detectRegion()` — same fix |
-| `client/src/components/dashboard/TodayTradeTable.jsx` | Modified | `nativeCs()` — same fix |
-| `client/src/components/dashboard/PnlSummary.jsx` | Modified | `portfolioNative` detection — same fix |
-| `client/src/pages/Investments.jsx` | Modified | region detection — same fix |
+## Previous Phase File Maps
+
+### Phase 16 (DCA)
+| File | Change |
+|------|--------|
+| `server/routes/trades.js` | DCA auto-merge in POST handler |
+
+### Phase 15 (Currency Fix)
+| File | Change |
+|------|--------|
+| `client/src/utils/currency.js` | NSE:/BSE: prefix checks |
+| `client/src/components/dashboard/OpenPositions.jsx` | Same |
+| `client/src/components/trades/ClosePositionForm.jsx` | Same |
+| `client/src/components/dashboard/TodayTradeTable.jsx` | Same |
+| `client/src/components/dashboard/PnlSummary.jsx` | Same |
+| `client/src/pages/Investments.jsx` | Same |
 
 ### Phase 14
-
-| File | Status | Change |
-|------|--------|--------|
-| `client/src/components/chart/ChartModal.jsx` | Modified | Hybrid mode (chartMode state, TV availability check, LightweightChart component with full timeframes + price lines + entry cards) |
-| `server/routes/signals.js` | Modified | suggestedEntry, entryType, positionSize fields added |
+| File | Change |
+|------|--------|
+| `client/src/components/chart/ChartModal.jsx` | Hybrid mode, full timeframes, price lines, entry cards |
+| `server/routes/signals.js` | suggestedEntry, entryType, positionSize |
 
 ### Phase 13
-
-| File | Status | Change |
-|------|--------|--------|
-| `server/routes/stats.js` | Modified | `GET /api/stats/winloss` endpoint |
-| `client/src/api/client.js` | Modified | `statsApi.winloss()`, `searchApi.tv()` |
-| `client/src/components/dashboard/PnlSummary.jsx` | Modified | overallWins/Losses/WinRate/Total props |
-| `client/src/pages/DailyDashboard.jsx` | Modified | winlossStats query, props to PnlSummary |
-| `client/src/components/trades/TradeTable.jsx` | Modified | inline symbol filter bar with autocomplete dropdown |
+| File | Change |
+|------|--------|
+| `server/routes/stats.js` | GET /api/stats/winloss |
+| `client/src/api/client.js` | statsApi.winloss(), searchApi.tv() |
+| `client/src/components/dashboard/PnlSummary.jsx` | All-time win/loss props |
+| `client/src/pages/DailyDashboard.jsx` | winlossStats query |
+| `client/src/components/trades/TradeTable.jsx` | Filter bar |
 
 ### Phase 12
+| File | Change |
+|------|--------|
+| `server/utils/symbolConvert.js` | **NEW** toYahoo() |
+| `server/routes/prices.js` | toYahoo() |
+| `server/routes/chart.js` | toYahoo() |
+| `server/routes/signals.js` | toYahoo() |
+| `server/routes/backtest.js` | toYahoo() |
+| `server/routes/news.js` | toYahoo() |
+| `client/src/utils/tvSymbol.js` | Sector indices, TVC fallback |
+| `client/src/components/trades/TickerInput.jsx` | TV symbol sub-label |
+| `server/routes/search.js` | GET /api/search/tv |
 
-| File | Status | Change |
-|------|--------|--------|
-| `server/utils/symbolConvert.js` | **NEW** | `toYahoo()` TV→Yahoo converter |
-| `server/routes/prices.js` | Modified | `toYahoo()` wrapping |
-| `server/routes/chart.js` | Modified | `toYahoo()` wrapping |
-| `server/routes/signals.js` | Modified | `toYahoo()` wrapping |
-| `server/routes/backtest.js` | Modified | `toYahoo()` wrapping |
-| `server/routes/news.js` | Modified | `toYahoo()` wrapping |
-| `client/src/utils/tvSymbol.js` | Modified | sector indices, TVC fallback, crypto uppercase, IST timezone for TV-format symbols |
-| `client/src/components/trades/TickerInput.jsx` | Modified | search reverted to Yahoo; `toTvSymbol()` on select |
-| `server/routes/search.js` | Modified | `GET /api/search/tv` proxy route added |
-
-### Previous Sprint (Phases 10–11)
-
-| File | Status | Change |
-|------|--------|--------|
-| `server/routes/signals.js` | Modified | detectSFP, detectLiquidity, detectOrderBlock; lux field in response |
-| `server/routes/backtest.js` | Modified | calcATR, strategyCompositeSignal, dispatch case |
-| `client/src/utils/speakSignal.js` | **NEW** | Web Speech API utility |
-| `client/src/utils/tvSymbol.js` | **NEW** | Yahoo→TradingView symbol converter |
-| `client/src/components/chart/ChartModal.jsx` | Modified | 🔊 button, Smart Money section, section toggles, import tvSymbol utility |
-| `client/src/components/dashboard/OpenPositions.jsx` | Modified | Scan Signals, TV Tickers modal, Add Position button, signal badges |
-| `client/src/pages/Backtest.jsx` | Modified | Composite strategy in list |
-| `client/src/components/trades/TickerInput.jsx` | Modified | TV symbol sub-label in results |
-| `client/src/pages/DailyDashboard.jsx` | Modified | Pass onAddPosition to OpenPositions |
+### Phases 10–11
+| File | Change |
+|------|--------|
+| `server/routes/signals.js` | detectSFP, detectLiquidity, detectOrderBlock |
+| `server/routes/backtest.js` | calcATR, strategyCompositeSignal |
+| `client/src/utils/speakSignal.js` | **NEW** Web Speech API |
+| `client/src/utils/tvSymbol.js` | **NEW** Yahoo→TradingView converter |
+| `client/src/components/chart/ChartModal.jsx` | 🔊, Smart Money, section toggles |
+| `client/src/components/dashboard/OpenPositions.jsx` | Scan Signals, TV Tickers, signal badges |
+| `client/src/pages/Backtest.jsx` | Composite strategy |
+| `client/src/components/trades/TickerInput.jsx` | TV symbol label |
+| `client/src/pages/DailyDashboard.jsx` | onAddPosition prop |
 
 ---
 
 ## Key Architecture Decisions
 
-- **Symbols stored in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`, `BINANCE:BTCUSDT`. Backend converts via `toYahoo()` (in `server/utils/symbolConvert.js`) for every Yahoo Finance call. Old Yahoo-format trades still work because `toYahoo()` is a no-op if there is no `:`.
-- **Hybrid chart auto-detection** — on every chart open, the app queries `/api/search/tv?q={ticker}`; if the exact `tvSymbol` appears in results → TradingView widget; otherwise → Lightweight Charts (Yahoo data). User always sees which source is active via the header badge.
-- **TradingView widget (free)** — embedded via `tv.js`. Cannot draw custom lines/shapes from outside (sealed iframe). All custom analysis (SL lines, targets, entry suggestion) is rendered as Lightweight Charts `createPriceLine()` in the Yahoo fallback mode; the Signal Panel below the TV widget shows the same data as text.
-- **Lux Algo server-side** — SFP/BSL/SSL/OB computed on the Node server from candle data, returned in the signals API response. No TradingView overlay needed.
-- **Voice via Web Speech API** — zero dependencies, browser-native. Works on Chrome/Edge/Safari.
-- **Signal scan = portfolio-only** — `tradeSymbols` derived from open trades only, never scans arbitrary symbols.
-- **React Query deduplication** — `LightweightChart` and `SignalPanel` both call `useQuery(['signals', symbol])`. React Query serves both from the same cache entry — only one network request is made.
-- **DCA merges server-side** — the `POST /api/trades` route handles averaging logic; the frontend submits a normal "Add Trade" form and transparently receives back the merged position. No UI changes needed.
-- **Indian symbol detection** — all currency/region checks in the frontend must match both `.NS`/`.BO` (Yahoo format) and `NSE:`/`BSE:` (TradingView format) since the DB may contain either depending on when the trade was entered.
-
----
-
-## Deferred / Not Yet Done
-
-- **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy (for use in TradingView Strategy Tester). Deferred by user.
-- **Backtest price chart with entry/exit markers** — show candle chart with ▲▼ trade markers overlaid on price chart in Backtest results.
-- **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of reading from CurrencyContext.
-- **Third-party GitHub stock analysis integration** — user requested integrating an external GitHub project for stock analysis; deferred until user provides the repository URL.
-- **Price lines in TradingView widget mode** — SL/target/entry lines are only drawn in Yahoo/Lightweight Charts mode; TradingView's free widget does not expose a public API for external line drawing.
+- **Google Drive as database** — zero server-side storage; each user's data lives in their own Drive account. The app reads/writes JSON files using the user's OAuth access token. Nothing stored on the server.
+- **Same API surface** — all endpoints (`/api/trades`, `/api/stats`, etc.) kept identical after migration so no React components needed to change.
+- **Symbols in TradingView format** — `NSE:RELIANCE`, `NASDAQ:AAPL`. Backend `toYahoo()` converts for Yahoo Finance API calls. Frontend currency detection must match both `.NS`/`.BO` and `NSE:`/`BSE:` prefixes.
+- **`trust proxy` required on Render** — Render's load balancer terminates HTTPS and forwards as HTTP internally. Without `app.set('trust proxy', 1)`, Express never sets secure cookies, causing permanent login loops.
+- **vite in dependencies not devDependencies** — Render sets `NODE_ENV=production` during build, causing npm to skip devDependencies. Vite must be in regular dependencies to be available for the build step.
+- **Service worker = zero caching** — v3 sw.js exists only for PWA installability. No fetch interception. Old caches deleted on activate. This prevents stale JS from being served after deployments.
+- **React Query invalidation trinity** — any mutation that changes trades must invalidate `['trades']`, `['stats']`, AND `['daily']` to keep all dashboard tiles in sync.
+- **Hybrid chart auto-detection** — ChartModal queries `/api/search/tv`; if exact TV symbol found → TradingView widget; otherwise → LightweightChart (Yahoo data).
+- **DCA merges server-side** — `POST /api/trades` checks for existing open position with same symbol+direction and merges transparently. Frontend just submits a normal Add Trade form.
 
 ---
 
 ## How to Run
 
+### On Render (production)
+Push to `main` — Render auto-deploys in ~2 minutes.
+
+### On PC (Windows)
+Double-click `start.bat`. On first run it will pause to ask for `.env` values.
+
+### Local development (hot reload)
 ```bash
-# Server
+# Terminal 1 — API server
 cd server && node index.js
 
-# Client (dev)
+# Terminal 2 — Vite dev server
 cd client && npm run dev
+```
+Open http://localhost:5173 — Vite proxies `/api` and `/auth` to port 3001.
 
-# Client (production build)
-cd client && npm run build
-# Then restart server — it serves client/dist statically
+### Environment variables (`server/.env`)
+```env
+PORT=3001
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_CLIENT_ID=...apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
+GOOGLE_CALLBACK_URL=http://localhost:3001/auth/callback
+SESSION_SECRET=any-random-string
 ```
 
-Server runs on port 3001. In dev, Vite proxies `/api` to `localhost:3001`.
+---
 
-Environment: `server/.env` needs `PORT=3001` and optionally `ANTHROPIC_API_KEY=sk-ant-...`
+## Deferred / Not Yet Done
+
+- **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy
+- **Backtest price chart with entry/exit markers** — candle chart with ▲▼ trade markers in Backtest results
+- **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of CurrencyContext
+- **Price lines in TradingView widget mode** — only available in Yahoo/Lightweight Charts fallback mode
+- **Third-party GitHub stock analysis integration** — user requested; deferred until URL provided
