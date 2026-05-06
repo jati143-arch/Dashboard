@@ -426,6 +426,56 @@ FRED_API_KEY=...             # free: fred.stlouisfed.org
 
 ---
 
+---
+
+## Phase 21 — Sector Exposure Heatmap
+
+**`server/lib/sectorMap.js`** (new):
+- `getSector(symbol)` — converts any symbol format (TV `NSE:RELIANCE`, Yahoo `RELIANCE.NS`, plain `RELIANCE`) to sector name
+- Hardcoded NSE sector lookup: IT, Banking, FMCG, Auto, Pharma, Energy, Metal, Finance, Realty, Telecom, Infrastructure, Consumer
+- Special cases: Crypto, Currency (Forex), US Equities, NSE Other, Other
+
+**`GET /api/stats/sector-breakdown`** added to `server/routes/stats-drive.js`:
+- Groups all trades (open + closed) by sector
+- Returns: sector name, closed trade count, open count, total P&L, win rate %, symbols list
+- Sorted by total activity (closed + open trades)
+
+**`client/src/components/performance/SectorExposure.jsx`** (new):
+- CSS grid heatmap — `repeat(auto-fill, minmax(160px, 1fr))`
+- Cell background colored by closed P&L: 5 green shades (profit) / 3 red shades (loss) / neutral (no closed trades)
+- Each cell shows: sector name, P&L amount, win rate %, "N open" badge if open positions, first 3 symbols
+
+**`client/src/pages/Performance.jsx`** updated:
+- Added "Sectors" tab between Overview and Risk Metrics
+- `sectorBreakdown` query enabled only when sectors tab is active
+
+---
+
+## Phase 22 — Volumized Order Blocks in ChartModal
+
+**`client/src/components/chart/ChartModal.jsx`** updated:
+
+`calcVolumeOrderBlocks(candles, swingLen, maxOBs, maxATRMult)` (new pure-JS function):
+- Ports the Flux Charts "Volumized Order Blocks" Pine Script algorithm to JavaScript
+- Swing pivot detection: bar at `i - swingLen` is pivot high if its high > all highs in subsequent `swingLen` bars
+- **Bullish OB**: when close crosses above a swing high → find lowest-low candle between swing high and crossing → that candle's range is the OB zone
+- **Bearish OB**: when close crosses below a swing low → find highest-high candle → that candle's range is the OB zone
+- ATR filter: OB size must be ≤ `3.5 × ATR(10)` to remove noise
+- Invalidation: bull OB broken when `low < ob.bottom`; bear OB broken when `high > ob.top`
+- Returns up to `maxOBs` most recent unbroken zones per side
+
+Chart drawing:
+- 2 `LineSeries` per zone (top boundary + bottom boundary lines)
+- Bull zones: teal `rgba(8,153,129,...)` | Bear zones: red `rgba(242,54,70,...)`
+
+UI changes:
+- `vob: false` added to `ind` state (default off)
+- `vobSwing: 10` added to `per` state (configurable)
+- "VOB" `IndToggle` added in indicator bar (after MACD, separated by a divider)
+- Period input controls swing length; changing it recalculates and redraws
+
+---
+
 ## Deferred / Not Yet Done
 
 - **Upstox OAuth scaffolding** — real-time NSE quotes (needs Upstox developer account)
