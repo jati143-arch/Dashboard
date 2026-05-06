@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createChart, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import { signalsApi, searchApi, chartApi } from '../../api/client.js';
 import { speakSignal } from '../../utils/speakSignal.js';
 import { toTvSymbol, tvTimezone } from '../../utils/tvSymbol.js';
@@ -480,7 +480,7 @@ function LightweightChart({ symbol, entryPrice }) {
     if (sig) {
       // Arrow marker on the last candle (where signal is computed from)
       if (sig.signal !== 'NEUTRAL') {
-        chart.setSeriesMarkers(candleSeries, [{
+        createSeriesMarkers(candleSeries, [{
           time: lastCandle.time,
           position: sig.isBuy ? 'belowBar' : 'aboveBar',
           color: sig.isBuy ? '#00ff88' : '#ff3355',
