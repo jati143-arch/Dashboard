@@ -1,5 +1,6 @@
 const express = require('express');
-const yahooFinance = require('yahoo-finance2').default;
+const { default: YahooFinance } = require('yahoo-finance2');
+const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 const https = require('https');
 const { getSettings } = require('../lib/userSettings');
 
@@ -47,7 +48,7 @@ async function fetchQuotes(symbolList) {
   const results = [];
   for (const item of symbolList) {
     try {
-      const q = await yahooFinance.quote(item.symbol, {}, { validateResult: false });
+      const q = await yf.quote(item.symbol);
       results.push({
         ...item,
         price:      q.regularMarketPrice ?? null,
