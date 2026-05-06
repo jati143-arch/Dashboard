@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiApi, patternsApi, aiProviderApi } from '../api/client.js';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -12,6 +12,13 @@ export default function AiInsights() {
   const [selectedPattern, setSelectedPattern] = useState('');
   const [patternExplanation, setPatternExplanation] = useState('');
   const [aiError, setAiError] = useState('');
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatError, setChatError] = useState('');
+  const chatBottomRef = useRef(null);
+
   const qc = useQueryClient();
 
   const { data: providerInfo } = useQuery({ queryKey: ['ai-provider'], queryFn: aiProviderApi.get });
@@ -32,7 +39,7 @@ export default function AiInsights() {
       qc.invalidateQueries({ queryKey: ['portfolio-analysis'] });
       setAiError('');
     },
-    onError: (e) => setAiError(e.response?.data?.error || 'AI analysis failed. Check your API key.'),
+    onError: (e) => setAiError(e.response?.data?.error || 'AI analysis failed. Check your API key in Settings.'),
   });
 
   const { mutate: explainPattern, isPending: explaining } = useMutation({
@@ -41,8 +48,37 @@ export default function AiInsights() {
       setPatternExplanation(data.explanation);
       setAiError('');
     },
-    onError: (e) => setAiError(e.response?.data?.error || 'Failed to fetch explanation. Check your API key.'),
+    onError: (e) => setAiError(e.response?.data?.error || 'Failed to fetch explanation. Check your API key in Settings.'),
   });
+
+  const { mutate: sendChat, isPending: chatting } = useMutation({
+    mutationFn: (messages) => aiApi.chat(messages),
+    onSuccess: (data) => {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      setChatError('');
+    },
+    onError: (e) => setChatError(e.response?.data?.error || 'Chat failed. Check your API key in Settings.'),
+  });
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatting]);
+
+  function handleChatSend() {
+    const text = chatInput.trim();
+    if (!text || chatting) return;
+    const updated = [...chatMessages, { role: 'user', content: text }];
+    setChatMessages(updated);
+    setChatInput('');
+    sendChat(updated);
+  }
+
+  function handleChatKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleChatSend();
+    }
+  }
 
   const preStyle = {
     fontFamily: 'var(--font-sans)',
@@ -67,11 +103,11 @@ export default function AiInsights() {
         {providerInfo && (
           <span style={{
             padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
-            background: providerInfo.provider === 'groq' ? '#1a3a1a' : providerInfo.provider === 'claude' ? '#1a1a3a' : 'var(--bg-card)',
-            color: providerInfo.provider === 'groq' ? '#86efac' : providerInfo.provider === 'claude' ? '#a5b4fc' : 'var(--text-dim)',
+            background: providerInfo.provider === 'groq' ? '#1a3a1a' : providerInfo.provider === 'claude' ? '#1a1a3a' : providerInfo.provider === 'gemini' ? '#1a2a3a' : providerInfo.provider === 'openrouter' ? '#2a1a2a' : 'var(--bg-card)',
+            color: providerInfo.provider === 'groq' ? '#86efac' : providerInfo.provider === 'claude' ? '#a5b4fc' : providerInfo.provider === 'gemini' ? '#7dd3fc' : providerInfo.provider === 'openrouter' ? '#d8b4fe' : 'var(--text-dim)',
             border: '1px solid var(--border)',
           }}>
-            {providerInfo.provider === 'groq' ? '✦ Groq · Free' : providerInfo.provider === 'claude' ? '✦ Claude' : '⚠ No AI key'}
+            {providerInfo.provider === 'none' ? '⚠ No AI key' : `✦ ${providerInfo.provider === 'groq' ? 'Groq · Free' : providerInfo.provider === 'claude' ? 'Claude' : providerInfo.provider === 'gemini' ? 'Gemini' : 'OpenRouter'}`}
             {providerInfo.model && <span style={{ opacity: 0.7, marginLeft: 4, fontSize: 10 }}>({providerInfo.model})</span>}
           </span>
         )}
@@ -116,7 +152,7 @@ export default function AiInsights() {
       </div>
 
       {/* Pattern Explainer */}
-      <div className="card" style={{ borderLeft: '3px solid var(--yellow)' }}>
+      <div className="card" style={{ marginBottom: 20, borderLeft: '3px solid var(--yellow)' }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
           Pattern Deep Dive
         </div>
@@ -152,6 +188,104 @@ export default function AiInsights() {
             Select a pattern above to get a practical tip.
           </div>
         )}
+      </div>
+
+      {/* AI Portfolio Chat */}
+      <div className="card" style={{ borderLeft: '3px solid var(--accent)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Chat With AI About Your Portfolio
+          </div>
+          {chatMessages.length > 0 && (
+            <button
+              onClick={() => { setChatMessages([]); setChatError(''); }}
+              style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+          Ask anything about your trades. The AI has full access to your portfolio data.
+        </div>
+
+        {chatError && (
+          <div style={{ background: 'var(--red-dim)', border: '1px solid var(--red)', borderRadius: 'var(--radius)', padding: '8px 12px', color: 'var(--red)', fontSize: 12, marginBottom: 12 }}>
+            ⚠ {chatError}
+          </div>
+        )}
+
+        {/* Message list */}
+        {chatMessages.length > 0 && (
+          <div style={{ maxHeight: 400, overflowY: 'auto', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {chatMessages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '80%',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius)',
+                  fontSize: 13,
+                  lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap',
+                  background: m.role === 'user' ? 'var(--accent)' : 'var(--bg-surface)',
+                  color: m.role === 'user' ? '#fff' : 'var(--text-primary)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--border)',
+                }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {chatting && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, fontStyle: 'italic' }}>
+                  AI is thinking…
+                </div>
+              </div>
+            )}
+            <div ref={chatBottomRef} />
+          </div>
+        )}
+
+        {chatMessages.length === 0 && !chatting && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {['Which pattern makes me the most money?', 'What is my biggest weakness?', 'Compare my LONG vs SHORT performance'].map(q => (
+              <button
+                key={q}
+                onClick={() => {
+                  setChatInput(q);
+                  const updated = [...chatMessages, { role: 'user', content: q }];
+                  setChatMessages(updated);
+                  setChatInput('');
+                  sendChat(updated);
+                }}
+                style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <textarea
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={handleChatKey}
+            placeholder="Ask anything about your portfolio… (Enter to send, Shift+Enter for newline)"
+            rows={2}
+            style={{ flex: 1, resize: 'none', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5 }}
+            disabled={chatting}
+          />
+          <button
+            className="btn-primary"
+            onClick={handleChatSend}
+            disabled={!chatInput.trim() || chatting}
+            style={{ alignSelf: 'flex-end', whiteSpace: 'nowrap' }}
+          >
+            {chatting ? '…' : 'Send ↵'}
+          </button>
+        </div>
       </div>
     </div>
   );

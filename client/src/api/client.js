@@ -48,6 +48,13 @@ export const aiApi = {
   portfolioAnalysis: () => api.post('/ai/portfolio-analysis').then(r => r.data),
   getPortfolioAnalysis: () => api.get('/ai/portfolio-analysis').then(r => r.data),
   explainPattern: (slug) => api.post('/ai/explain-pattern', { slug }).then(r => r.data),
+  chat: (messages) => api.post('/ai/chat', { messages }).then(r => r.data),
+};
+
+export const settingsApi = {
+  get:    ()     => api.get('/settings').then(r => r.data),
+  save:   (data) => api.put('/settings', data).then(r => r.data),
+  testAI: ()     => api.post('/settings/test-ai').then(r => r.data),
 };
 
 export const searchApi = {

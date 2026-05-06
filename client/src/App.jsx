@@ -13,6 +13,7 @@ import Backtest from './pages/Backtest.jsx';
 import MarketHub from './pages/MarketHub.jsx';
 import Watchlist from './pages/Watchlist.jsx';
 import EconomicCalendar from './pages/EconomicCalendar.jsx';
+import Settings from './pages/Settings.jsx';
 import { ChartProvider, useChart } from './context/ChartContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import ChartModal from './components/chart/ChartModal.jsx';
@@ -42,6 +43,7 @@ function AppShell() {
             <Route path="/patterns"    element={<PatternLibrary />} />
             <Route path="/ai"          element={<AiInsights />} />
             <Route path="/backtest"    element={<Backtest />} />
+            <Route path="/settings"    element={<Settings />} />
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </main>

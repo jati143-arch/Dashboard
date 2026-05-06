@@ -11,6 +11,7 @@ const links = [
   { to: '/backtest',    icon: '⊕', label: 'Backtest'   },
   { to: '/patterns',    icon: '◇', label: 'Patterns'   },
   { to: '/ai',          icon: '✦', label: 'AI Insights' },
+  { to: '/settings',    icon: '⚙', label: 'Settings'    },
 ];
 
 export default function Sidebar({ open, onClose }) {

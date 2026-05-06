@@ -1,6 +1,7 @@
 const express = require('express');
 const yahooFinance = require('yahoo-finance2').default;
 const https = require('https');
+const { getSettings } = require('../lib/userSettings');
 
 const router = express.Router();
 
@@ -124,14 +125,15 @@ router.get('/movers', async (req, res) => {
 
 // GET /api/market/events — Finnhub economic calendar
 router.get('/events', async (req, res) => {
-  if (!process.env.FINNHUB_API_KEY) {
-    return res.json({ events: [], missing: 'FINNHUB_API_KEY' });
-  }
   try {
+    const s = await getSettings(req.user.accessToken, req.user.id);
+    const finnhubKey = s.finnhub_key || process.env.FINNHUB_API_KEY;
+    if (!finnhubKey) return res.json({ events: [], missing: 'FINNHUB_API_KEY' });
+
     const today = new Date();
     const from  = today.toISOString().slice(0, 10);
     const to    = new Date(today.getTime() + 14 * 86400000).toISOString().slice(0, 10);
-    const url   = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${process.env.FINNHUB_API_KEY}`;
+    const url   = `https://finnhub.io/api/v1/calendar/economic?from=${from}&to=${to}&token=${finnhubKey}`;
 
     const data = await new Promise((resolve, reject) => {
       https.get(url, (r) => {
