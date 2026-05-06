@@ -1,6 +1,6 @@
 const express = require('express');
 const { readJSON, writeJSON } = require('../lib/driveStore');
-const { analyzeTrades, explainPattern, activeProvider } = require('../services/aiProvider');
+const { analyzePortfolio, explainPattern, activeProvider } = require('../services/aiProvider');
 
 const router = express.Router();
 
@@ -9,25 +9,32 @@ router.get('/provider', (req, res) => {
   res.json(activeProvider());
 });
 
-// POST /api/ai/daily-analysis
-router.post('/daily-analysis', async (req, res) => {
-  const { date } = req.body;
-  if (!date) return res.status(400).json({ error: 'date is required' });
-
+// POST /api/ai/portfolio-analysis
+router.post('/portfolio-analysis', async (req, res) => {
   try {
     const token  = req.user.accessToken;
     const trades = await readJSON(token, 'dashboard-trades.json', []);
     const daily  = await readJSON(token, 'dashboard-daily.json', {});
 
-    const dayTrades   = trades.filter(t => t.date === date);
-    const dailyRecord = daily[date] || {};
+    const insight = await analyzePortfolio(trades);
 
-    const insight = await analyzeTrades(date, dayTrades, dailyRecord);
-
-    daily[date] = { ...dailyRecord, ai_insight: insight, updated_at: new Date().toISOString() };
+    // Save under a fixed key so it persists
+    daily['__portfolio__'] = { ai_insight: insight, updated_at: new Date().toISOString() };
     await writeJSON(token, 'dashboard-daily.json', daily);
 
-    res.json({ insight });
+    res.json({ insight, updated_at: daily['__portfolio__'].updated_at });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/ai/portfolio-analysis — return cached insight
+router.get('/portfolio-analysis', async (req, res) => {
+  try {
+    const daily = await readJSON(req.user.accessToken, 'dashboard-daily.json', {});
+    const saved = daily['__portfolio__'];
+    if (!saved) return res.json({ insight: null, updated_at: null });
+    res.json({ insight: saved.ai_insight, updated_at: saved.updated_at });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

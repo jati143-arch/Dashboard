@@ -45,7 +45,8 @@ export const patternsApi = {
 };
 
 export const aiApi = {
-  dailyAnalysis: (date) => api.post('/ai/daily-analysis', { date }).then(r => r.data),
+  portfolioAnalysis: () => api.post('/ai/portfolio-analysis').then(r => r.data),
+  getPortfolioAnalysis: () => api.get('/ai/portfolio-analysis').then(r => r.data),
   explainPattern: (slug) => api.post('/ai/explain-pattern', { slug }).then(r => r.data),
 };
 

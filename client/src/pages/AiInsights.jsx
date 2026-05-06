@@ -1,23 +1,24 @@
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { aiApi, patternsApi, dailyApi, aiProviderApi } from '../api/client.js';
+import { aiApi, patternsApi, aiProviderApi } from '../api/client.js';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
+import { useState } from 'react';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 export default function AiInsights() {
-  const [selectedDate, setSelectedDate] = useState(todayStr());
   const [selectedPattern, setSelectedPattern] = useState('');
   const [patternExplanation, setPatternExplanation] = useState('');
   const [aiError, setAiError] = useState('');
-
   const qc = useQueryClient();
 
   const { data: providerInfo } = useQuery({ queryKey: ['ai-provider'], queryFn: aiProviderApi.get });
 
-  const { data: daily } = useQuery({
-    queryKey: ['daily', selectedDate],
-    queryFn: () => dailyApi.get(selectedDate),
+  const { data: saved } = useQuery({
+    queryKey: ['portfolio-analysis'],
+    queryFn: aiApi.getPortfolioAnalysis,
   });
 
   const { data: patterns = [] } = useQuery({
@@ -26,12 +27,12 @@ export default function AiInsights() {
   });
 
   const { mutate: runAnalysis, isPending: analyzing } = useMutation({
-    mutationFn: () => aiApi.dailyAnalysis(selectedDate),
+    mutationFn: aiApi.portfolioAnalysis,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['daily', selectedDate] });
+      qc.invalidateQueries({ queryKey: ['portfolio-analysis'] });
       setAiError('');
     },
-    onError: (e) => setAiError(e.response?.data?.error || 'AI analysis failed. Check your API key in server/.env'),
+    onError: (e) => setAiError(e.response?.data?.error || 'AI analysis failed. Check your API key.'),
   });
 
   const { mutate: explainPattern, isPending: explaining } = useMutation({
@@ -43,11 +44,25 @@ export default function AiInsights() {
     onError: (e) => setAiError(e.response?.data?.error || 'Failed to fetch explanation. Check your API key.'),
   });
 
+  const preStyle = {
+    fontFamily: 'var(--font-sans)',
+    fontSize: 13,
+    color: 'var(--text-primary)',
+    whiteSpace: 'pre-wrap',
+    lineHeight: 1.9,
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    padding: 16,
+    margin: 0,
+  };
+
   return (
     <div>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.6, flex: 1 }}>
-          AI-powered tools for your trading. Responses are saved — you're only charged when you click the button.
+          AI-powered analysis of your full trading portfolio. Responses are saved and only regenerated when you click the button.
         </p>
         {providerInfo && (
           <span style={{
@@ -68,53 +83,34 @@ export default function AiInsights() {
         </div>
       )}
 
-      {/* Daily Analysis */}
+      {/* Portfolio Analysis */}
       <div className="card" style={{ marginBottom: 20, borderLeft: '3px solid var(--accent)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-              Daily Trade Analysis
+              Portfolio Analysis
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              Claude reviews your trades and gives coaching feedback
+              Reviews your entire trade history — win rate, patterns, strengths, weaknesses and an action plan
             </div>
+            {saved?.updated_at && (
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                Last generated: {fmtDate(saved.updated_at)}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
-              style={{ width: 150 }}
-            />
-            <button
-              className="btn-primary"
-              onClick={() => runAnalysis()}
-              disabled={analyzing}
-            >
-              {analyzing ? 'Analyzing...' : daily?.ai_insight ? '↻ Refresh' : '✦ Get Insight'}
-            </button>
-          </div>
+          <button className="btn-primary" onClick={() => runAnalysis()} disabled={analyzing}>
+            {analyzing ? 'Analysing...' : saved?.insight ? '↻ Refresh Analysis' : '✦ Analyse My Portfolio'}
+          </button>
         </div>
 
         {analyzing ? (
-          <LoadingSpinner text="Claude is reviewing your trades..." size={24} />
-        ) : daily?.ai_insight ? (
-          <pre style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 13,
-            color: 'var(--text-primary)',
-            whiteSpace: 'pre-wrap',
-            lineHeight: 1.8,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: 16,
-          }}>
-            {daily.ai_insight}
-          </pre>
+          <LoadingSpinner text="AI is reviewing your full portfolio..." size={24} />
+        ) : saved?.insight ? (
+          <pre style={preStyle}>{saved.insight}</pre>
         ) : (
           <div className="empty-state">
-            No analysis for {selectedDate} yet. Add some trades then click "Get Insight."
+            Click "Analyse My Portfolio" to get a full coaching review of all your trades.
           </div>
         )}
       </div>
@@ -125,7 +121,7 @@ export default function AiInsights() {
           Pattern Deep Dive
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
-          Claude gives you a practical tip beyond what's in the pattern library — things beginners often miss
+          AI gives you a practical tip beyond what's in the pattern library — things beginners often miss
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -148,37 +144,14 @@ export default function AiInsights() {
         </div>
 
         {explaining ? (
-          <LoadingSpinner text="Claude is thinking..." size={24} />
+          <LoadingSpinner text="AI is thinking..." size={24} />
         ) : patternExplanation ? (
-          <pre style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 13,
-            color: 'var(--text-primary)',
-            whiteSpace: 'pre-wrap',
-            lineHeight: 1.8,
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
-            padding: 16,
-          }}>
-            {patternExplanation}
-          </pre>
+          <pre style={preStyle}>{patternExplanation}</pre>
         ) : (
           <div className="empty-state" style={{ padding: '20px 0' }}>
-            Select a pattern above to get a practical tip from Claude.
+            Select a pattern above to get a practical tip.
           </div>
         )}
-      </div>
-
-      {/* Setup guide link */}
-      <div style={{ marginTop: 20, padding: 16, background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-          Need an API Key?
-        </div>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          See the <strong style={{ color: 'var(--text-primary)' }}>README.md</strong> in the project root for step-by-step instructions on getting your free Anthropic API key
-          and adding it to <code style={{ color: 'var(--accent)', background: 'var(--bg-card)', padding: '1px 5px', borderRadius: 3 }}>server/.env</code>.
-        </p>
       </div>
     </div>
   );
