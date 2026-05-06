@@ -1,8 +1,13 @@
 const express = require('express');
 const { readJSON, writeJSON } = require('../lib/driveStore');
-const { analyzeTrades, explainPattern } = require('../services/claude');
+const { analyzeTrades, explainPattern, activeProvider } = require('../services/aiProvider');
 
 const router = express.Router();
+
+// GET /api/ai/provider
+router.get('/provider', (req, res) => {
+  res.json(activeProvider());
+});
 
 // POST /api/ai/daily-analysis
 router.post('/daily-analysis', async (req, res) => {
@@ -14,12 +19,11 @@ router.post('/daily-analysis', async (req, res) => {
     const trades = await readJSON(token, 'dashboard-trades.json', []);
     const daily  = await readJSON(token, 'dashboard-daily.json', {});
 
-    const dayTrades  = trades.filter(t => t.date === date);
+    const dayTrades   = trades.filter(t => t.date === date);
     const dailyRecord = daily[date] || {};
 
     const insight = await analyzeTrades(date, dayTrades, dailyRecord);
 
-    // Save insight back to daily record in Drive
     daily[date] = { ...dailyRecord, ai_insight: insight, updated_at: new Date().toISOString() };
     await writeJSON(token, 'dashboard-daily.json', daily);
 

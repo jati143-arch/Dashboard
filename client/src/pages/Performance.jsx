@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { statsApi } from '../api/client.js';
+import { statsApi, riskApi } from '../api/client.js';
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ReferenceLine, CartesianGrid,
@@ -10,6 +10,8 @@ import PnlBadge from '../components/shared/PnlBadge.jsx';
 import PortfolioChart from '../components/performance/PortfolioChart.jsx';
 import PnlHeatmap from '../components/performance/PnlHeatmap.jsx';
 import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
+import RiskMetrics from '../components/performance/RiskMetrics.jsx';
+import ReturnDistribution from '../components/performance/ReturnDistribution.jsx';
 import { useCurrency } from '../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../utils/currency.js';
 
@@ -41,6 +43,7 @@ function CustomTooltip({ active, payload, label, sym }) {
 export default function Performance() {
   const [period, setPeriod] = useState('monthly');
   const [chartType, setChartType] = useState('bar');
+  const [tab, setTab] = useState('overview');
   const { currency } = useCurrency();
   const sym = CUR_SYMBOL[currency] || '$';
 
@@ -59,6 +62,12 @@ export default function Performance() {
     queryFn: () => statsApi.byPattern(),
   });
 
+  const { data: riskData, isLoading: riskLoading } = useQuery({
+    queryKey: ['risk-metrics'],
+    queryFn: () => riskApi.metrics(),
+    enabled: tab === 'risk',
+  });
+
   const isLoading = sumLoading || seriesLoading || patternLoading;
 
   if (isLoading) return <LoadingSpinner text="Loading stats..." />;
@@ -67,6 +76,33 @@ export default function Performance() {
 
   return (
     <div>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        {['overview', 'risk'].map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            style={{
+              padding: '9px 20px', border: 'none', borderBottom: t === tab ? '2px solid var(--accent)' : '2px solid transparent',
+              background: 'transparent', cursor: 'pointer',
+              color: t === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+              fontWeight: t === tab ? 700 : 400, fontSize: 13, textTransform: 'capitalize',
+            }}>
+            {t === 'overview' ? 'Overview' : 'Risk Metrics'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'risk' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {riskLoading ? <LoadingSpinner text="Calculating risk metrics…" /> : (
+            <>
+              <RiskMetrics data={riskData} />
+              {riskData && !riskData.empty && <ReturnDistribution dailyPnl={riskData.dailyPnl} />}
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'overview' && <>
       <PortfolioChart />
       <PnlHeatmap />
       {/* Period toggle + currency */}
@@ -216,6 +252,7 @@ export default function Performance() {
           </table>
         )}
       </div>
+      </>}
     </div>
   );
 }

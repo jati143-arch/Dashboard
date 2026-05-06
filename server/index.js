@@ -31,10 +31,14 @@ const searchRouter   = require('./routes/search');
 const newsRouter     = require('./routes/news');
 const mfRouter       = require('./routes/mf');
 const nseRouter      = require('./routes/nse');
-const backtestRouter = require('./routes/backtest');
-const signalsRouter  = require('./routes/signals');
-const aiRouter       = require('./routes/ai');
-const authRouter     = require('./routes/auth');
+const backtestRouter  = require('./routes/backtest');
+const signalsRouter   = require('./routes/signals');
+const aiRouter        = require('./routes/ai');
+const authRouter      = require('./routes/auth');
+const marketRouter    = require('./routes/market');
+const watchlistRouter = require('./routes/watchlist');
+const calendarRouter  = require('./routes/calendar');
+const riskRouter      = require('./routes/risk');
 
 // ── Drive-backed data routes ─────────────────────────────────────────────────
 const tradesRouter   = require('./routes/trades-drive');
@@ -100,9 +104,13 @@ app.use('/api/search',   requireAuth, searchRouter);
 app.use('/api/news',     requireAuth, newsRouter);
 app.use('/api/mf',       requireAuth, mfRouter);
 app.use('/api/nse',      requireAuth, nseRouter);
-app.use('/api/backtest', requireAuth, backtestRouter);
-app.use('/api/signals',  requireAuth, signalsRouter);
-app.use('/api/ai',       requireAuth, aiRouter);
+app.use('/api/backtest',   requireAuth, backtestRouter);
+app.use('/api/signals',    requireAuth, signalsRouter);
+app.use('/api/ai',         requireAuth, aiRouter);
+app.use('/api/market',     requireAuth, marketRouter);
+app.use('/api/watchlist',  requireAuth, watchlistRouter);
+app.use('/api/calendar',   requireAuth, calendarRouter);
+app.use('/api/risk',       requireAuth, riskRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../client/dist');
@@ -123,5 +131,6 @@ if (fs.existsSync(distPath)) {
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Trading Dashboard running on http://0.0.0.0:${PORT}`);
+  const ai = process.env.GROQ_API_KEY ? 'Groq (free)' : process.env.ANTHROPIC_API_KEY ? 'Claude' : 'NONE';
+  console.log(`Trading Dashboard running on http://0.0.0.0:${PORT}  |  AI: ${ai}`);
 });

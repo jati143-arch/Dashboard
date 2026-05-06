@@ -83,3 +83,35 @@ export const backtestApi = {
 export const signalsApi = {
   get: (symbol) => api.get(`/signals/${encodeURIComponent(symbol)}`).then(r => r.data),
 };
+
+export const marketApi = {
+  overview: () => api.get('/market/overview').then(r => r.data),
+  sectors:  () => api.get('/market/sectors').then(r => r.data),
+  movers:   () => api.get('/market/movers').then(r => r.data),
+  events:   () => api.get('/market/events').then(r => r.data),
+};
+
+export const watchlistApi = {
+  list:         ()                        => api.get('/watchlist').then(r => r.data),
+  create:       (name)                    => api.post('/watchlist', { name }).then(r => r.data),
+  update:       (id, data)               => api.put(`/watchlist/${id}`, data).then(r => r.data),
+  remove:       (id)                     => api.delete(`/watchlist/${id}`).then(r => r.data),
+  addSymbol:    (id, symbol)             => api.post(`/watchlist/${id}/symbols`, { symbol }).then(r => r.data),
+  removeSymbol: (id, symbol)             => api.delete(`/watchlist/${id}/symbols/${encodeURIComponent(symbol)}`).then(r => r.data),
+  addAlert:     (id, symbol, type, price) => api.post(`/watchlist/${id}/alerts`, { symbol, type, price }).then(r => r.data),
+  removeAlert:  (id, alertId)            => api.delete(`/watchlist/${id}/alerts/${alertId}`).then(r => r.data),
+};
+
+export const calendarApi = {
+  events:   (params) => api.get('/calendar/events', { params }).then(r => r.data),
+  earnings: (symbols) => api.get('/calendar/earnings', { params: { symbols: symbols?.join(',') } }).then(r => r.data),
+  fred:     (series) => api.get(`/calendar/fred/${series}`).then(r => r.data),
+};
+
+export const riskApi = {
+  metrics: (market, from, to) => api.get('/risk/metrics', { params: { market, from, to } }).then(r => r.data),
+};
+
+export const aiProviderApi = {
+  get: () => api.get('/ai/provider').then(r => r.data),
+};

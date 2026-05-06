@@ -10,6 +10,9 @@ import PatternLibrary from './pages/PatternLibrary.jsx';
 import AiInsights from './pages/AiInsights.jsx';
 import Investments from './pages/Investments.jsx';
 import Backtest from './pages/Backtest.jsx';
+import MarketHub from './pages/MarketHub.jsx';
+import Watchlist from './pages/Watchlist.jsx';
+import EconomicCalendar from './pages/EconomicCalendar.jsx';
 import { ChartProvider, useChart } from './context/ChartContext.jsx';
 import { CurrencyProvider } from './context/CurrencyContext.jsx';
 import ChartModal from './components/chart/ChartModal.jsx';
@@ -30,9 +33,12 @@ function AppShell() {
         <main style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-base)' }}>
           <Routes>
             <Route path="/"            element={<DailyDashboard />} />
+            <Route path="/market"      element={<MarketHub />} />
+            <Route path="/watchlist"   element={<Watchlist />} />
             <Route path="/investments" element={<Investments />} />
             <Route path="/trades"      element={<TradeLog />} />
             <Route path="/performance" element={<Performance />} />
+            <Route path="/calendar"    element={<EconomicCalendar />} />
             <Route path="/patterns"    element={<PatternLibrary />} />
             <Route path="/ai"          element={<AiInsights />} />
             <Route path="/backtest"    element={<Backtest />} />

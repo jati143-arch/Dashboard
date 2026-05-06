@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { aiApi, patternsApi, dailyApi } from '../api/client.js';
+import { aiApi, patternsApi, dailyApi, aiProviderApi } from '../api/client.js';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -12,6 +12,8 @@ export default function AiInsights() {
   const [aiError, setAiError] = useState('');
 
   const qc = useQueryClient();
+
+  const { data: providerInfo } = useQuery({ queryKey: ['ai-provider'], queryFn: aiProviderApi.get });
 
   const { data: daily } = useQuery({
     queryKey: ['daily', selectedDate],
@@ -43,10 +45,22 @@ export default function AiInsights() {
 
   return (
     <div>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
-        AI-powered tools for your trading. Analysis uses <strong style={{ color: 'var(--accent)' }}>Claude (Haiku)</strong> via the Anthropic API.
-        Responses are saved so you won't be charged on every page load — only when you click the button.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.6, flex: 1 }}>
+          AI-powered tools for your trading. Responses are saved — you're only charged when you click the button.
+        </p>
+        {providerInfo && (
+          <span style={{
+            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
+            background: providerInfo.provider === 'groq' ? '#1a3a1a' : providerInfo.provider === 'claude' ? '#1a1a3a' : 'var(--bg-card)',
+            color: providerInfo.provider === 'groq' ? '#86efac' : providerInfo.provider === 'claude' ? '#a5b4fc' : 'var(--text-dim)',
+            border: '1px solid var(--border)',
+          }}>
+            {providerInfo.provider === 'groq' ? '✦ Groq · Free' : providerInfo.provider === 'claude' ? '✦ Claude' : '⚠ No AI key'}
+            {providerInfo.model && <span style={{ opacity: 0.7, marginLeft: 4, fontSize: 10 }}>({providerInfo.model})</span>}
+          </span>
+        )}
+      </div>
 
       {aiError && (
         <div style={{ background: 'var(--red-dim)', border: '1px solid var(--red)', borderRadius: 'var(--radius)', padding: '10px 14px', color: 'var(--red)', fontSize: 13, marginBottom: 16 }}>

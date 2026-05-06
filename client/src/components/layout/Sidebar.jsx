@@ -2,9 +2,12 @@ import { NavLink } from 'react-router-dom';
 
 const links = [
   { to: '/',            icon: '▦', label: 'Dashboard' },
-  { to: '/investments', icon: '◎', label: 'Investments' },
+  { to: '/market',      icon: '◉', label: 'Market Hub' },
+  { to: '/watchlist',   icon: '◎', label: 'Watchlist'  },
+  { to: '/investments', icon: '⊞', label: 'Investments' },
   { to: '/trades',      icon: '≡', label: 'Trade Log'  },
   { to: '/performance', icon: '◈', label: 'Performance' },
+  { to: '/calendar',    icon: '▣', label: 'Calendar'   },
   { to: '/backtest',    icon: '⊕', label: 'Backtest'   },
   { to: '/patterns',    icon: '◇', label: 'Patterns'   },
   { to: '/ai',          icon: '✦', label: 'AI Insights' },
