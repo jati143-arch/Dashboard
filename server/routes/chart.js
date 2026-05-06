@@ -38,6 +38,10 @@ const RANGE_MAP = {
   '5y':  { days: 1825,  interval: '1wk', intraday: false, aggN: 1  },
   '10y': { days: 3650,  interval: '1mo', intraday: false, aggN: 1  },
   'max': { days: 25000, interval: '1mo', intraday: false, aggN: 1  },
+  // ── Candle-interval keys (each bar = named interval, history auto-set) ────
+  'D':   { days: 730,   interval: '1d',  intraday: false, aggN: 1  },  // daily bars, 2yr history
+  'W':   { days: 3650,  interval: '1wk', intraday: false, aggN: 1  },  // weekly bars, 10yr history
+  'M':   { days: 25000, interval: '1mo', intraday: false, aggN: 1  },  // monthly bars, full history
 };
 
 // Server-side aggregation for multi-hour candles (n 60m bars → 1 bar)
