@@ -102,6 +102,61 @@ function indATR(candles, period) {
   return out;
 }
 
+function calcVolumeOrderBlocks(candles, swingLen = 10, maxOBs = 3, maxATRMult = 3.5) {
+  const n = candles.length;
+  if (n < swingLen * 2) return { bullOBs: [], bearOBs: [] };
+  const atrArr = indATR(candles, 10);
+  const bullOBs = [], bearOBs = [];
+  let swingType = 0, prevSwingType = 0;
+  let lastSwingHigh = null, lastSwingLow = null;
+
+  for (let i = swingLen; i < n; i++) {
+    const c = i - swingLen;
+    const upper = Math.max(...candles.slice(c + 1, i + 1).map(x => x.high));
+    const lower = Math.min(...candles.slice(c + 1, i + 1).map(x => x.low));
+    prevSwingType = swingType;
+    if      (candles[c].high > upper) swingType = 0;
+    else if (candles[c].low  < lower) swingType = 1;
+
+    if (swingType === 0 && prevSwingType !== 0)
+      lastSwingHigh = { barIdx: c, price: candles[c].high, crossed: false };
+    if (swingType === 1 && prevSwingType !== 1)
+      lastSwingLow  = { barIdx: c, price: candles[c].low,  crossed: false };
+
+    if (lastSwingHigh && !lastSwingHigh.crossed && candles[i].close > lastSwingHigh.price) {
+      lastSwingHigh.crossed = true;
+      let boxBtm = Infinity, boxTop = -Infinity, boxIdx = i - 1;
+      for (let k = lastSwingHigh.barIdx; k < i; k++) {
+        if (candles[k].low < boxBtm) { boxBtm = candles[k].low; boxTop = candles[k].high; boxIdx = k; }
+      }
+      const atr = atrArr[i] || 1;
+      if (boxTop - boxBtm > 0 && boxTop - boxBtm <= atr * maxATRMult)
+        bullOBs.unshift({ top: boxTop, bottom: boxBtm, startTime: candles[boxIdx].time, breakTime: null, breaker: false });
+      if (bullOBs.length > 30) bullOBs.pop();
+    }
+
+    if (lastSwingLow && !lastSwingLow.crossed && candles[i].close < lastSwingLow.price) {
+      lastSwingLow.crossed = true;
+      let boxTop = -Infinity, boxBtm = Infinity, boxIdx = i - 1;
+      for (let k = lastSwingLow.barIdx; k < i; k++) {
+        if (candles[k].high > boxTop) { boxTop = candles[k].high; boxBtm = candles[k].low; boxIdx = k; }
+      }
+      const atr = atrArr[i] || 1;
+      if (boxTop - boxBtm > 0 && boxTop - boxBtm <= atr * maxATRMult)
+        bearOBs.unshift({ top: boxTop, bottom: boxBtm, startTime: candles[boxIdx].time, breakTime: null, breaker: false });
+      if (bearOBs.length > 30) bearOBs.pop();
+    }
+
+    for (const ob of bullOBs) if (!ob.breaker && candles[i].low  < ob.bottom) { ob.breaker = true; ob.breakTime = candles[i].time; }
+    for (const ob of bearOBs) if (!ob.breaker && candles[i].high > ob.top)    { ob.breaker = true; ob.breakTime = candles[i].time; }
+  }
+
+  return {
+    bullOBs: bullOBs.filter(ob => !ob.breaker).slice(0, maxOBs),
+    bearOBs: bearOBs.filter(ob => !ob.breaker).slice(0, maxOBs),
+  };
+}
+
 // Convert signalStartDate (YYYY-MM-DD string) to the chart's time format
 function signalDateToChartTime(dateStr, sampleTime) {
   if (typeof sampleTime === 'number') {
@@ -372,11 +427,11 @@ function LightweightChart({ symbol, entryPrice }) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
   const [ind, setInd] = useState({
-    ema1: true, ema2: true, sma: true, bb: false, volume: true, rsi: false, macd: false,
+    ema1: true, ema2: true, sma: true, bb: false, volume: true, rsi: false, macd: false, vob: false,
   });
   const [per, setPer] = useState({
     ema1: 9, ema2: 20, sma: 50, bb: 20, bbStd: 2.0, rsi: 14,
-    macdFast: 12, macdSlow: 26, macdSig: 9,
+    macdFast: 12, macdSlow: 26, macdSig: 9, vobSwing: 10,
   });
 
   const [ohlcInfo, setOhlcInfo] = useState(null);
@@ -474,6 +529,23 @@ function LightweightChart({ symbol, entryPrice }) {
       upper.setData(toData('upper'));
       mid.setData(toData('mid'));
       lower.setData(toData('lower'));
+    }
+
+    // ── Volumized Order Blocks ───────────────────────────────────────────────
+    if (ind.vob) {
+      const { bullOBs, bearOBs } = calcVolumeOrderBlocks(candles, per.vobSwing, 3, 3.5);
+      const lastTime = candles[candles.length - 1].time;
+
+      const drawZone = (ob, topColor, botColor) => {
+        const endTime = ob.breakTime || lastTime;
+        const t = chart.addSeries(LineSeries, { color: topColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, title: '' });
+        const b = chart.addSeries(LineSeries, { color: botColor, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, title: '' });
+        t.setData([{ time: ob.startTime, value: ob.top    }, { time: endTime, value: ob.top    }]);
+        b.setData([{ time: ob.startTime, value: ob.bottom }, { time: endTime, value: ob.bottom }]);
+      };
+
+      bullOBs.forEach(ob => drawZone(ob, 'rgba(8,153,129,0.9)', 'rgba(8,153,129,0.5)'));
+      bearOBs.forEach(ob => drawZone(ob, 'rgba(242,54,70,0.9)',  'rgba(242,54,70,0.5)'));
     }
 
     // ── Signal marker + line ─────────────────────────────────────────────────
@@ -705,6 +777,9 @@ function LightweightChart({ symbol, entryPrice }) {
               ))}
             </span>
           )} />
+        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
+        <IndToggle id="vob" label="VOB" active={ind.vob} color="#089981"
+          onToggle={() => toggle('vob')} period={per.vobSwing} onPeriod={v => period('vobSwing', v)} />
       </div>
 
       {/* ── Timeframe selector ───────────────────────────────────────────────── */}

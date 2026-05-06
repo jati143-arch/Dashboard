@@ -1,5 +1,6 @@
 const express = require('express');
 const { readJSON } = require('../lib/driveStore');
+const { getSector } = require('../lib/sectorMap');
 
 const router = express.Router();
 const FILE = 'dashboard-trades.json';
@@ -142,6 +143,39 @@ router.get('/portfolio-series', async (req, res) => {
       cumD += v.deployed; cumR += v.realized;
       return { date, invested: Math.round(cumD), realizedPnl: Math.round(cumR), portfolio: Math.round(cumD + cumR) };
     }));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/stats/sector-breakdown
+router.get('/sector-breakdown', async (req, res) => {
+  try {
+    const trades = await readJSON(req.user.accessToken, FILE, []);
+    const byS = {};
+
+    for (const t of trades) {
+      const sector = getSector(t.symbol);
+      if (!byS[sector]) byS[sector] = { sector, trades: 0, wins: 0, pnl: 0, open: 0, symbols: new Set() };
+      byS[sector].symbols.add(t.symbol);
+
+      if (t.status === 'open') {
+        byS[sector].open++;
+      } else if (t.status === 'closed' && t.pnl_dollar != null) {
+        byS[sector].trades++;
+        byS[sector].pnl += t.pnl_dollar;
+        if (t.pnl_dollar > 0) byS[sector].wins++;
+      }
+    }
+
+    const result = Object.values(byS).map(s => ({
+      sector:   s.sector,
+      trades:   s.trades,
+      open:     s.open,
+      pnl:      s.pnl,
+      win_rate: s.trades ? Math.round((s.wins / s.trades) * 100) : null,
+      symbols:  [...s.symbols],
+    })).sort((a, b) => (b.trades + b.open) - (a.trades + a.open));
+
+    res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

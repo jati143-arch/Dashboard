@@ -35,6 +35,7 @@ export const statsApi = {
   pnlSeries: (from, to) => api.get('/stats/pnl-series', { params: { from, to } }).then(r => r.data),
   byPattern: () => api.get('/stats/by-pattern').then(r => r.data),
   portfolioSeries: (from, to) => api.get('/stats/portfolio-series', { params: { from, to } }).then(r => r.data),
+  sectorBreakdown: () => api.get('/stats/sector-breakdown').then(r => r.data),
 };
 
 export const patternsApi = {

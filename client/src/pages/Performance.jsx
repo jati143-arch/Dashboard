@@ -12,6 +12,7 @@ import PnlHeatmap from '../components/performance/PnlHeatmap.jsx';
 import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
 import RiskMetrics from '../components/performance/RiskMetrics.jsx';
 import ReturnDistribution from '../components/performance/ReturnDistribution.jsx';
+import SectorExposure from '../components/performance/SectorExposure.jsx';
 import { useCurrency } from '../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../utils/currency.js';
 
@@ -68,6 +69,12 @@ export default function Performance() {
     enabled: tab === 'risk',
   });
 
+  const { data: sectorData = [], isLoading: sectorLoading } = useQuery({
+    queryKey: ['sector-breakdown'],
+    queryFn: () => statsApi.sectorBreakdown(),
+    enabled: tab === 'sectors',
+  });
+
   const isLoading = sumLoading || seriesLoading || patternLoading;
 
   if (isLoading) return <LoadingSpinner text="Loading stats..." />;
@@ -78,7 +85,7 @@ export default function Performance() {
     <div>
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
-        {['overview', 'risk'].map(t => (
+        {['overview', 'sectors', 'risk'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{
               padding: '9px 20px', border: 'none', borderBottom: t === tab ? '2px solid var(--accent)' : '2px solid transparent',
@@ -86,10 +93,19 @@ export default function Performance() {
               color: t === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
               fontWeight: t === tab ? 700 : 400, fontSize: 13, textTransform: 'capitalize',
             }}>
-            {t === 'overview' ? 'Overview' : 'Risk Metrics'}
+            {t === 'overview' ? 'Overview' : t === 'sectors' ? 'Sectors' : 'Risk Metrics'}
           </button>
         ))}
       </div>
+
+      {tab === 'sectors' && (
+        <div className="card">
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            Sector Exposure
+          </div>
+          {sectorLoading ? <LoadingSpinner text="Loading sector data…" /> : <SectorExposure data={sectorData} />}
+        </div>
+      )}
 
       {tab === 'risk' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
