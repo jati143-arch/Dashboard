@@ -1,14 +1,36 @@
 # Trading Dashboard
 
-A personal trading journal and performance tracker. Sign in with Google — all trade data is stored in your Google Drive and follows you across every device.
+A personal trading journal and performance tracker built like a Bloomberg Terminal.
+Sign in with Google — all trade data is stored in your Google Drive and follows you across every device.
+
+---
+
+## Important: Contributing & Development Rules
+
+> **Always commit directly to the `main` branch of the `jati143-arch/Dashboard` repository.**
+> Do NOT create separate repositories or forks. All changes go to `main` in this single repo.
+
+```
+✅  git push origin main
+❌  Do not create a new repo
+❌  Do not push to unrelated branches and leave them un-merged
+```
+
+---
 
 ## Features
 
+### Market & Research
+- **Market Hub** (`/market`) — live NIFTY 50, BANK NIFTY, SENSEX, S&P 500, NASDAQ, VIX, FX rates, crypto; NSE sector heatmap; top 5 gainers/losers; upcoming economic events — auto-refreshes every 30 s
+- **Watchlist** (`/watchlist`) — named symbol lists with live prices, 1-month sparklines, price alerts (above/below threshold)
+- **Economic Calendar** (`/calendar`) — Finnhub macro events filtered by country & impact; week navigation; FRED macro charts (Fed rate, CPI, 10Y yield, USD/INR)
+
+### Trading Journal
 - **Daily Dashboard** — hero card for best trade, P&L summary, open positions with live prices, lesson of the day
 - **Trade Log** — full history with filters, sortable columns, manual entry, CSV import from any broker, partial close
-- **Performance** — win rate, P&L charts, avg winner vs loser, portfolio curve, stats by pattern. Timeframes: 1min → max
+- **Performance** — win rate, P&L charts, portfolio curve, stats by pattern. Plus a **Risk Metrics** tab: Sharpe, Sortino, max drawdown, VaR 95%, profit factor, expectancy, Calmar ratio, streaks, daily return distribution
 - **Pattern Library** — built-in chart patterns + create your own, with personal win/loss stats per pattern
-- **AI Insights** — Claude reviews your daily trades and gives coaching feedback; explains any pattern on demand
+- **AI Insights** — Groq (free, 14,400 req/day) or Claude reviews your daily trades and explains patterns on demand
 - **Investments** — track mutual funds and long-term holdings separately
 - **Backtest** — test strategies against historical data
 
@@ -20,16 +42,17 @@ A personal trading journal and performance tracker. Sign in with Google — all 
 |-------|-----------|
 | Frontend | React 18 + Vite (PWA — installable on Android) |
 | Backend | Node.js + Express (deployed on Render) |
-| Data Storage | Google Drive (JSON files per user) |
+| Data Storage | Google Drive JSON files (one folder per user: `"Trading Dashboard"`) |
 | Auth | Google OAuth 2.0 (Passport.js) |
 | Charts | Recharts + LightweightCharts |
-| AI | Anthropic Claude API (Haiku) |
+| AI | Groq (free) or Anthropic Claude (fallback) |
+| Market Data | Yahoo Finance · Finnhub · FRED |
 
 ---
 
 ## How It Works
 
-- All trade data is stored as JSON files in **your** Google Drive (`dashboard-trades.json`, `dashboard-patterns.json`, `dashboard-daily.json`)
+- All trade data is stored as JSON files in a **"Trading Dashboard"** folder in **your** Google Drive
 - The Express server runs on Render (free tier) and proxies market data APIs — it never stores your data
 - Sign in on any device → your trades are there instantly
 - No database, no server storage, no subscriptions
@@ -64,14 +87,33 @@ https://trading-dashboard-i4zw.onrender.com
 
 ```env
 PORT=3001
-ANTHROPIC_API_KEY=sk-ant-your-key-here
 
+# Google OAuth (required)
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/callback
-
 SESSION_SECRET=any-random-string-you-make-up
+
+# AI — choose one (Groq is free, Claude is paid)
+GROQ_API_KEY=gsk_your-groq-key          # free: console.groq.com — 14,400 req/day
+ANTHROPIC_API_KEY=sk-ant-your-key       # paid fallback only (optional if Groq is set)
+
+# Market data (all free tiers)
+FINNHUB_API_KEY=your-finnhub-key        # free: finnhub.io — 60 calls/min
+FRED_API_KEY=your-fred-key              # free: fred.stlouisfed.org — unlimited
 ```
+
+> The server auto-detects which AI key is present. Groq takes priority (free). If neither is set, AI features show an error.
+> Finnhub and FRED keys are optional — those pages degrade gracefully showing an "Add API key to enable" message.
+
+### 3 — Getting your free API keys
+
+| Key | Where | Cost |
+|-----|-------|------|
+| `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) → API Keys | Free — 14,400 req/day, no card |
+| `FINNHUB_API_KEY` | [finnhub.io](https://finnhub.io) → "Get free API key" | Free — 60 calls/min |
+| `FRED_API_KEY` | [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html) | Free — unlimited |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys | ~$0.001–0.003/analysis (optional) |
 
 ---
 
@@ -122,16 +164,6 @@ Click **"Move to Google Drive"** — all trades, patterns, and daily notes are c
 
 ---
 
-## Getting an Anthropic API Key
-
-1. Go to [console.anthropic.com](https://console.anthropic.com) → create account
-2. **API Keys → Create Key** → copy the key (`sk-ant-...`)
-3. Add to `server/.env` as `ANTHROPIC_API_KEY`
-
-**Cost:** Uses Claude Haiku. ~$0.001–0.003 per daily analysis. Under $1/month at daily use.
-
----
-
 ## Development (local, hot reload)
 
 ```bash
@@ -172,36 +204,53 @@ Dashboard/
 ├── client/                  # React frontend (Vite)
 │   ├── public/
 │   │   ├── manifest.json    # PWA manifest
-│   │   └── sw.js            # Service worker
+│   │   └── sw.js            # Service worker (v3 — no caching)
 │   └── src/
-│       ├── api/client.js    # API calls (trades, stats, patterns, daily)
+│       ├── api/client.js    # All API calls
 │       ├── context/
-│       │   ├── AuthContext.jsx   # Google auth state
+│       │   ├── AuthContext.jsx
 │       │   └── ChartContext.jsx
 │       ├── components/
-│       │   ├── SignIn.jsx        # Google sign-in screen
-│       │   ├── MigrationBanner.jsx  # SQLite → Drive migration
-│       │   ├── layout/TopBar.jsx    # User avatar + logout
-│       │   └── ...
+│       │   ├── layout/          # Sidebar, TopBar, MarketTicker
+│       │   ├── market/          # IndexCard, SectorHeatmap, TopMovers, EventStrip
+│       │   ├── watchlist/       # WatchlistTable, SparklineCell, AlertForm
+│       │   ├── calendar/        # EventRow, FredChart
+│       │   ├── performance/     # RiskMetrics, ReturnDistribution, PortfolioChart, PnlHeatmap
+│       │   └── chart/           # ChartModal (LightweightCharts v5)
 │       └── pages/
+│           ├── DailyDashboard.jsx
+│           ├── MarketHub.jsx       # /market
+│           ├── Watchlist.jsx       # /watchlist
+│           ├── TradeLog.jsx
+│           ├── Performance.jsx     # includes Risk Metrics tab
+│           ├── EconomicCalendar.jsx # /calendar
+│           ├── PatternLibrary.jsx
+│           ├── AiInsights.jsx
+│           ├── Investments.jsx
+│           └── Backtest.jsx
 ├── server/
-│   ├── lib/driveStore.js    # Google Drive read/write helper
+│   ├── lib/driveStore.js       # Google Drive read/write (auto-creates "Trading Dashboard" folder)
 │   ├── routes/
-│   │   ├── auth.js          # /auth/google, /auth/callback, /auth/me, /auth/logout
-│   │   ├── trades-drive.js  # CRUD trades via Drive
-│   │   ├── stats-drive.js   # Stats computed from Drive trades
+│   │   ├── auth.js             # /auth/google, /auth/callback, /auth/me, /auth/logout
+│   │   ├── trades-drive.js     # CRUD trades via Drive
+│   │   ├── stats-drive.js      # Stats computed from Drive trades
 │   │   ├── patterns-drive.js
 │   │   ├── daily-drive.js
-│   │   ├── migrate.js       # One-time SQLite → Drive migration
-│   │   ├── chart.js         # Yahoo Finance OHLCV proxy
-│   │   ├── prices.js        # Live price proxy
-│   │   └── ai.js            # Claude API routes
+│   │   ├── migrate.js          # One-time SQLite → Drive migration
+│   │   ├── market.js           # /api/market/* — indices, sectors, movers, events
+│   │   ├── watchlist.js        # /api/watchlist/* — Drive-backed symbol lists
+│   │   ├── calendar.js         # /api/calendar/* — Finnhub events + FRED data
+│   │   ├── risk.js             # /api/risk/metrics — portfolio risk calculations
+│   │   ├── chart.js            # Yahoo Finance OHLCV proxy
+│   │   ├── prices.js           # Live price proxy
+│   │   ├── signals.js          # Signal scoring
+│   │   └── ai.js               # AI routes (Groq / Claude)
 │   ├── services/
-│   │   ├── csvImport.js     # Broker CSV parser
-│   │   └── claude.js        # Anthropic SDK wrapper
-│   └── index.js             # Express app entry point
-├── build.sh                 # Render build script
-├── railway.json             # Railway config (unused, keeping for reference)
-├── start.bat                # Windows one-click launcher
-└── server/.env.example      # Environment variable template
+│   │   ├── csvImport.js        # Broker CSV parser
+│   │   ├── claude.js           # Anthropic SDK wrapper
+│   │   └── aiProvider.js       # Provider-agnostic AI (Groq → Claude fallback)
+│   └── index.js                # Express app entry point
+├── build.sh                    # Render build script
+├── start.bat                   # Windows one-click launcher
+└── server/.env.example         # Environment variable template
 ```
