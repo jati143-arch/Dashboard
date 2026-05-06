@@ -753,13 +753,17 @@ function LightweightChart({ symbol, entryPrice }) {
         )}
       </div>
 
-      {isLoading && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Loading chart data…</div>}
-      {isError  && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)',      fontSize: 13 }}>Failed to load chart data</div>}
-      {!isLoading && !isError && candles.length === 0 && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>No chart data available</div>}
+      {/* ── Main chart area — always present so the chart can mount and resize ── */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {/* Loading / error / empty states as overlays */}
+        {(isLoading || isError || (!isLoading && !isError && candles.length === 0)) && (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: isError ? 'var(--red)' : 'var(--text-dim)', fontSize: 13, zIndex: 5, background: '#141414' }}>
+            {isLoading ? 'Loading chart data…' : isError ? 'Failed to load chart data' : 'No chart data available'}
+          </div>
+        )}
 
-      {/* ── Main chart area with OHLC tooltip overlay ────────────────────────── */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', display: (!isLoading && !isError && candles.length > 0) ? 'block' : 'none' }}>
-        {displayInfo && (
+        {/* OHLC tooltip overlay */}
+        {displayInfo && candles.length > 0 && (
           <div style={{
             position: 'absolute', top: 6, left: 6, zIndex: 10,
             background: 'rgba(0,0,0,0.72)', borderRadius: 4,
@@ -780,24 +784,26 @@ function LightweightChart({ symbol, entryPrice }) {
             )}
           </div>
         )}
-        <div ref={mainContainerRef} style={{ width: '100%', height: '100%' }} />
+
+        {/* Chart mounts here — absolute fill so height always resolves on mobile */}
+        <div ref={mainContainerRef} style={{ position: 'absolute', inset: 0 }} />
       </div>
 
       {/* ── RSI sub-pane ─────────────────────────────────────────────────────── */}
-      {ind.rsi && (
-        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0, display: (!isLoading && candles.length > 0) ? 'block' : 'none' }}>
+      {ind.rsi && candles.length > 0 && (
+        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#7b68ee', zIndex: 1, fontWeight: 600 }}>RSI {per.rsi}</span>
-          <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
+          <div ref={rsiContainerRef} style={{ position: 'absolute', inset: 0 }} />
         </div>
       )}
 
       {/* ── MACD sub-pane ────────────────────────────────────────────────────── */}
-      {ind.macd && (
-        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0, display: (!isLoading && candles.length > 0) ? 'block' : 'none' }}>
+      {ind.macd && candles.length > 0 && (
+        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#00aaff', zIndex: 1, fontWeight: 600 }}>
             MACD {per.macdFast}/{per.macdSlow}/{per.macdSig}
           </span>
-          <div ref={macdContainerRef} style={{ width: '100%', height: '100%' }} />
+          <div ref={macdContainerRef} style={{ position: 'absolute', inset: 0 }} />
         </div>
       )}
     </div>
