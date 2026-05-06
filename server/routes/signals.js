@@ -343,36 +343,63 @@ router.get('/:symbol', async (req, res) => {
 
     const slPct = sl != null ? +(((price - sl) / price) * 100).toFixed(1) : null;
 
-    // ── Entry suggestion ──────────────────────────────────────────────────────
+    // ── Signal start date: last EMA9/EMA20 crossover ─────────────────────────
+    let signalStartIdx = n;
+    for (let i = n - 1; i >= Math.max(0, n - 60); i--) {
+      if (ema9[i] == null || ema20[i] == null) continue;
+      if (isBuy  && ema9[i] <= ema20[i]) { signalStartIdx = i + 1; break; }
+      if (isSell && ema9[i] >= ema20[i]) { signalStartIdx = i + 1; break; }
+    }
+    const signalStartDate = candles[Math.min(signalStartIdx, n)].date;
+
+    // ── Entry suggestion (ATR-based thresholds, momentum shortcut) ───────────
     let suggestedEntry = +price.toFixed(2);
     let entryType      = 'Market Entry';
     let positionSize   = 'Partial (75%)';
 
+    const atr1x        = curAtr || price * 0.02;
+    const freshBullCross = prevMacd != null && prevSig != null && prevMacd < prevSig && curMacd > curSig;
+    const freshBearCross = prevMacd != null && prevSig != null && prevMacd > prevSig && curMacd < curSig;
+    const strongBullMom  = curRsi != null && curRsi > 55 && curMacd != null && curMacd > curSig;
+    const strongBearMom  = curRsi != null && curRsi < 45 && curMacd != null && curMacd < curSig;
+
     if (isBuy) {
-      if (curEma20 != null && price > curEma20 * 1.01) {
+      const extended20 = curEma20 != null && price > curEma20 + 1.5 * atr1x;
+      const extended9  = curEma9  != null && price > curEma9  + 0.5 * atr1x;
+      if (freshBullCross && strongBullMom) {
+        entryType    = 'Breakout Entry';
+        positionSize = 'Full';
+      } else if (extended20) {
         suggestedEntry = +curEma20.toFixed(2);
         entryType      = 'Wait — Retest EMA20';
         positionSize   = 'Scale-in (50%)';
-      } else if (curEma9 != null && price > curEma9 * 1.005) {
+      } else if (extended9) {
         suggestedEntry = +curEma9.toFixed(2);
         entryType      = 'Pullback to EMA9';
         positionSize   = 'Partial (75%)';
       } else {
-        entryType    = score >= 5 ? 'Breakout Entry' : 'Market Entry';
-        positionSize = score >= 5 ? 'Full' : 'Partial (75%)';
+        const atZone = curEma9 != null && Math.abs(price - curEma9) < 0.003 * price;
+        entryType    = atZone ? 'At Entry Zone — Enter Now' : score >= 5 ? 'Breakout Entry' : 'Market Entry';
+        positionSize = (atZone || score >= 5) ? 'Full' : 'Partial (75%)';
       }
     } else if (isSell) {
-      if (curEma20 != null && price < curEma20 * 0.99) {
+      const extended20 = curEma20 != null && price < curEma20 - 1.5 * atr1x;
+      const extended9  = curEma9  != null && price < curEma9  - 0.5 * atr1x;
+      if (freshBearCross && strongBearMom) {
+        entryType    = 'Breakdown Entry';
+        positionSize = 'Full';
+      } else if (extended20) {
         suggestedEntry = +curEma20.toFixed(2);
         entryType      = 'Wait — Retest EMA20';
         positionSize   = 'Scale-in (50%)';
-      } else if (curEma9 != null && price < curEma9 * 0.995) {
+      } else if (extended9) {
         suggestedEntry = +curEma9.toFixed(2);
         entryType      = 'Pullback to EMA9';
         positionSize   = 'Partial (75%)';
       } else {
-        entryType    = score <= -5 ? 'Breakdown Entry' : 'Market Entry';
-        positionSize = score <= -5 ? 'Full' : 'Partial (75%)';
+        const atZone = curEma9 != null && Math.abs(price - curEma9) < 0.003 * price;
+        entryType    = atZone ? 'At Entry Zone — Enter Now' : score <= -5 ? 'Breakdown Entry' : 'Market Entry';
+        positionSize = (atZone || score <= -5) ? 'Full' : 'Partial (75%)';
       }
     }
 
@@ -412,6 +439,7 @@ router.get('/:symbol', async (req, res) => {
       suggestedEntry,
       entryType,
       positionSize,
+      signalStartDate,
     });
   } catch (err) {
     console.error('[signals]', err.message);
