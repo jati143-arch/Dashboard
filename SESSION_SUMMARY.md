@@ -8,8 +8,10 @@
 
 ```
 ✅  git push origin main          ← always do this
+✅  When user says "update" → update SESSION_SUMMARY.md in main branch
 ❌  Do not create a new repo
 ❌  Do not push to feature branches without immediately merging to main
+❌  Do not leave feature branches alive after merging
 ```
 
 ---
@@ -473,6 +475,29 @@ UI changes:
 - `vobSwing: 10` added to `per` state (configurable)
 - "VOB" `IndToggle` added in indicator bar (after MACD, separated by a divider)
 - Period input controls swing length; changing it recalculates and redraws
+
+---
+
+## Phase 23 — DCA Position Merge Fix
+
+### Bug Fixed
+When a user added a new **Open Position** for a symbol+direction that already had an open position, the server was creating a **duplicate row** instead of merging. Root causes:
+
+1. **`remaining_size` NULL bug** (`server/routes/trades.js`): The DCA merge UPDATE used `remaining_size = remaining_size + ?`. In SQLite, `NULL + value = NULL`, so if a position's `remaining_size` was NULL (possible for CSV-imported data), the column silently stayed NULL after merge. Fixed to `COALESCE(remaining_size, size) + ?`.
+
+2. **Existing duplicate entries** (`server/db.js`): Positions created before the auto-merge logic was added existed as separate rows. A startup migration was added that:
+   - Finds every `symbol + direction` group with more than one open top-level position (`parent_trade_id IS NULL`)
+   - Merges all into the oldest record using weighted-average entry price (by remaining qty)
+   - Sums `size` and `remaining_size` across all duplicates
+   - Appends `DCA +qty @ price on date` note lines to preserve history
+   - Re-parents any partial-close children of removed rows to the survivor before deleting the duplicates
+   - Runs once on server start and is a no-op when no duplicates exist
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `server/routes/trades.js` | `COALESCE(remaining_size, size) + ?` in DCA merge UPDATE |
+| `server/db.js` | Startup dedup migration block at the bottom |
 
 ---
 
