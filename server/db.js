@@ -80,4 +80,78 @@ try {
   }
 }
 
+// ── One-time migration: merge duplicate open positions into single rows ────────
+// Handles data created before the DCA auto-merge logic was added.
+// For each symbol+direction that has more than one open top-level position,
+// the oldest record becomes the survivor: entry_price is recalculated as a
+// weighted average (by remaining qty), size / remaining_size are summed, and
+// partial-close children of the removed rows are re-parented to the survivor.
+try {
+  const dupGroups = db.prepare(`
+    SELECT symbol, direction
+    FROM trades
+    WHERE status = 'open' AND parent_trade_id IS NULL
+    GROUP BY symbol, direction
+    HAVING COUNT(*) > 1
+  `).all();
+
+  if (dupGroups.length > 0) {
+    const mergeGroup = db.transaction((symbol, direction) => {
+      const positions = db.prepare(`
+        SELECT * FROM trades
+        WHERE symbol = ? AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
+        ORDER BY date ASC, created_at ASC
+      `).all(symbol, direction);
+
+      if (positions.length <= 1) return;
+
+      const [base, ...dupes] = positions;
+      let totalSize      = base.size;
+      let totalRemaining = base.remaining_size ?? base.size;
+      let totalCost      = base.entry_price * totalRemaining;
+      const noteLines    = base.notes ? [base.notes] : [];
+
+      for (const dupe of dupes) {
+        const qty = dupe.remaining_size ?? dupe.size;
+        totalSize      += dupe.size;
+        totalRemaining += qty;
+        totalCost      += dupe.entry_price * qty;
+
+        noteLines.push(`DCA +${qty} @ ${dupe.entry_price.toFixed(2)} on ${dupe.date}`);
+        if (dupe.notes) noteLines.push(dupe.notes);
+
+        // Re-parent partial-close children so history is preserved
+        db.prepare('UPDATE trades SET parent_trade_id = ? WHERE parent_trade_id = ?')
+          .run(base.id, dupe.id);
+
+        db.prepare('DELETE FROM trades WHERE id = ?').run(dupe.id);
+      }
+
+      const avgEntry = totalRemaining > 0 ? totalCost / totalRemaining : base.entry_price;
+
+      db.prepare(`
+        UPDATE trades
+        SET entry_price    = ?,
+            size           = ?,
+            remaining_size = ?,
+            notes          = ?
+        WHERE id = ?
+      `).run(
+        +avgEntry.toFixed(4),
+        totalSize,
+        totalRemaining,
+        noteLines.filter(Boolean).join('\n'),
+        base.id,
+      );
+    });
+
+    for (const { symbol, direction } of dupGroups) {
+      mergeGroup(symbol, direction);
+    }
+  }
+} catch (e) {
+  console.error('[db] DCA dedup migration warning:', e.message);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 module.exports = db;
