@@ -127,7 +127,7 @@ router.post('/', (req, res) => {
         UPDATE trades
         SET entry_price    = ?,
             size           = size + ?,
-            remaining_size = remaining_size + ?,
+            remaining_size = COALESCE(remaining_size, size) + ?,
             notes          = ?
         WHERE id = ?
       `).run(+avgEntry.toFixed(4), newSize, newSize, mergedNotes, existing.id);
