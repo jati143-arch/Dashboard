@@ -20,6 +20,7 @@ import ChartModal from './components/chart/ChartModal.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import SignIn from './components/SignIn.jsx';
 import MigrationBanner from './components/MigrationBanner.jsx';
+import StatusBar from './components/layout/StatusBar.jsx';
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -47,6 +48,7 @@ function AppShell() {
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <StatusBar />
       </div>
       {chartState && (
         <ChartModal
@@ -94,4 +96,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

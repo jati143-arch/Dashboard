@@ -124,3 +124,7 @@ export const riskApi = {
 export const aiProviderApi = {
   get: () => api.get('/ai/provider').then(r => r.data),
 };
+
+export const fundamentalsApi = {
+  get: (symbol) => api.get('/fundamentals', { params: { symbol } }).then(r => r.data),
+};

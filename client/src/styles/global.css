@@ -1,25 +1,42 @@
 :root {
-  --bg-base:        #0a0a0a;
-  --bg-surface:     #111111;
-  --bg-card:        #181818;
-  --bg-card-hover:  #1f1f1f;
-  --border:         #282828;
-  --border-subtle:  #1e1e1e;
-  --text-primary:   #e8e8e8;
-  --text-secondary: #888888;
-  --text-dim:       #555555;
-  --text-mono:      'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-  --font-sans:      'Inter', system-ui, sans-serif;
+  /* ── Base palette (deep navy, not pure black) ─────────────── */
+  --bg-base:        #080b14;
+  --bg-surface:     #0e1117;
+  --bg-card:        #131922;
+  --bg-card-hover:  #1a2233;
+  --border:         #1e2840;
+  --border-subtle:  #141d2e;
+  --border-bright:  #2a3a55;
+
+  /* ── Text ─────────────────────────────────────────────────── */
+  --text-primary:   #e8eaf0;
+  --text-secondary: #7a8499;
+  --text-dim:       #475069;
+
+  /* ── Fonts ────────────────────────────────────────────────── */
+  --text-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* ── Semantic colours ─────────────────────────────────────── */
   --green:          #00e676;
   --green-dim:      rgba(0, 230, 118, 0.12);
+  --green-glow:     rgba(0, 230, 118, 0.06);
   --red:            #ff1744;
   --red-dim:        rgba(255, 23, 68, 0.12);
   --yellow:         #ffd600;
   --yellow-dim:     rgba(255, 214, 0, 0.12);
-  --accent:         #00b0ff;
-  --accent-dim:     rgba(0, 176, 255, 0.12);
+
+  /* ── Accent: cyan + purple gradient system ────────────────── */
+  --accent:         #00b4d8;
+  --accent-dim:     rgba(0, 180, 216, 0.12);
+  --accent-purple:  #7c3aed;
+  --accent-gold:    #ffd60a;
+
+  /* ── Radii & shadows ──────────────────────────────────────── */
   --radius:         6px;
-  --radius-lg:      10px;
+  --radius-lg:      12px;
+  --shadow-card:    0 2px 16px rgba(0, 0, 0, 0.5);
+  --shadow-modal:   0 24px 64px rgba(0, 0, 0, 0.7);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,6 +51,20 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Subtle ambient gradient behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 15% 40%, rgba(0,180,216,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 15%, rgba(124,58,237,0.04) 0%, transparent 50%);
+}
+
+#root { position: relative; z-index: 1; }
+
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
@@ -44,7 +75,7 @@ button {
   border: none;
   border-radius: var(--radius);
   padding: 6px 14px;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, background 0.15s;
 }
 button:hover { opacity: 0.85; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -80,6 +111,7 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0,180,216,0.12);
 }
 select option { background: var(--bg-card); }
 
@@ -93,19 +125,73 @@ label {
   margin-bottom: 5px;
 }
 
+/* ── Cards ─────────────────────────────────────────────────── */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 20px;
+  box-shadow: var(--shadow-card);
 }
 
+/* Glass card — frosted effect for hero/highlighted cards */
+.card-glass {
+  background: rgba(19, 25, 34, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Gradient border card — key hero metrics */
+.card-gradient-border {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.card-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(0,180,216,0.4), rgba(124,58,237,0.3), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Typography utilities ─────────────────────────────────── */
 .mono { font-family: var(--text-mono); }
 
-.pnl-pos { color: var(--green); font-family: var(--text-mono); font-weight: 700; }
-.pnl-neg { color: var(--red);   font-family: var(--text-mono); font-weight: 700; }
+.hero-number {
+  font-family: var(--text-mono);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.pnl-pos  { color: var(--green); font-family: var(--text-mono); font-weight: 700; }
+.pnl-neg  { color: var(--red);   font-family: var(--text-mono); font-weight: 700; }
 .pnl-zero { color: var(--text-secondary); font-family: var(--text-mono); }
 
+/* ── Badges ────────────────────────────────────────────────── */
 .badge {
   display: inline-block;
   padding: 2px 8px;
@@ -115,11 +201,12 @@ label {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.badge-long  { background: var(--green-dim); color: var(--green); }
-.badge-short { background: var(--red-dim);   color: var(--red); }
+.badge-long   { background: var(--green-dim); color: var(--green); }
+.badge-short  { background: var(--red-dim);   color: var(--red); }
 .badge-stock  { background: var(--accent-dim); color: var(--accent); }
 .badge-crypto { background: var(--yellow-dim); color: var(--yellow); }
 
+/* ── Tables ────────────────────────────────────────────────── */
 table { width: 100%; border-collapse: collapse; }
 th {
   text-align: left;
@@ -130,19 +217,133 @@ th {
   color: var(--text-dim);
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 1;
 }
 td {
   padding: 9px 12px;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
-tr:hover td { background: var(--bg-card-hover); }
+tr:hover td {
+  background: var(--bg-card-hover);
+  box-shadow: inset 3px 0 0 rgba(0,180,216,0.3);
+}
 tr:last-child td { border-bottom: none; }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+/* ── Modal tabs ────────────────────────────────────────────── */
+.modal-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-tab {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.03em;
+  border-radius: 0;
+}
+.modal-tab:hover { color: var(--text-primary); opacity: 1; }
+.modal-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Skeleton loader ───────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius);
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Fundamentals grid ─────────────────────────────────────── */
+.fund-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.fund-cell {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.fund-cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.fund-cell-value {
+  font-family: var(--text-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Status bar (fixed bottom) ─────────────────────────────── */
+.status-bar {
+  height: 26px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--text-mono);
+  flex-shrink: 0;
+  z-index: 50;
+}
+.status-bar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+  margin-right: 5px;
+  animation: pulse-dot 2.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.status-bar-dot.closed {
+  background: var(--text-dim);
+  animation: none;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.status-bar-sep {
+  color: var(--border-bright);
+}
+
+/* ── Scrollbars ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
 
+/* ── Misc ──────────────────────────────────────────────────── */
 .spinner {
   width: 20px; height: 20px;
   border: 2px solid var(--border);
@@ -160,33 +361,27 @@ tr:last-child td { border-bottom: none; }
   font-size: 13px;
 }
 
-/* Sidebar backdrop — hidden on desktop, shown on mobile when sidebar open */
+/* ── Sidebar backdrop ──────────────────────────────────────── */
 .sidebar-backdrop {
   display: none;
   position: fixed;
   inset: 0;
   z-index: 99;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.65);
 }
 
 @media (max-width: 768px) {
-  /* On mobile the sidebar overlays content */
   .sidebar {
     position: fixed !important;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     height: 100vh;
     z-index: 100;
     transform: translateX(-100%);
     transition: transform 0.2s ease, width 0.2s ease !important;
     width: 200px !important;
   }
-  .sidebar.sidebar-open {
-    transform: translateX(0);
-  }
-  .sidebar-backdrop {
-    display: block;
-  }
+  .sidebar.sidebar-open { transform: translateX(0); }
+  .sidebar-backdrop { display: block; }
 
   table { font-size: 12px; }
   table th, table td { padding: 7px 8px; }
