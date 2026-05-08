@@ -39,7 +39,9 @@ const marketRouter    = require('./routes/market');
 const watchlistRouter = require('./routes/watchlist');
 const calendarRouter  = require('./routes/calendar');
 const riskRouter      = require('./routes/risk');
-const settingsRouter  = require('./routes/settings');
+const settingsRouter      = require('./routes/settings');
+const fundamentalsRouter  = require('./routes/fundamentals');
+const screenerRouter      = require('./routes/screener');
 
 // ── Drive-backed data routes ─────────────────────────────────────────────────
 const tradesRouter   = require('./routes/trades-drive');
@@ -112,7 +114,9 @@ app.use('/api/market',     requireAuth, marketRouter);
 app.use('/api/watchlist',  requireAuth, watchlistRouter);
 app.use('/api/calendar',   requireAuth, calendarRouter);
 app.use('/api/risk',       requireAuth, riskRouter);
-app.use('/api/settings',   requireAuth, settingsRouter);
+app.use('/api/settings',      requireAuth, settingsRouter);
+app.use('/api/fundamentals',  requireAuth, fundamentalsRouter);
+app.use('/api/screener',      requireAuth, screenerRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../client/dist');

@@ -128,3 +128,7 @@ export const aiProviderApi = {
 export const fundamentalsApi = {
   get: (symbol) => api.get('/fundamentals', { params: { symbol } }).then(r => r.data),
 };
+
+export const screenerApi = {
+  company: (symbol) => api.get('/screener/company', { params: { symbol } }).then(r => r.data),
+};

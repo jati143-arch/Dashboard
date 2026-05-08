@@ -420,7 +420,7 @@ FRED_API_KEY=...             # free: fred.stlouisfed.org
 ### AI Provider Options Added
 
 | Provider | Model | Cost | Where to get key |
-|----------|-------|------|-----------------|
+|----------|-------|------|------------------|
 | Groq | llama-3.3-70b-versatile | Free — 14,400 req/day | console.groq.com |
 | Claude | claude-haiku-4-5-20251001 | Paid | console.anthropic.com |
 | Gemini Flash | gemini-1.5-flash | Free — 1,500 req/day | aistudio.google.com |
@@ -501,8 +501,120 @@ When a user added a new **Open Position** for a symbol+direction that already ha
 
 ---
 
+---
+
+## Phase 24 — Design Overhaul + Fundamentals Tab + Status Bar
+
+### Design System Upgrade (`client/src/styles/global.css`)
+- **Base palette shifted** from pure black `#0a0a0a` → deep navy `#080b14` for a premium trading terminal look
+- **All background tokens updated**: `--bg-surface` `#0e1117`, `--bg-card` `#131922`, `--bg-card-hover` `#1a2233`, borders now navy-tinted (`#1e2840`)
+- **New accent system**: `--accent` updated to `#00b4d8` (richer cyan), `--accent-purple: #7c3aed`, `--accent-gold: #ffd60a`
+- **Ambient background gradient**: `body::before` pseudo-element with two radial-gradient "glow blobs" (cyan at 15% left, purple at 85% top-right) behind all content
+- **New card classes**: `.card-glass` (glassmorphism with `backdrop-filter: blur(16px)` + semi-transparent bg), `.card-gradient-border` (gradient border via `background-clip: padding-box` + `::before` mask trick)
+- **New typography utilities**: `.hero-number` (42px mono bold), `.section-label` (10px uppercase dim)
+- **Sticky table headers**: `th` now has `position: sticky; top: 0; background: var(--bg-card)` — headers stay visible on scroll
+- **Row hover glow**: `tr:hover td` now adds `box-shadow: inset 3px 0 0 rgba(0,180,216,0.3)` — subtle cyan left-border glow
+- **Skeleton loaders**: `.skeleton` class with `shimmer` CSS animation (gradient sweep) — replaces plain "Loading…" text
+- **Modal tabs**: `.modal-tabs` + `.modal-tab` + `.modal-tab.active` classes — tab bar with accent underline indicator
+- **Fundamentals grid**: `.fund-grid`, `.fund-cell`, `.fund-cell-label`, `.fund-cell-value` — responsive auto-fill grid for metric cards
+- **Status bar**: `.status-bar`, `.status-bar-dot` (pulsing green dot for open market), `.status-bar-sep` classes
+- **Focus glow on inputs**: `box-shadow: 0 0 0 2px rgba(0,180,216,0.12)` on focus
+- **Scrollbar hover**: `::-webkit-scrollbar-thumb:hover` now brightens slightly
+
+### Fundamentals Backend (`server/routes/fundamentals.js` — new)
+- `GET /api/fundamentals?symbol=NSE:RELIANCE` — uses existing `yahoo-finance2` SDK with `quoteSummary()` 
+- Fetches 4 modules: `defaultKeyStatistics`, `financialData`, `summaryDetail`, `assetProfile`
+- Returns structured JSON: company profile, valuation, market data, profitability, financial health, analyst consensus
+- **1-hour server-side cache** per symbol (Map-based TTL)
+- `fmtBig()` helper: auto-formats large numbers as Cr/L/B/T for Indian market readability
+- Registered at `/api/fundamentals` in `server/index.js` (requires auth)
+- `fundamentalsApi.get(symbol)` added to `client/src/api/client.js`
+
+### ChartModal 3-Tab Design (`client/src/components/chart/ChartModal.jsx`)
+- **Tab state** `activeTab` (`'chart'` | `'fundamentals'`) added
+- **Tab bar** rendered between header and content using `.modal-tabs` / `.modal-tab` CSS classes
+- **Chart tab**: existing LightweightChart + TradingView + SignalPanel — fully unchanged
+- **Fundamentals tab**: `FundamentalsPanel` component (lazy — only fetches on first tab click)
+- **`FundamentalsPanel`** (new inline component):
+  - Skeleton loader while fetching (16 shimmer cells)
+  - Company profile: name, sector badge, industry, country, description blurb
+  - Analyst consensus bar: consensus badge (colour-coded BUY/HOLD/SELL), analyst count, avg/high/low price targets
+  - 4 metric sections each using `.fund-grid`: Valuation, Market Data, Profitability, Financial Health
+  - `StatCell` sub-component: label + monospace value + optional colour (green for high ROE, red for high debt)
+  - `RecoBadge` sub-component: maps Yahoo `recommendationKey` to colour-coded badge
+  - Source attribution footer: "Yahoo Finance · Cached 1h"
+- Modal overlay background changed from `rgba(0,0,0,0.85)` → `rgba(4,7,18,0.92)` (matches new navy theme)
+
+### Status Bar (`client/src/components/layout/StatusBar.jsx` — new)
+- Fixed 26px bar at bottom of content column (inside inner flex column, below `<main>`)
+- **NSE open/closed detection**: pure JS — checks IST time (UTC+5:30), weekday, 9:15–15:30 market hours
+- Shows states: `NSE OPEN` (green pulse dot), `NSE CLOSED`, `NSE PRE-OPEN`, `NSE POST-MARKET`, `NSE CLOSED (Weekend)`
+- IST time display: `HH:MM:SS IST` — updates every second via `setInterval`
+- IST date display: `Thu, 08 May 2026`
+- Pulsing green dot animation (`pulse-dot` keyframe) for open state; static dim dot when closed
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `client/src/styles/global.css` | Full design system upgrade (colours, glass, skeleton, tabs, status bar, fund grid) |
+| `server/routes/fundamentals.js` | **New** — Yahoo Finance quoteSummary endpoint with 1h cache |
+| `server/index.js` | Register `fundamentalsRouter` at `/api/fundamentals` |
+| `client/src/api/client.js` | Add `fundamentalsApi.get(symbol)` |
+| `client/src/components/chart/ChartModal.jsx` | 3-tab layout + `FundamentalsPanel` + `StatCell` + `RecoBadge` components |
+| `client/src/components/layout/StatusBar.jsx` | **New** — IST clock + NSE market status bar |
+| `client/src/App.jsx` | Import + render `StatusBar` inside inner column; `paddingBottom` on main removed (StatusBar takes the space) |
+
+---
+
+---
+
+## Phase 25 — Screener.in Fundamentals Panel in Investments
+
+### What Was Built
+Expandable Screener.in fundamentals row in the Investments page (Indian stocks only). Clicking "▼ Fund" on any Indian stock row fetches and displays ROCE, debt/equity, shareholding %, CAGRs, and analyst pros/cons from Screener.in — all without any account or login.
+
+### Backend: `server/routes/screener.js` (new)
+- `GET /api/screener/company?symbol=RELIANCE.NS`
+- **Step 1**: Calls Screener.in's public search API: `https://www.screener.in/api/company/search/?q=RELIANCE` to resolve company page URL
+- **Step 2**: Uses `screener-scraper-pro` npm package (ESM — loaded via dynamic `import()`) to scrape the company page
+- **Step 3**: Returns shaped JSON: `{ name, url, ratios, shareholding, CAGRs, analysis }`
+- **6-hour server-side cache** per ticker symbol (Map-based TTL)
+- 8-second timeout on Screener.in fetch; graceful 502 on failure
+- Symbol stripping: `RELIANCE.NS` → `RELIANCE`, `NSE:RELIANCE` → `RELIANCE`
+- Registered at `/api/screener` in `server/index.js` (requires auth)
+
+### Frontend: `FundamentalsPanel` component (inline in `Investments.jsx`)
+- `useQuery` with `staleTime: 6h` — only fetches on first expand (lazy)
+- Shows spinner with "Loading Screener.in data…" while fetching
+- Shows graceful error if Screener.in is unreachable
+- 4 sections: **Key Ratios** (ROCE, P/E, Debt/Equity etc.), **Growth CAGR** (3yr/5yr sales/profit), **Shareholding** (Promoter, FII, DII %), **Analysis** (green ✓ pros, red ✗ cons)
+- "Source: Screener.in" attribution link at bottom right
+- Only shown for `region === 'indian'` stocks (not US, ETF, crypto, MF)
+
+### UI: "▼ Fund" Toggle Button (in Investments.jsx table rows)
+- Button appears in the last column for Indian stock rows only (alongside "Close")
+- First click: fetches and expands the panel below the row; button turns accent colour
+- Second click: collapses the panel
+- Each row is now wrapped in `<Fragment key={t.id}>` to allow the extra `<tr>` for the panel
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `server/package.json` | Added `screener-scraper-pro` dependency |
+| `server/routes/screener.js` | **New** — Screener.in proxy + scrape route with 6h cache |
+| `server/index.js` | Register `screenerRouter` at `/api/screener` |
+| `client/src/api/client.js` | Add `screenerApi.company(symbol)` |
+| `client/src/pages/Investments.jsx` | `FundamentalsPanel` component, `expandedFund` state, Fund button, Fragment row wrappers |
+
+---
+
 ## Deferred / Not Yet Done
 
+- **Cmd+K command palette** — stock search + page navigation shortcut (cmdk library)
+- **Table sparklines** — mini 30-day price charts inline in portfolio/watchlist tables
+- **Bento grid home layout** — variable-size tile dashboard replacing stacked cards
+- **FII/DII daily panel** — NSE institutional flow data widget
+- **Option chain viewer** — PCR, Max Pain, OI heatmap (NSE API)
 - **Upstox OAuth scaffolding** — real-time NSE quotes (needs Upstox developer account)
 - **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy
 - **Backtest price chart with entry/exit markers** — candle chart with ▲▼ trade markers

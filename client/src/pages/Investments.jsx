@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { tradesApi, pricesApi, statsApi, mfApi } from '../api/client.js';
+import { tradesApi, pricesApi, statsApi, mfApi, screenerApi } from '../api/client.js';
 import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
@@ -53,6 +53,81 @@ function getInitCurrency(tab) {
   return saved && opts.includes(saved) ? saved : opts[0];
 }
 
+function FundamentalsPanel({ symbol }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['screener', symbol],
+    queryFn: () => screenerApi.company(symbol),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  if (isLoading) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="spinner" style={{ width: 14, height: 14 }} />
+      Loading Screener.in data…
+    </div>
+  );
+  if (isError || !data) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
+      Fundamentals unavailable — Screener.in may be unreachable
+    </div>
+  );
+
+  const ratios = data.ratios || {};
+  const cagrs  = data.CAGRs  || {};
+  const sh     = data.shareholding || {};
+  const pros   = data.analysis?.pros || [];
+  const cons   = data.analysis?.cons || [];
+
+  return (
+    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 32, flexWrap: 'wrap', fontSize: 12 }}>
+      {Object.keys(ratios).length > 0 && (
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Key Ratios</div>
+          {Object.entries(ratios).slice(0, 8).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-dim)', minWidth: 130 }}>{k}</span>
+              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? (Object.values(v)[0] ?? '—') : v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {Object.keys(cagrs).length > 0 && (
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Growth (CAGR)</div>
+          {Object.entries(cagrs).slice(0, 6).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-dim)', minWidth: 170 }}>{k}</span>
+              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? JSON.stringify(v) : v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {Object.keys(sh).length > 0 && (
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Shareholding</div>
+          {Object.entries(sh).slice(0, 6).map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-dim)', minWidth: 110 }}>{k}</span>
+              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? (Object.values(v)[0] ?? '—') : v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {(pros.length > 0 || cons.length > 0) && (
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Analysis</div>
+          {pros.slice(0, 3).map((p, i) => <div key={i} style={{ color: 'var(--green)', marginBottom: 4 }}>✓ {p}</div>)}
+          {cons.slice(0, 3).map((c, i) => <div key={i} style={{ color: 'var(--red)', marginBottom: 4 }}>✗ {c}</div>)}
+        </div>
+      )}
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'flex-end', marginLeft: 'auto' }}>
+        Source: <a href={data.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Screener.in</a>
+      </div>
+    </div>
+  );
+}
+
 // Inline component to fetch AMFI NAV for a single MF position row
 function MfNavCell({ schemeCode }) {
   const { data, isLoading } = useQuery({
@@ -76,6 +151,7 @@ export default function Investments() {
   const [displayCurrency, setDisplayCurrency] = useState(() => getInitCurrency('all'));
   const [closingTrade, setClosingTrade] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [expandedFund, setExpandedFund] = useState(null);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -340,49 +416,69 @@ export default function Investments() {
                   const rowPnlColor = !calc ? 'var(--text-dim)' : calc.pnlD >= 0 ? 'var(--green)' : 'var(--red)';
                   const nativeSymbol = native === 'INR' ? '₹' : '$';
 
+                  const isIndian = region === 'indian';
+                  const fundOpen = expandedFund === t.symbol;
+
                   return (
-                    <tr key={t.id}>
-                      <td>
-                        <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
-                        <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
-                      </td>
-                      <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
-                      <td style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>
-                        {entryC != null ? fmt(entryC) : `${nativeSymbol}${t.entry_price}`}
-                      </td>
-                      <td style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>
-                        {currentC != null
-                          ? fmt(currentC)
-                          : <span style={{ color: 'var(--text-dim)' }}>Loading...</span>}
-                      </td>
-                      <td>
-                        {liveData && (
-                          <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: liveData.changePercent >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                            {liveData.changePercent >= 0 ? '+' : ''}{liveData.changePercent.toFixed(2)}%
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
-                      <td>
-                        {calc ? (
-                          <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: rowPnlColor }}>
-                            {calc.pnlD >= 0 ? '+' : '-'}{fmt(calc.pnlD)}
-                            <span style={{ fontSize: '0.8em', marginLeft: 5, opacity: 0.8 }}>
-                              ({calc.pnlP >= 0 ? '+' : ''}{calc.pnlP.toFixed(1)}%)
+                    <Fragment key={t.id}>
+                      <tr>
+                        <td>
+                          <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
+                          <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
+                        </td>
+                        <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
+                        <td style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
+                        <td style={{ fontFamily: 'var(--text-mono)' }}>
+                          {entryC != null ? fmt(entryC) : `${nativeSymbol}${t.entry_price}`}
+                        </td>
+                        <td style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>
+                          {currentC != null
+                            ? fmt(currentC)
+                            : <span style={{ color: 'var(--text-dim)' }}>Loading...</span>}
+                        </td>
+                        <td>
+                          {liveData && (
+                            <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: liveData.changePercent >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                              {liveData.changePercent >= 0 ? '+' : ''}{liveData.changePercent.toFixed(2)}%
                             </span>
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>
-                        )}
-                      </td>
-                      <td>
-                        <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                          onClick={() => setClosingTrade({ trade: t, currentPrice })}>
-                          Close
-                        </button>
-                      </td>
-                    </tr>
+                          )}
+                        </td>
+                        <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
+                        <td>
+                          {calc ? (
+                            <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: rowPnlColor }}>
+                              {calc.pnlD >= 0 ? '+' : '-'}{fmt(calc.pnlD)}
+                              <span style={{ fontSize: '0.8em', marginLeft: 5, opacity: 0.8 }}>
+                                ({calc.pnlP >= 0 ? '+' : ''}{calc.pnlP.toFixed(1)}%)
+                              </span>
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {isIndian && (
+                            <button
+                              onClick={() => setExpandedFund(fundOpen ? null : t.symbol)}
+                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: fundOpen ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: fundOpen ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                            >
+                              {fundOpen ? '▲ Fund' : '▼ Fund'}
+                            </button>
+                          )}
+                          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
+                            onClick={() => setClosingTrade({ trade: t, currentPrice })}>
+                            Close
+                          </button>
+                        </td>
+                      </tr>
+                      {fundOpen && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: 0 }}>
+                            <FundamentalsPanel symbol={t.symbol} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
