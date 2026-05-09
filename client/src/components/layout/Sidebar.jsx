@@ -9,6 +9,7 @@ const links = [
   { to: '/performance', icon: '◈', label: 'Performance' },
   { to: '/calendar',    icon: '▣', label: 'Calendar'   },
   { to: '/backtest',    icon: '⊕', label: 'Backtest'   },
+  { to: '/screener',    icon: '🔍', label: 'Screener'   },
   { to: '/patterns',    icon: '◇', label: 'Patterns'   },
   { to: '/ai',          icon: '✦', label: 'AI Insights' },
   { to: '/settings',    icon: '⚙', label: 'Settings'    },

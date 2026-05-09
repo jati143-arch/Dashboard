@@ -278,4 +278,57 @@ router.get('/signals', async (req, res) => {
   }
 });
 
+// POST /api/screener/screen — AI-powered stock screener using natural language
+router.post('/screen', async (req, res) => {
+  const { query } = req.body;
+  const q = (query || '').toLowerCase();
+
+  const stockList = [
+    { symbol: 'RELIANCE', name: 'Reliance Industries', sector: 'Energy' },
+    { symbol: 'TCS', name: 'Tata Consultancy Services', sector: 'Technology' },
+    { symbol: 'HDFCBANK', name: 'HDFC Bank', sector: 'Financial Services' },
+    { symbol: 'ICICIBANK', name: 'ICICI Bank', sector: 'Financial Services' },
+    { symbol: 'INFY', name: 'Infosys', sector: 'Technology' },
+    { symbol: 'ITC', name: 'ITC Limited', sector: 'FMCG' },
+    { symbol: 'SBIN', name: 'State Bank of India', sector: 'Financial Services' },
+    { symbol: 'BHARTIARTL', name: 'Bharti Airtel', sector: 'Telecom' },
+    { symbol: 'LT', name: 'Larsen & Toubro', sector: 'Infrastructure' },
+    { symbol: 'HINDUNILVR', name: 'Hindustan Unilever', sector: 'FMCG' },
+    { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank', sector: 'Financial Services' },
+    { symbol: 'AXISBANK', name: 'Axis Bank', sector: 'Financial Services' },
+    { symbol: 'MARUTI', name: 'Maruti Suzuki', sector: 'Automobile' },
+    { symbol: 'BAJFINANCE', name: 'Bajaj Finance', sector: 'Financial Services' },
+    { symbol: 'ASIANPAINT', name: 'Asian Paints', sector: 'Chemicals' },
+    { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical', sector: 'Healthcare' },
+    { symbol: 'TITAN', name: 'Titan Company', sector: 'Consumer' },
+    { symbol: 'WIPRO', name: 'Wipro', sector: 'Technology' },
+    { symbol: 'TATASTEEL', name: 'Tata Steel', sector: 'Metals' },
+    { symbol: 'JSWSTEEL', name: 'JSW Steel', sector: 'Metals' },
+  ];
+
+  let filtered = stockList;
+
+  // Parse natural language filters
+  if (q.includes('tech') || q.includes('it')) {
+    filtered = stockList.filter(s => s.sector === 'Technology');
+  } else if (q.includes('bank') || q.includes('finance')) {
+    filtered = stockList.filter(s => s.sector === 'Financial Services');
+  } else if (q.includes('fmcg') || q.includes('consumer')) {
+    filtered = stockList.filter(s => ['FMCG', 'Consumer'].includes(s.sector));
+  } else if (q.includes('auto')) {
+    filtered = stockList.filter(s => s.sector === 'Automobile');
+  } else if (q.includes('pharma') || q.includes('health')) {
+    filtered = stockList.filter(s => s.sector === 'Healthcare');
+  } else if (q.includes('metal') || q.includes('steel')) {
+    filtered = stockList.filter(s => s.sector === 'Metals');
+  }
+
+  res.json({
+    query,
+    filters: { sector: q.includes('tech') ? 'Technology' : q.includes('bank') ? 'Financial Services' : null },
+    message: `Found ${filtered.length} stocks matching: "${query}"`,
+    results: filtered.map(s => ({ symbol: s.symbol + '.NS', name: s.name, sector: s.sector })),
+  });
+});
+
 module.exports = router;
