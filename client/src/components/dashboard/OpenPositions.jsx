@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi, signalsApi } from '../../api/client.js';
+import { FundamentalsPanel } from '../shared/FundamentalsPanel.jsx';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
@@ -59,6 +60,7 @@ export default function OpenPositions({ onAddPosition }) {
   const { openChart } = useChart();
   const { currency: displayCurrency, rates } = useCurrency();
   const [closingTrade, setClosingTrade] = useState(null);
+  const [expandedFund, setExpandedFund] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('date');
@@ -283,9 +285,10 @@ export default function OpenPositions({ onAddPosition }) {
                 const gainColor = todayGainC == null ? 'var(--text-dim)' : todayGainC >= 0 ? 'var(--green)' : 'var(--red)';
                 const region = detectRegion(t.symbol, t.instrument_type);
                 const nativeSymbol = region === 'indian' ? '₹' : '$';
+                const fundOpen = expandedFund === t.id;
 
                 return (
-                  <tr key={t.id}>
+                  <Fragment key={t.id}><tr>
                     <td>
                       <span
                         style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
@@ -351,13 +354,29 @@ export default function OpenPositions({ onAddPosition }) {
                         );
                       })()}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {region === 'indian' && (
+                        <button
+                          onClick={() => setExpandedFund(fundOpen ? null : t.id)}
+                          style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: fundOpen ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: fundOpen ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                        >
+                          {fundOpen ? '▲ Fund' : '▼ Fund'}
+                        </button>
+                      )}
                       <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
                         onClick={() => setClosingTrade({ trade: t, currentPrice: liveData?.price })}>
                         Close
                       </button>
                     </td>
                   </tr>
+                  {fundOpen && (
+                    <tr>
+                      <td colSpan={12} style={{ padding: 0 }}>
+                        <FundamentalsPanel symbol={t.symbol} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -400,7 +419,7 @@ export default function OpenPositions({ onAddPosition }) {
           <button
             onClick={() => copySymbol(tradeSymbols.map(toTvSymbol).join(','), 'all')}
             style={{ marginTop: 14, width: '100%', padding: '8px', fontSize: 12, borderRadius: 5, cursor: 'pointer', fontWeight: 600, border: '1px solid var(--border)', background: copied === 'all' ? 'rgba(0,255,136,0.15)' : 'transparent', color: copied === 'all' ? 'var(--green)' : 'var(--text-secondary)' }}
-          >{copied === 'all' ? '✓ All Copied!' : '⎘ Copy All as Comma-Separated'}</button>
+          >{copied === 'all' ? '✓ All Copied!' : '⍘ Copy All as Comma-Separated'}</button>
         </Modal>
       )}
     </>

@@ -126,7 +126,8 @@ export const aiProviderApi = {
 };
 
 export const fundamentalsApi = {
-  get: (symbol) => api.get('/fundamentals', { params: { symbol } }).then(r => r.data),
+  get:       (symbol) => api.get('/fundamentals',           { params: { symbol } }).then(r => r.data),
+  quarterly: (symbol) => api.get('/fundamentals/quarterly', { params: { symbol } }).then(r => r.data),
 };
 
 export const screenerApi = {

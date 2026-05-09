@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { pricesApi, watchlistApi } from '../../api/client.js';
 import SparklineCell from './SparklineCell.jsx';
 import AlertForm from './AlertForm.jsx';
+import { useChart } from '../../context/ChartContext.jsx';
 
 function fmt(v, d = 2) {
   if (v == null) return '—';
@@ -11,6 +12,7 @@ function fmt(v, d = 2) {
 
 export default function WatchlistTable({ list }) {
   const qc = useQueryClient();
+  const { openChart } = useChart();
   const [alertFor, setAlertFor] = useState(null);
   const [addSymbol, setAddSymbol] = useState('');
 
@@ -81,7 +83,13 @@ export default function WatchlistTable({ list }) {
                 const alerts = (list.alerts || []).filter(a => a.symbol === sym);
                 return (
                   <tr key={sym} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 10px', fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>{sym}</td>
+                    <td style={{ padding: '8px 10px' }}>
+                      <span
+                        style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                        onClick={() => openChart(sym)}
+                        title="View chart"
+                      >{sym}</span>
+                    </td>
                     <td style={{ padding: '8px 10px', fontFamily: 'var(--text-mono)' }}>{fmt(q.price)}</td>
                     <td style={{ padding: '8px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, color: q.change_pct == null ? 'var(--text-dim)' : up ? 'var(--green)' : 'var(--red)' }}>
                       {q.change_pct == null ? '—' : `${up ? '+' : ''}${fmt(q.change_pct)}%`}
