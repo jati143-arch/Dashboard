@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { default: YahooFinance } = require('yahoo-finance2');
+const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
 const cache = new Map(); // ticker → { data, at }
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6h
@@ -196,9 +198,6 @@ router.get('/signals', async (req, res) => {
   if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json(cached.data);
 
   try {
-    const { default: YahooFinance } = require('yahoo-finance2');
-    const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
-
     let ySym = symbol;
     if (symbol.startsWith('NSE:')) ySym = symbol.replace('NSE:', '') + '.NS';
     else if (symbol.startsWith('BSE:')) ySym = symbol.replace('BSE:', '') + '.BO';
