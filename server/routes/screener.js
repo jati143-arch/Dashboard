@@ -196,17 +196,29 @@ router.get('/signals', async (req, res) => {
   if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json(cached.data);
 
   try {
-    const yf = require('yahoo-finance2').default;
+    const YahooFinance = require('yahoo-finance2').default;
     const { toYahoo } = require('../utils/symbolConvert');
     const ySym = toYahoo(symbol);
 
-    const [quote, history] = await Promise.all([
-      yf.quote(ySym).catch(() => null),
-      yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' }).catch(() => [])
-    ]);
+    console.log('[screener/signals] fetching:', ySym);
 
-    if (!quote) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data available' });
+    let quote = null;
+    let history = [];
+
+    try {
+      quote = await YahooFinance.quote(ySym);
+    } catch (e) {
+      console.log('[screener/signals] quote error:', e.message);
+    }
+
+    try {
+      history = await YahooFinance.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' });
+    } catch (e) {
+      console.log('[screener/signals] history error:', e.message);
+    }
+
+    if (!quote || !history || history.length === 0) {
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Unable to fetch data for ' + ticker });
     }
 
     const prices = history.slice(-30).map(h => h.close);

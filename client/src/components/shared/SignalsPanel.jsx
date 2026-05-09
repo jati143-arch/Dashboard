@@ -24,7 +24,13 @@ export default function SignalsPanel({ symbol }) {
 
   if (isError || !data) return (
     <div style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>
-      Unable to generate signals
+      Unable to generate signals - {data?.error || 'No data'}
+    </div>
+  );
+
+  if (data.error) return (
+    <div style={{ padding: 20, color: 'var(--text-dim)', textAlign: 'center' }}>
+      {data.error}
     </div>
   );
 
