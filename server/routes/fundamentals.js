@@ -124,18 +124,6 @@ router.get('/quarterly', async (req, res) => {
       period2,
     });
 
-    const quarters = {};
-    const fields = ['totalRevenue', 'netIncome', 'basicEPS', 'dilutedEPS', 'EBITDA', 'grossProfit'];
-    for (const field of fields) {
-      const arr = result[field] ?? [];
-      for (const item of arr) {
-        const d = (item.date ?? item.asOfDate ?? item.period ?? '').toString().slice(0, 10);
-        if (!d) continue;
-        if (!quarters[d]) quarters[d] = { date: d };
-        quarters[d][field] = item.reportedValue?.raw ?? item.reportedValue ?? item.value ?? null;
-      }
-    }
-
     function fmtBig(v) {
       if (v == null) return null;
       if (v >= 1e12) return (v / 1e12).toFixed(2) + 'T';
@@ -145,17 +133,23 @@ router.get('/quarterly', async (req, res) => {
       return v != null ? String(Number(v).toFixed(2)) : null;
     }
 
-    const rows = Object.values(quarters)
-      .sort((a, b) => b.date.localeCompare(a.date))
+    // fundamentalsTimeSeries returns an array of period objects directly
+    const arr = Array.isArray(result) ? result : [];
+    const rows = arr
+      .sort((a, b) => {
+        const da = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+        const db = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+        return db - da;
+      })
       .slice(0, 12)
       .map(q => ({
-        date: q.date,
-        revenue:    fmtBig(q.totalRevenue),
-        netIncome:  fmtBig(q.netIncome),
+        date:        (q.date instanceof Date ? q.date.toISOString() : String(q.date)).slice(0, 10),
+        revenue:     fmtBig(q.totalRevenue),
+        netIncome:   fmtBig(q.netIncome),
         grossProfit: fmtBig(q.grossProfit),
-        ebitda:     fmtBig(q.EBITDA),
-        basicEPS:   q.basicEPS   != null ? Number(q.basicEPS).toFixed(2)   : null,
-        dilutedEPS: q.dilutedEPS != null ? Number(q.dilutedEPS).toFixed(2) : null,
+        ebitda:      fmtBig(q.EBITDA ?? q.ebitda),
+        basicEPS:    q.basicEPS   != null ? Number(q.basicEPS).toFixed(2)   : null,
+        dilutedEPS:  q.dilutedEPS != null ? Number(q.dilutedEPS).toFixed(2) : null,
       }));
 
     const data = { symbol: ySym, quarters: rows };

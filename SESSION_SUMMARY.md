@@ -670,6 +670,19 @@ Six improvements across fundamentals, quarterly data, and ticker interactivity:
 | `client/src/components/dashboard/OpenPositions.jsx` | Import `FundamentalsPanel`; `Fragment` wrap; `expandedFund` state; "▼ Fund" button for Indian stocks |
 | `client/src/components/watchlist/WatchlistTable.jsx` | Import `useChart`; symbol spans clickable via `openChart` |
 
+### Phase 26 Bug Fix — Quarterly Results "Unavailable" Error
+**Root cause:** `yf.fundamentalsTimeSeries()` from yahoo-finance2 returns an **array** of period objects (`[{ date, totalRevenue, netIncome, ... }]`), not an object keyed by field name. The original `/quarterly` route iterated `result['totalRevenue']` etc. which were all `undefined`, producing an empty `quarters` object and thus `rows = []` — triggering the frontend's "Quarterly data unavailable" fallback every time.
+
+**Fix in `server/routes/fundamentals.js`:** Replaced the field-by-field iteration with direct array mapping:
+```javascript
+const arr = Array.isArray(result) ? result : [];
+const rows = arr
+  .sort((a, b) => getTime(b.date) - getTime(a.date))
+  .slice(0, 12)
+  .map(q => ({ date: q.date.slice(0,10), revenue: fmtBig(q.totalRevenue), ... }));
+```
+Each item in the array has all fields as direct properties, so no reshape loop is needed.
+
 ---
 
 ## Deferred / Not Yet Done
