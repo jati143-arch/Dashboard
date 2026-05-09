@@ -72,7 +72,9 @@ router.get('/:symbol', async (req, res) => {
   period1.setDate(period1.getDate() - cfg.days);
 
   try {
-    const data = await yf.chart(toYahoo(req.params.symbol), {
+    const ySym = toYahoo(req.params.symbol);
+    console.log('[chart] fetching:', req.params.symbol, '->', ySym);
+    const data = await yf.chart(ySym, {
       period1: period1.toISOString().slice(0, 10),
       interval: cfg.interval,
     }, { validateResult: false });
