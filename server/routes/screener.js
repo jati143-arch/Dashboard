@@ -197,7 +197,7 @@ router.get('/signals', async (req, res) => {
 
   // Use same Yahoo Finance setup as prices.js
   const { default: YahooFinance } = require('yahoo-finance2');
-  const yf = new YahooFinance({ suppressNotNames: ['yahooSurvey', 'ripHistorical'] });
+  const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
   // Convert symbol to Yahoo format
   let ySym = symbol;
