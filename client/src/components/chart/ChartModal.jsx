@@ -424,7 +424,7 @@ function LightweightChart({ symbol, entryPrice }) {
   const macdChartRef     = useRef(null);
   const candleSeriesRef  = useRef(null);
 
-  const [range, setRange] = useState('D');
+  const [range, setRange] = useState('1d');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
   const [ind, setInd] = useState({
@@ -871,7 +871,24 @@ function LightweightChart({ symbol, entryPrice }) {
           </div>
         )}
         {/* autoSize:true makes LW Charts observe this div's size automatically */}
-        <div ref={mainContainerRef} style={{ flex: 1, minHeight: 0 }} />
+        {isLoading && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+            Loading chart data...
+          </div>
+        )}
+        {isError && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)' }}>
+            Failed to load chart data
+          </div>
+        )}
+        {!isLoading && !isError && candles.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+            No data available for {symbol}
+          </div>
+        )}
+        {!isLoading && !isError && candles.length > 0 && (
+          <div ref={mainContainerRef} style={{ flex: 1, minHeight: 0 }} />
+        )}
       </div>
 
       {/* ── RSI sub-pane ─────────────────────────────────────────────────────── */}
