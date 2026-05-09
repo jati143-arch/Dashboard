@@ -1025,6 +1025,8 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
 
       {/* AI Buy/Sell Signals */}
       <AISignalsPanel symbol={symbol} />
+      {/* Groq AI Power Signal */}
+      <AISignalPanel symbol={symbol} />
     </div>
   );
 }

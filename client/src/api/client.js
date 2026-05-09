@@ -136,4 +136,5 @@ export const screenerApi = {
   annual:  (symbol) => api.get('/screener/annual',  { params: { symbol } }).then(r => r.data),
   signals: (symbol) => api.get('/screener/signals', { params: { symbol } }).then(r => r.data),
   screen:  (query) => api.post('/screener/screen', { query }).then(r => r.data),
+  aiAnalyze: (symbol) => api.post('/screener/ai-analyze', { symbol }).then(r => r.data),
 };

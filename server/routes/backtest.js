@@ -419,4 +419,144 @@ router.post('/', async (req, res) => {
   }
 });
 
+// POST /api/backtest/vob — VOB (Volumized Order Blocks) Backtest
+router.post('/vob', async (req, res) => {
+  const { symbol, from, to, swingLen = 10, atrMult = 3.5, rrRatio = 3 } = req.body;
+  
+  try {
+    const ySym = toYahoo(symbol);
+    const start = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const end = to || new Date().toISOString().slice(0, 10);
+    
+    const data = await yf.historical(ySym, { period1: start, period2: end, interval: '1d' });
+    if (!data?.length) return res.json({ error: 'No data' });
+    
+    // Calculate ATR
+    const atrData = data.slice(-14).map(d => Math.max(d.high - d.low, Math.abs(d.high - d.close), Math.abs(d.low - d.close)));
+    const atr = atrData.reduce((a, b) => a + b, 0) / 14;
+    const maxOBSize = atr * atrMult;
+    
+    const trades = [];
+    let inPosition = false;
+    let entryPrice = 0;
+    let entryIndex = 0;
+    let stopLoss = 0;
+    let takeProfit = 0;
+    
+    // Find swing highs and VOBs
+    for (let i = swingLen; i < data.length - swingLen - 1; i++) {
+      // Check for swing high
+      let isSwingHigh = true;
+      for (let j = 1; j <= swingLen; j++) {
+        if (data[i + j].high >= data[i].high || data[i - j].high >= data[i].high) {
+          isSwingHigh = false;
+          break;
+        }
+      }
+      
+      const swingHighPrice = data[i].high;
+      
+      // Look for bullish OB: price crosses above swing high
+      if (!inPosition && isSwingHigh) {
+        for (let k = i + 1; k < data.length; k++) {
+          if (data[k].close > swingHighPrice && data[k - 1].close <= swingHighPrice) {
+            // Found cross - find lowest low between i and k
+            let minLow = data[i].low;
+            let minLowIndex = i;
+            for (let m = i; m <= k; m++) {
+              if (data[m].low < minLow) {
+                minLow = data[m].low;
+                minLowIndex = m;
+              }
+            }
+            
+            const obSize = swingHighPrice - minLow;
+            if (obSize > 0 && obSize <= maxOBSize) {
+              // Entry on close above OB bottom
+              if (data[k].close >= minLow) {
+                entryPrice = data[k].close;
+                entryIndex = k;
+                stopLoss = minLow - (atr * 0.1); // 0.1 ATR buffer
+                takeProfit = entryPrice + (entryPrice - stopLoss) * rrRatio;
+                inPosition = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Check exits
+      if (inPosition) {
+        const currentPrice = data[i].close;
+        const date = data[i].date.toISOString().slice(0, 10);
+        
+        // Stop loss hit
+        if (currentPrice <= stopLoss) {
+          trades.push({
+            entry: data[entryIndex].date.toISOString().slice(0, 10),
+            exit: date,
+            entryPrice: entryPrice.toFixed(2),
+            exitPrice: currentPrice.toFixed(2),
+            pnl: (currentPrice - entryPrice).toFixed(2),
+            pnlPercent: ((currentPrice - entryPrice) / entryPrice * 100).toFixed(2),
+            type: 'LONG',
+            reason: 'SL'
+          });
+          inPosition = false;
+        }
+        // Take profit hit
+        else if (currentPrice >= takeProfit) {
+          trades.push({
+            entry: data[entryIndex].date.toISOString().slice(0, 10),
+            exit: date,
+            entryPrice: entryPrice.toFixed(2),
+            exitPrice: currentPrice.toFixed(2),
+            pnl: (currentPrice - entryPrice).toFixed(2),
+            pnlPercent: ((currentPrice - entryPrice) / entryPrice * 100).toFixed(2),
+            type: 'LONG',
+            reason: 'TP'
+          });
+          inPosition = false;
+        }
+      }
+    }
+    
+    // Close any open position at end
+    if (inPosition) {
+      const lastPrice = data[data.length - 1].close;
+      trades.push({
+        entry: data[entryIndex].date.toISOString().slice(0, 10),
+        exit: data[data.length - 1].date.toISOString().slice(0, 10),
+        entryPrice: entryPrice.toFixed(2),
+        exitPrice: lastPrice.toFixed(2),
+        pnl: (lastPrice - entryPrice).toFixed(2),
+        pnlPercent: ((lastPrice - entryPrice) / entryPrice * 100).toFixed(2),
+        type: 'LONG',
+        reason: 'EOD'
+      });
+    }
+    
+    const wins = trades.filter(t => parseFloat(t.pnl) > 0).length;
+    const total = trades.length;
+    const totalPnl = trades.reduce((s, t) => s + parseFloat(t.pnl), 0);
+    
+    res.json({
+      strategy: 'VOB (Volumized Order Blocks)',
+      params: { swingLen, atrMult, rrRatio },
+      totalTrades: total,
+      wins,
+      losses: total - wins,
+      winRate: total > 0 ? Math.round(wins / total * 100) : 0,
+      totalPnl: totalPnl.toFixed(2),
+      avgWin: total > 0 ? (trades.filter(t => parseFloat(t.pnl) > 0).reduce((s, t) => s + parseFloat(t.pnl), 0) / wins).toFixed(2) : 0,
+      avgLoss: total > 0 ? (trades.filter(t => parseFloat(t.pnl) <= 0).reduce((s, t) => s + parseFloat(t.pnl), 0) / (total - wins)).toFixed(2) : 0,
+      trades: trades.slice(-50),
+    });
+  } catch (err) {
+    console.error('[backtest/vob]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

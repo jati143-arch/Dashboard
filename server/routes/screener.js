@@ -301,6 +301,133 @@ router.get('/signals', async (req, res) => {
   }
 });
 
+// POST /api/screener/ai-analyze — Groq AI analysis with VOB strategy
+router.post('/ai-analyze', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  
+  try {
+    // First get technical data
+    let ySym = symbol;
+    if (symbol.startsWith('NSE:')) ySym = symbol.replace('NSE:', '') + '.NS';
+    else if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) {} // already formatted
+    else ySym = symbol + '.NS';
+
+    let quote = null, history = [];
+    try { quote = await yf.quote(ySym); } catch (e) {}
+    try { history = await yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' }); } catch (e) {}
+
+    if (!quote?.regularMarketPrice && !history?.length) {
+      return res.json({ error: 'No data for ' + symbol });
+    }
+
+    const prices = history.slice(-60).map(h => h.close);
+    const currentPrice = quote?.regularMarketPrice || history[history.length-1].close;
+    const volume = history.slice(-20).map(h => h.volume || 0);
+    
+    // Calculate indicators
+    const calcRSI = (p, p2) => { if (p.length < p2 + 1) return null; let g = 0, l = 0; for (let i = p.length - p2; i < p.length; i++) { const c = p[i] - p[i - 1]; if (c > 0) g += c; else l -= c; } const ag = g / p2, al = l / p2; if (al === 0) return 100; return 100 - (100 / (1 + ag / al)); };
+    const calcEMA = (p, p2) => { if (p.length < p2) return null; const k = 2 / (p2 + 1); let ema = p.slice(0, p2).reduce((a, b) => a + b, 0) / p2; for (let i = p2; i < p.length; i++) ema = p[i] * k + ema * (1 - k); return ema; };
+    
+    const rsi = calcRSI(prices, 14);
+    const ema9 = calcEMA(prices, 9);
+    const ema21 = calcEMA(prices, 21);
+    const sma20 = prices.slice(-20).reduce((a,b)=>a+b,0)/20;
+    const sma50 = prices.slice(-50).reduce((a,b)=>a+b,0)/50;
+    const atr = history.slice(-14).reduce((s,c) => s + (Math.max(c.high-c.low, Math.abs(c.high-c.close), Math.abs(c.low-c.close))),0) / 14;
+    
+    // VOB Strategy Analysis
+    const vobAnalysis = findVOBs(history, 10, atr);
+    
+    // Get Groq AI for analysis
+    let aiAnalysis = '';
+    try {
+      const { default: Groq } = require('groq-sdk');
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      
+      const prompt = `You are a professional trading analyst. Analyze ${ticker} at ₹${currentPrice.toFixed(2)} and provide:
+
+1. Quick signal: BUY / SELL / HOLD
+2. Entry price suggestion
+3. Stop loss (use recent swing low or ATR-based)
+4. Take profit levels (1:3 risk:reward)
+5. Key reasons (2-3 bullet points)
+6. VOB (Volumized Order Blocks) analysis: Are there any bullish OB zones? What's the nearest demand zone?
+
+Technical data:
+- RSI(14): ${rsi?.toFixed(1)}
+- EMA 9: ${ema9?.toFixed(2)}
+- EMA 21: ${ema21?.toFixed(2)}
+- SMA 20: ${sma20?.toFixed(2)}
+- SMA 50: ${sma50?.toFixed(2)}
+- ATR: ${atr?.toFixed(2)}
+- VOB Zones: ${vobAnalysis.zones.length} found
+
+Keep response concise and actionable. Use ₹ for price.`;
+
+      const chat = await groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 500,
+      });
+      aiAnalysis = chat.choices[0]?.message?.content || '';
+    } catch (aiErr) {
+      console.log('[screener/ai-analyze] AI error:', aiErr.message);
+      aiAnalysis = 'AI analysis unavailable';
+    }
+
+    res.json({
+      symbol: ticker,
+      price: currentPrice.toFixed(2),
+      technical: { rsi: rsi?.toFixed(1), ema9: ema9?.toFixed(2), ema21: ema21?.toFixed(2), sma20: sma20?.toFixed(2), sma50: sma50?.toFixed(2), atr: atr?.toFixed(2) },
+      vob: vobAnalysis,
+      aiAnalysis,
+    });
+  } catch (err) {
+    console.error('[screener/ai-analyze]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Helper: Find VOB (Volumized Order Block) zones
+function findVOBs(history, swingLen, atr) {
+  const zones = [];
+  const prices = history.slice(-100);
+  
+  for (let i = 20; i < prices.length - swingLen; i++) {
+    // Find swing high
+    let isSwingHigh = true;
+    for (let j = 1; j <= swingLen; j++) {
+      if (prices[i+j].high >= prices[i].high || prices[i-j].high >= prices[i].high) {
+        isSwingHigh = false;
+        break;
+      }
+    }
+    
+    if (isSwingHigh) {
+      // Look for bullish OB after swing high: price crosses above, then finds lowest low
+      for (let k = i + 1; k < prices.length; k++) {
+        if (prices[k].close > prices[i].high && prices[k-1].close <= prices[i].high) {
+          // Found crossing - find lowest low between i and k
+          let minLow = prices[i].low;
+          for (let m = i; m <= k; m++) {
+            if (prices[m].low < minLow) minLow = prices[m].low;
+          }
+          const obSize = prices[i].high - minLow;
+          if (obSize > 0 && obSize <= atr * 3.5) {
+            zones.push({ top: prices[i].high, bottom: minLow, type: 'bullish' });
+          }
+          break;
+        }
+      }
+    }
+  }
+  
+  return { zones: zones.slice(-5) }; // Return last 5 zones
+}
+
 // POST /api/screener/screen — AI-powered stock screener using natural language
 router.post('/screen', async (req, res) => {
   const { query } = req.body;
