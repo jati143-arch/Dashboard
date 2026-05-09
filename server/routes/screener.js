@@ -197,10 +197,19 @@ router.get('/signals', async (req, res) => {
 
   try {
     const YahooFinance = require('yahoo-finance2').default;
-    const { toYahoo } = require('../utils/symbolConvert');
-    const ySym = toYahoo(symbol);
 
-    console.log('[screener/signals] fetching:', ySym);
+    // Convert symbol to Yahoo format
+    let ySym = symbol;
+    if (symbol.startsWith('NSE:')) {
+      ySym = symbol.replace('NSE:', '') + '.NS';
+    } else if (symbol.startsWith('BSE:')) {
+      ySym = symbol.replace('BSE:', '') + '.BO';
+    } else if (!symbol.includes(':') && !symbol.includes('=')) {
+      // Plain symbol like RELIANCE - assume Indian
+      ySym = symbol + '.NS';
+    }
+
+    console.log('[screener/signals] input:', symbol, '-> yahoo:', ySym);
 
     let quote = null;
     let history = [];
@@ -217,8 +226,10 @@ router.get('/signals', async (req, res) => {
       console.log('[screener/signals] history error:', e.message);
     }
 
+    console.log('[screener/signals] quote:', !!quote, 'history:', history?.length);
+
     if (!quote || !history || history.length === 0) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Unable to fetch data for ' + ticker });
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Unable to fetch data for ' + ySym });
     }
 
     const prices = history.slice(-30).map(h => h.close);
