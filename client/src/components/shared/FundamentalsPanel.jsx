@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fundamentalsApi } from '../../api/client.js';
+import { fundamentalsApi, screenerApi } from '../../api/client.js';
 
 const REC_COLORS = {
   'strong buy': 'var(--green)', buy: 'var(--green)',
@@ -201,6 +201,57 @@ export function AnnualPanel({ symbol }) {
         </tbody>
       </table>
       <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Yahoo Finance · Cached 24h</div>
+    </div>
+  );
+}
+
+export function ScreenerAnnualPanel({ symbol }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['screener-annual', symbol],
+    queryFn: () => screenerApi.annual(symbol),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  if (isLoading) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="spinner" style={{ width: 14, height: 14 }} />
+      Loading Screener.in annual data…
+    </div>
+  );
+  if (isError || !data?.annuals?.length) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
+      Annual data unavailable{data?.message ? `: ${data.message}` : ''}
+    </div>
+  );
+
+  const HEADERS = ['Year', 'Revenue', 'Op. Income', 'Net Income', 'EPS', 'DPS'];
+
+  return (
+    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+        Annual Financials · last {data.annuals.length} years
+      </div>
+      <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 500 }}>
+        <thead>
+          <tr>
+            {HEADERS.map((h, i) => (
+              <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', padding: '4px 10px', color: 'var(--text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.annuals.map(a => (
+            <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
+              {[a.revenue, a.operatingIncome, a.netIncome, a.basicEPS, a.dividendPerShare].map((v, i) => (
+                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Screener.in · Cached 6h</div>
     </div>
   );
 }

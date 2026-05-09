@@ -48,4 +48,96 @@ router.get('/company', async (req, res) => {
   }
 });
 
+// GET /api/screener/annual?symbol=RELIANCE.NS — scrape annual P&L from Screener.in
+router.get('/annual', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  const cacheKey = `annual_${ticker}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL) return res.json(cached.data);
+
+  try {
+    const url = `https://www.screener.in/company/${ticker}/consolidated/`;
+    console.log('[screener/annual] fetching:', url);
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Screener.in returned ${response.status}` });
+    }
+
+    const html = await response.text();
+
+    // Try to extract JSON data from the page's initial state
+    const jsonMatch = html.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/);
+    if (!jsonMatch) {
+      return res.json({ symbol: ticker, annuals: [], message: 'Could not find data on Screener.in' });
+    }
+
+    try {
+      const jsonData = JSON.parse(jsonMatch[1]);
+
+      // Navigate through the JSON structure to find annual results
+      // The structure typically has company.annualResults or company.results
+      const annuals = [];
+
+      // Try different paths in the JSON
+      const results = jsonData?.company?.annualResults || jsonData?.company?.results || [];
+
+      if (results.length > 0) {
+        for (const r of results.slice(0, 5)) {
+          const year = r.year || r.closingDate?.slice(0, 4) || '';
+          const formatCr = (val) => val ? `₹${(Number(val) / 10000000).toFixed(2)}Cr` : null;
+
+          annuals.push({
+            date: year,
+            revenue: formatCr(r.totalIncome || r.sales),
+            operatingIncome: formatCr(r.operatingIncome),
+            netIncome: formatCr(r.profitAfterTax || r.netProfit),
+            grossProfit: formatCr(r.grossProfit),
+            basicEPS: r.eps ? Number(r.eps).toFixed(2) : null,
+            dividendPerShare: r.dividendPerShare ? Number(r.dividendPerShare).toFixed(2) : null,
+          });
+        }
+
+        cache.set(cacheKey, { data: { symbol: ticker, annuals }, at: Date.now() });
+        return res.json({ symbol: ticker, annuals });
+      }
+
+      // Try another path - sometimes data is in profiles or other structures
+      if (jsonData?.company?.profile?.financials) {
+        const financials = jsonData.company.profile.financials;
+        for (const [year, data] of Object.entries(financials).slice(0, 5)) {
+          annuals.push({
+            date: year,
+            revenue: data.totalIncome ? `₹${(data.totalIncome / 10000000).toFixed(2)}Cr` : null,
+            netIncome: data.netProfit ? `₹${(data.netProfit / 10000000).toFixed(2)}Cr` : null,
+          });
+        }
+        if (annuals.length > 0) {
+          cache.set(cacheKey, { data: { symbol: ticker, annuals }, at: Date.now() });
+          return res.json({ symbol: ticker, annuals });
+        }
+      }
+
+      console.log('[screener/annual] JSON structure keys:', Object.keys(jsonData));
+      res.json({ symbol: ticker, annuals: [], message: 'No annual data found in Screener.in' });
+    } catch (e) {
+      console.log('[screener/annual] JSON parse error:', e.message);
+      res.json({ symbol: ticker, annuals: [], message: 'Error parsing Screener.in data' });
+    }
+  } catch (err) {
+    console.error('[screener/annual]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 module.exports = router;

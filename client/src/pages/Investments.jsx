@@ -5,7 +5,7 @@ import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
-import { FundamentalsPanel, QuarterlyPanel, AnnualPanel } from '../components/shared/FundamentalsPanel.jsx';
+import { FundamentalsPanel, QuarterlyPanel, ScreenerAnnualPanel } from '../components/shared/FundamentalsPanel.jsx';
 import { useChart } from '../context/ChartContext.jsx';
 
 function detectRegion(symbol, instrumentType) {
@@ -439,7 +439,7 @@ export default function Investments() {
                       {expandedAnnual === t.symbol && (
                         <tr>
                           <td colSpan={9} style={{ padding: 0 }}>
-                            <AnnualPanel symbol={t.symbol} />
+                            <ScreenerAnnualPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}
