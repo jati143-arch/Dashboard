@@ -606,6 +606,70 @@ Expandable Screener.in fundamentals row in the Investments page (Indian stocks o
 | `client/src/api/client.js` | Add `screenerApi.company(symbol)` |
 | `client/src/pages/Investments.jsx` | `FundamentalsPanel` component, `expandedFund` state, Fund button, Fragment row wrappers |
 
+### Phase 25 Bug Fix — Screener.in Replaced with Yahoo Finance
+Screener.in returns `403 Host not in allowlist` for all Render cloud IPs — both the search API and HTML pages are blocked. `screener-scraper-pro` is effectively unusable on any cloud host.
+
+**Fix:** Replaced `screenerApi` with the existing `fundamentalsApi` (Yahoo Finance `quoteSummary`) in `Investments.jsx`. `FundamentalsPanel` was redesigned to show 4 sections from Yahoo Finance data: **Valuation** (P/E, P/B, EV/EBITDA, Market Cap, EPS), **Profitability** (ROE green ≥15%, ROA, margins, growth), **Financial Health** (D/E red >2, ratios, debt, cash, FCF), **Analyst** (consensus, target prices, beta). Backend `screener.js` route left in place but unused.
+
+---
+
+---
+
+## Phase 26 — Fundamentals Enhancements + Quarterly Results + Clickable Tickers
+
+### What Was Built
+
+Six improvements across fundamentals, quarterly data, and ticker interactivity:
+
+### 1. 52-Week High/Low + Dividend Yield in FundamentalsPanel
+- New **Market Data** section added to `FundamentalsPanel`
+- Shows `52wk High` (green), `52wk Low` (red), `Avg Volume`, `Book Value`
+- **Dividend Yield** shown in green only if the stock pays a dividend (`dividendYield != null`)
+- Data was already returned by `/api/fundamentals` but not displayed — no backend change needed
+
+### 2. Quarterly Results Button + Panel
+**Backend** — `GET /api/fundamentals/quarterly?symbol=` added to `server/routes/fundamentals.js`:
+- Uses `yf.fundamentalsTimeSeries(symbol, { type: 'quarterly', period1, period2 })`
+- Returns up to 12 quarters (3 years) of: Revenue, Net Income, Gross Profit, EBITDA, Basic EPS, Diluted EPS
+- 4-hour server-side cache per symbol
+- Values formatted with `fmtBig()` (Cr/L/B/T for Indian readability)
+
+**Frontend:**
+- `fundamentalsApi.quarterly(symbol)` added to `client/src/api/client.js`
+- `QuarterlyPanel` component renders a scrollable table sorted newest-first
+- **"📊 Qtly" button** appears next to "▼ Fund" for Indian stocks in Investments page
+- Clicking expands a quarterly results row below the position; clicking again collapses
+
+### 3. Shared FundamentalsPanel Component
+- `client/src/components/shared/FundamentalsPanel.jsx` (**new**) — extracts both panels into a single file
+- Named exports: `FundamentalsPanel`, `QuarterlyPanel`
+- Replaces the inline definitions that were duplicated in `Investments.jsx`
+
+### 4. Clickable Tickers in Investments Page
+- Symbol `<span>` in Investments.jsx now has `onClick={() => openChart(t.symbol, t.entry_price)}` with accent colour + cursor pointer
+- `useChart` hook imported; `openChart` wired up — same behaviour as OpenPositions dashboard widget
+
+### 5. "▼ Fund" Button on Dashboard OpenPositions Widget
+- `OpenPositions.jsx` now imports `FundamentalsPanel` from shared component
+- `expandedFund` state (keyed by `t.id`) added
+- **"▼ Fund" button** visible for Indian stocks alongside the "Close" button
+- `<Fragment key={t.id}>` wrapping added to support the expandable row
+- Expansion row uses `colSpan={12}` (matching the 12-column table)
+
+### 6. Clickable Tickers in Watchlist
+- `WatchlistTable.jsx` imports `useChart` from `ChartContext`
+- Symbol cells now render as accent-coloured clickable spans — clicking any symbol opens the chart modal
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `server/routes/fundamentals.js` | Added `GET /quarterly` route with `fundamentalsTimeSeries`, 4h cache |
+| `client/src/api/client.js` | Added `fundamentalsApi.quarterly(symbol)` |
+| `client/src/components/shared/FundamentalsPanel.jsx` | **New** — shared `FundamentalsPanel` + `QuarterlyPanel` with 52wk/dividend/Market Data section |
+| `client/src/pages/Investments.jsx` | Import from shared; `useChart` + clickable symbols; `expandedQtly` state; "📊 Qtly" button + row |
+| `client/src/components/dashboard/OpenPositions.jsx` | Import `FundamentalsPanel`; `Fragment` wrap; `expandedFund` state; "▼ Fund" button for Indian stocks |
+| `client/src/components/watchlist/WatchlistTable.jsx` | Import `useChart`; symbol spans clickable via `openChart` |
+
 ---
 
 ## Deferred / Not Yet Done
