@@ -1,6 +1,6 @@
 import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { tradesApi, pricesApi, statsApi, mfApi, screenerApi } from '../api/client.js';
+import { tradesApi, pricesApi, statsApi, mfApi, fundamentalsApi } from '../api/client.js';
 import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
@@ -53,76 +53,94 @@ function getInitCurrency(tab) {
   return saved && opts.includes(saved) ? saved : opts[0];
 }
 
+const REC_COLORS = {
+  'strong buy': 'var(--green)', buy: 'var(--green)',
+  hold: 'var(--yellow)', underperform: 'var(--red)', sell: 'var(--red)',
+};
+
+function FRow({ label, value, color }) {
+  if (value == null) return null;
+  return (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+      <span style={{ color: 'var(--text-dim)', minWidth: 140 }}>{label}</span>
+      <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600, color: color || 'var(--text-primary)' }}>{value}</span>
+    </div>
+  );
+}
+
+function FSection({ title, children }) {
+  return (
+    <div style={{ minWidth: 180 }}>
+      <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
 function FundamentalsPanel({ symbol }) {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['screener', symbol],
-    queryFn: () => screenerApi.company(symbol),
-    staleTime: 6 * 60 * 60 * 1000,
+    queryKey: ['fundamentals-inv', symbol],
+    queryFn: () => fundamentalsApi.get(symbol),
+    staleTime: 60 * 60 * 1000,
     retry: 1,
   });
 
   if (isLoading) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
       <div className="spinner" style={{ width: 14, height: 14 }} />
-      Loading Screener.in data…
+      Loading fundamentals…
     </div>
   );
   if (isError || !data) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
-      Fundamentals unavailable — Screener.in may be unreachable
+      Fundamentals unavailable
     </div>
   );
 
-  const ratios = data.ratios || {};
-  const cagrs  = data.CAGRs  || {};
-  const sh     = data.shareholding || {};
-  const pros   = data.analysis?.pros || [];
-  const cons   = data.analysis?.cons || [];
+  const recColor = data.recommendation ? (REC_COLORS[data.recommendation.toLowerCase()] || 'var(--text-secondary)') : null;
+  const pct = v => v != null ? `${v}%` : null;
+  const x   = v => v != null ? `${v}×` : null;
 
   return (
-    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 32, flexWrap: 'wrap', fontSize: 12 }}>
-      {Object.keys(ratios).length > 0 && (
-        <div>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Key Ratios</div>
-          {Object.entries(ratios).slice(0, 8).map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ color: 'var(--text-dim)', minWidth: 130 }}>{k}</span>
-              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? (Object.values(v)[0] ?? '—') : v}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {Object.keys(cagrs).length > 0 && (
-        <div>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Growth (CAGR)</div>
-          {Object.entries(cagrs).slice(0, 6).map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ color: 'var(--text-dim)', minWidth: 170 }}>{k}</span>
-              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? JSON.stringify(v) : v}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {Object.keys(sh).length > 0 && (
-        <div>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Shareholding</div>
-          {Object.entries(sh).slice(0, 6).map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ color: 'var(--text-dim)', minWidth: 110 }}>{k}</span>
-              <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 600 }}>{typeof v === 'object' ? (Object.values(v)[0] ?? '—') : v}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {(pros.length > 0 || cons.length > 0) && (
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>Analysis</div>
-          {pros.slice(0, 3).map((p, i) => <div key={i} style={{ color: 'var(--green)', marginBottom: 4 }}>✓ {p}</div>)}
-          {cons.slice(0, 3).map((c, i) => <div key={i} style={{ color: 'var(--red)', marginBottom: 4 }}>✗ {c}</div>)}
-        </div>
+    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 28, flexWrap: 'wrap', fontSize: 12 }}>
+      <FSection title="Valuation">
+        <FRow label="P/E (TTM)"       value={data.peRatio} />
+        <FRow label="Forward P/E"     value={data.forwardPE} />
+        <FRow label="P/B"             value={data.pbRatio} />
+        <FRow label="EV/EBITDA"       value={x(data.evEbitda)} />
+        <FRow label="Market Cap"      value={data.marketCap} />
+        <FRow label="EPS"             value={data.eps} />
+      </FSection>
+      <FSection title="Profitability">
+        <FRow label="ROE"             value={pct(data.roe)}            color={data.roe >= 15 ? 'var(--green)' : data.roe < 0 ? 'var(--red)' : null} />
+        <FRow label="ROA"             value={pct(data.roa)} />
+        <FRow label="Profit Margin"   value={pct(data.profitMargin)} />
+        <FRow label="Operating Margin" value={pct(data.operatingMargin)} />
+        <FRow label="Revenue Growth"  value={pct(data.revenueGrowth)}  color={data.revenueGrowth > 0 ? 'var(--green)' : 'var(--red)'} />
+        <FRow label="Earnings Growth" value={pct(data.earningsGrowth)} color={data.earningsGrowth > 0 ? 'var(--green)' : 'var(--red)'} />
+      </FSection>
+      <FSection title="Financial Health">
+        <FRow label="Debt / Equity"   value={data.debtToEquity}        color={data.debtToEquity > 2 ? 'var(--red)' : null} />
+        <FRow label="Current Ratio"   value={data.currentRatio}        color={data.currentRatio < 1 ? 'var(--red)' : 'var(--green)'} />
+        <FRow label="Quick Ratio"     value={data.quickRatio} />
+        <FRow label="Total Debt"      value={data.totalDebt} />
+        <FRow label="Total Cash"      value={data.totalCash} />
+        <FRow label="Free Cash Flow"  value={data.freeCashFlow} />
+      </FSection>
+      {(data.recommendation || data.targetPrice) && (
+        <FSection title="Analyst">
+          {data.recommendation && (
+            <FRow label="Consensus" value={data.recommendation.toUpperCase()} color={recColor} />
+          )}
+          <FRow label="Analysts"      value={data.numberOfAnalysts} />
+          <FRow label="Target (avg)"  value={data.targetPrice} />
+          <FRow label="Target (high)" value={data.targetHigh} />
+          <FRow label="Target (low)"  value={data.targetLow} />
+          <FRow label="Beta"          value={data.beta} />
+        </FSection>
       )}
       <div style={{ fontSize: 10, color: 'var(--text-dim)', alignSelf: 'flex-end', marginLeft: 'auto' }}>
-        Source: <a href={data.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Screener.in</a>
+        Yahoo Finance · Cached 1h
       </div>
     </div>
   );
