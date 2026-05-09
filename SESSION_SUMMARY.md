@@ -685,6 +685,25 @@ Each item in the array has all fields as direct properties, so no reshape loop i
 
 ---
 
+## Phase 27 — Bug Fixes (DCA Merge, remaining_size, CSV Import)
+
+### Bugs Fixed
+
+1. **DCA merge symbol case sensitivity** (`server/routes/trades.js:109`): The DCA merge query used `symbol = ?` directly without case normalization. If existing position was stored as "RELIANCE" and new trade sent "reliance", they wouldn't merge. Fixed by using `UPPER(symbol) = UPPER(?)` in the query.
+
+2. **remaining_size lost on PUT edit** (`server/routes/trades.js:180-185`, `server/routes/trades-drive.js:179-185`): When editing an open position via PUT, `remaining_size` was always set to `Number(size)` regardless of existing partial closes. Fixed to preserve existing `remaining_size` when updating: `newRemainingSize = isOpen ? (existing.remaining_size ?? existing.size) : null`.
+
+3. **CSV import P&L not calculated for closed Google Sheet trades** (`server/services/csvImport.js:178-181`): For Google Sheet format imports where no explicit P&L column existed, the code incorrectly set P&L to `null` for closed trades. Fixed to calculate P&L from exit price when `hasRealExit` is true, same as non-Google Sheet imports.
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `server/routes/trades.js` | DCA merge uses UPPER(), PUT preserves remaining_size |
+| `server/routes/trades-drive.js` | PUT preserves remaining_size |
+| `server/services/csvImport.js` | Calculate P&L from exit price for Google Sheet closed trades |
+
+---
+
 ## Deferred / Not Yet Done
 
 - **Cmd+K command palette** — stock search + page navigation shortcut (cmdk library)
