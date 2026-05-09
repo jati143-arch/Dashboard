@@ -907,12 +907,18 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
 
   useEffect(() => {
     const ticker = tvSymbol.includes(':') ? tvSymbol.split(':')[1] : tvSymbol;
+    const timeout = setTimeout(() => setChartMode('lightweight'), 3000);
     searchApi.tv(ticker)
       .then(results => {
+        clearTimeout(timeout);
         const found = results.some(r => r.tvSymbol?.toUpperCase() === tvSymbol.toUpperCase());
         setChartMode(found ? 'tv' : 'lightweight');
       })
-      .catch(() => setChartMode('lightweight'));
+      .catch(() => {
+        clearTimeout(timeout);
+        setChartMode('lightweight');
+      });
+    return () => clearTimeout(timeout);
   }, [tvSymbol]);
 
   useEffect(() => {
