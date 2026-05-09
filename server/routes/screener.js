@@ -195,55 +195,49 @@ router.get('/signals', async (req, res) => {
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json(cached.data);
 
+  // Use same Yahoo Finance setup as prices.js
+  const { default: YahooFinance } = require('yahoo-finance2');
+  const yf = new YahooFinance({ suppressNotNames: ['yahooSurvey', 'ripHistorical'] });
+
+  // Convert symbol to Yahoo format
+  let ySym = symbol;
+  if (symbol.startsWith('NSE:')) {
+    ySym = symbol.replace('NSE:', '') + '.NS';
+  } else if (symbol.startsWith('BSE:')) {
+    ySym = symbol.replace('BSE:', '') + '.BO';
+  } else if (!symbol.includes(':') && !symbol.includes('=')) {
+    ySym = symbol + '.NS';
+  }
+
+  console.log('[screener/signals] input:', symbol, '-> yahoo:', ySym);
+
+  let quote = null;
+  let history = [];
+
   try {
-    const YahooFinance = require('yahoo-finance2').default;
+    quote = await yf.quote(ySym);
+    console.log('[screener/signals] quote result:', quote?.regularMarketPrice);
+  } catch (e) {
+    console.log('[screener/signals] quote error:', e.message);
+  }
 
-    // Convert symbol to Yahoo format
-    let ySym = symbol;
-    if (symbol.startsWith('NSE:')) {
-      ySym = symbol.replace('NSE:', '') + '.NS';
-    } else if (symbol.startsWith('BSE:')) {
-      ySym = symbol.replace('BSE:', '') + '.BO';
-    } else if (!symbol.includes(':') && !symbol.includes('=')) {
-      // Plain symbol like RELIANCE - assume Indian
-      ySym = symbol + '.NS';
-    }
+  try {
+    history = await yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' });
+    console.log('[screener/signals] history length:', history?.length);
+  } catch (e) {
+    console.log('[screener/signals] history error:', e.message);
+  }
 
-    console.log('[screener/signals] input:', symbol, '-> yahoo:', ySym);
+  if ((!quote || !quote.regularMarketPrice) && (!history || history.length === 0)) {
+    return res.json({ symbol: ticker, signal: 'HOLD', error: 'No Yahoo data for ' + ySym });
+  }
 
-    let quote = null;
-    let history = [];
+  const prices = history.slice(-30).map(h => h.close);
+  const currentPrice = quote?.regularMarketPrice || quote?.regularPrice || (history.length > 0 ? history[history.length - 1].close : 0);
 
-    // Try with .NS first, then without
-    const symbolsToTry = [ySym, ySym.replace('.NS', '')];
-
-    for (const sym of symbolsToTry) {
-      try {
-        quote = await YahooFinance.quote(sym);
-        if (quote && quote.regularPrice) break;
-      } catch (e) { /* try next */ }
-    }
-
-    for (const sym of symbolsToTry) {
-      try {
-        history = await YahooFinance.historical(sym, { period1: '1y', period2: 'now', interval: '1d' });
-        if (history && history.length > 0) { ySym = sym; break; }
-      } catch (e) { /* try next */ }
-    }
-
-    console.log('[screener/signals] final symbol:', ySym, 'quote:', !!quote, 'history:', history?.length);
-
-    if ((!quote || !quote.regularPrice) && (!history || history.length === 0)) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data available on Yahoo Finance' });
-    }
-
-    const prices = history.slice(-30).map(h => h.close);
-    const currentPrice = quote?.regularPrice || quote?.previousClose || (history.length > 0 ? history[history.length - 1].close : 0);
-    const priceChangePercent = quote?.regularChange || (history.length > 1 ? ((history[history.length - 1].close - history[history.length - 2].close) / history[history.length - 2].close * 100) : 0);
-
-    if (!currentPrice || currentPrice === 0) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Invalid price data' });
-    }
+  if (!currentPrice || currentPrice === 0) {
+    return res.json({ symbol: ticker, signal: 'HOLD', error: 'Invalid price data' });
+  }
 
     function calculateRSI(prices, period = 14) {
       if (prices.length < period + 1) return null;
