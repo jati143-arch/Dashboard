@@ -559,4 +559,180 @@ router.post('/vob', async (req, res) => {
   }
 });
 
+// POST /api/backtest/hilega — Hilega-Milega RSI Strategy Backtest
+// RSI(9) with WMA(21) and EMA(3) crossovers
+router.post('/hilega', async (req, res) => {
+  const { symbol, from, to, rsiLen = 9, wmaLen = 21, emaLen = 3 } = req.body;
+  
+  try {
+    const ySym = toYahoo(symbol);
+    const start = from || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const end = to || new Date().toISOString().slice(0, 10);
+    
+    const data = await yf.historical(ySym, { period1: start, period2: end, interval: '1d' });
+    if (!data?.length) return res.json({ error: 'No data' });
+    
+    // Calculate RSI
+    function calcRSI(closes, period) {
+      const rsi = Array(closes.length).fill(null);
+      if (closes.length < period + 1) return rsi;
+      
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= period; i++) {
+        const change = closes[i] - closes[i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      
+      for (let i = period + 1; i < closes.length; i++) {
+        const change = closes[i] - closes[i - 1];
+        const gain = change > 0 ? change : 0;
+        const loss = change < 0 ? -change : 0;
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+      }
+      return rsi;
+    }
+    
+    // Calculate WMA
+    function calcWMA(series, period) {
+      const wma = Array(series.length).fill(null);
+      if (series.length < period) return wma;
+      
+      for (let i = period - 1; i < series.length; i++) {
+        let sum = 0, weight = 0;
+        for (let j = 0; j < period; j++) {
+          const val = series[i - j];
+          if (val !== null) {
+            sum += val * (period - j);
+            weight += period - j;
+          }
+        }
+        wma[i] = weight > 0 ? sum / weight : null;
+      }
+      return wma;
+    }
+    
+    // Calculate EMA
+    function calcEMA(series, period) {
+      const ema = Array(series.length).fill(null);
+      if (series.length < period) return ema;
+      
+      const k = 2 / (period + 1);
+      let seed = series.slice(0, period).reduce((a, b) => a + b, 0) / period;
+      ema[period - 1] = seed;
+      
+      for (let i = period; i < series.length; i++) {
+        if (series[i] !== null) {
+          seed = series[i] * k + seed * (1 - k);
+          ema[i] = seed;
+        }
+      }
+      return ema;
+    }
+    
+    const closes = data.map(d => d.close);
+    const rsi = calcRSI(closes, rsiLen);
+    const wma21 = calcWMA(rsi.map(r => r ?? 50), wmaLen);
+    const ema3 = calcEMA(rsi.map(r => r ?? 50), emaLen);
+    
+    const trades = [];
+    let inPosition = false;
+    let entryPrice = 0;
+    let entryIndex = 0;
+    let positionType = '';
+    
+    for (let i = Math.max(wmaLen, emaLen); i < data.length; i++) {
+      const currentRSI = rsi[i];
+      const currentWMA = wma21[i];
+      const currentEMA = ema3[i];
+      
+      if (currentRSI === null || currentWMA === null || currentEMA === null) continue;
+      
+      // Long signal: RSI > 50 AND EMA crosses above WMA
+      // Short signal: RSI < 50 AND EMA crosses below WMA
+      const prevEMA = ema3[i - 1];
+      const prevWMA = wma21[i - 1];
+      
+      if (!inPosition) {
+        // Long entry
+        if (currentRSI > 50 && prevEMA <= prevWMA && currentEMA > currentWMA) {
+          entryPrice = data[i].close;
+          entryIndex = i;
+          positionType = 'LONG';
+          inPosition = true;
+        }
+        // Short entry
+        else if (currentRSI < 50 && prevEMA >= prevWMA && currentEMA < currentWMA) {
+          entryPrice = data[i].close;
+          entryIndex = i;
+          positionType = 'SHORT';
+          inPosition = true;
+        }
+      } else {
+        const currentPrice = data[i].close;
+        const date = data[i].date.toISOString().slice(0, 10);
+        
+        // Exit conditions: opposite signal or RSI crosses 50
+        const exitLong = (currentRSI < 50) || (prevEMA >= prevWMA && currentEMA < currentWMA);
+        const exitShort = (currentRSI > 50) || (prevEMA <= prevWMA && currentEMA > currentWMA);
+        
+        if ((positionType === 'LONG' && exitLong) || (positionType === 'SHORT' && exitShort)) {
+          const pnl = positionType === 'LONG' ? currentPrice - entryPrice : entryPrice - currentPrice;
+          trades.push({
+            entry: data[entryIndex].date.toISOString().slice(0, 10),
+            exit: date,
+            entryPrice: entryPrice.toFixed(2),
+            exitPrice: currentPrice.toFixed(2),
+            pnl: pnl.toFixed(2),
+            pnlPercent: ((pnl / entryPrice) * 100).toFixed(2),
+            type: positionType,
+            reason: positionType === 'LONG' ? (currentRSI < 50 ? 'RSI<50' : 'EMA<WMA') : (currentRSI > 50 ? 'RSI>50' : 'EMA>WMA')
+          });
+          inPosition = false;
+        }
+      }
+    }
+    
+    // Close open position at end
+    if (inPosition) {
+      const lastPrice = data[data.length - 1].close;
+      const pnl = positionType === 'LONG' ? lastPrice - entryPrice : entryPrice - lastPrice;
+      trades.push({
+        entry: data[entryIndex].date.toISOString().slice(0, 10),
+        exit: data[data.length - 1].date.toISOString().slice(0, 10),
+        entryPrice: entryPrice.toFixed(2),
+        exitPrice: lastPrice.toFixed(2),
+        pnl: pnl.toFixed(2),
+        pnlPercent: ((pnl / entryPrice) * 100).toFixed(2),
+        type: positionType,
+        reason: 'EOD'
+      });
+    }
+    
+    const wins = trades.filter(t => parseFloat(t.pnl) > 0).length;
+    const total = trades.length;
+    const totalPnl = trades.reduce((s, t) => s + parseFloat(t.pnl), 0);
+    
+    res.json({
+      strategy: 'Hilega-Milega (RSI WMA/EMA)',
+      params: { rsiLen, wmaLen, emaLen },
+      totalTrades: total,
+      wins,
+      losses: total - wins,
+      winRate: total > 0 ? Math.round(wins / total * 100) : 0,
+      totalPnl: totalPnl.toFixed(2),
+      avgWin: total > 0 && wins > 0 ? (trades.filter(t => parseFloat(t.pnl) > 0).reduce((s, t) => s + parseFloat(t.pnl), 0) / wins).toFixed(2) : 0,
+      avgLoss: total > 0 && (total - wins) > 0 ? (trades.filter(t => parseFloat(t.pnl) <= 0).reduce((s, t) => s + parseFloat(t.pnl), 0) / (total - wins)).toFixed(2) : 0,
+      trades: trades.slice(-50),
+    });
+  } catch (err) {
+    console.error('[backtest/hilega]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
