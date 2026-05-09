@@ -134,4 +134,5 @@ export const fundamentalsApi = {
 export const screenerApi = {
   company: (symbol) => api.get('/screener/company', { params: { symbol } }).then(r => r.data),
   annual:  (symbol) => api.get('/screener/annual',  { params: { symbol } }).then(r => r.data),
+  signals: (symbol) => api.get('/screener/signals', { params: { symbol } }).then(r => r.data),
 };

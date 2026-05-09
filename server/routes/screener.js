@@ -185,4 +185,97 @@ router.get('/annual', async (req, res) => {
   }
 });
 
+// GET /api/screener/signals?symbol=RELIANCE.NS — AI-generated buy/sell signals
+router.get('/signals', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  const cacheKey = `signals_${ticker}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json(cached.data);
+
+  try {
+    const yf = require('yahoo-finance2').default;
+    const { toYahoo } = require('../utils/symbolConvert');
+    const ySym = toYahoo(symbol);
+
+    const [quote, history] = await Promise.all([
+      yf.quote(ySym).catch(() => null),
+      yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' }).catch(() => [])
+    ]);
+
+    if (!quote) {
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data available' });
+    }
+
+    const prices = history.slice(-30).map(h => h.close);
+    const currentPrice = quote.regularPrice || quote.previousClose || 0;
+    const priceChangePercent = quote.regularChange || 0;
+
+    function calculateRSI(prices, period = 14) {
+      if (prices.length < period + 1) return null;
+      let gains = 0, losses = 0;
+      for (let i = prices.length - period; i < prices.length; i++) {
+        const change = prices[i] - prices[i - 1];
+        if (change > 0) gains += change; else losses -= change;
+      }
+      const avgGain = gains / period, avgLoss = losses / period;
+      if (avgLoss === 0) return 100;
+      return 100 - (100 / (1 + avgGain / avgLoss));
+    }
+
+    function calculateSMA(prices, period) {
+      if (prices.length < period) return null;
+      return prices.slice(-period).reduce((a, b) => a + b, 0) / period;
+    }
+
+    const rsi = calculateRSI(prices);
+    const sma20 = calculateSMA(prices, 20);
+    const sma50 = calculateSMA(prices, 50);
+
+    let signal = 'HOLD', confidence = 50, reasons = [];
+
+    if (rsi) {
+      if (rsi < 30) { signal = 'BUY'; confidence = 70; reasons.push(`RSI oversold (${rsi.toFixed(0)})`); }
+      else if (rsi > 70) { signal = 'SELL'; confidence = 70; reasons.push(`RSI overbought (${rsi.toFixed(0)})`); }
+      else reasons.push(`RSI neutral (${rsi.toFixed(0)})`);
+    }
+
+    if (sma20 && sma50) {
+      if (sma20 > sma50) { signal = signal === 'HOLD' ? 'BUY' : signal; confidence += 10; reasons.push('Golden cross'); }
+      else if (sma20 < sma50) { signal = signal === 'HOLD' ? 'SELL' : signal; confidence += 10; reasons.push('Death cross'); }
+    }
+
+    const targets = signal === 'BUY' ? {
+      t1: (currentPrice * 1.10).toFixed(2),
+      t2: (currentPrice * 1.20).toFixed(2),
+      t3: (currentPrice * 1.30).toFixed(2),
+    } : signal === 'SELL' ? {
+      t1: (currentPrice * 0.90).toFixed(2),
+      t2: (currentPrice * 0.80).toFixed(2),
+      t3: (currentPrice * 0.70).toFixed(2),
+    } : {};
+
+    const data = {
+      symbol: ticker,
+      signal,
+      confidence: Math.min(95, confidence),
+      reasons,
+      entryPrice: currentPrice.toFixed(2),
+      targets,
+      stopLoss: signal === 'BUY' ? (currentPrice * 0.95).toFixed(2) : signal === 'SELL' ? (currentPrice * 1.05).toFixed(2) : null,
+      rsi: rsi?.toFixed(1),
+      sma20: sma20?.toFixed(2),
+      sma50: sma50?.toFixed(2),
+    };
+
+    cache.set(cacheKey, { data, at: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[screener/signals]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 module.exports = router;

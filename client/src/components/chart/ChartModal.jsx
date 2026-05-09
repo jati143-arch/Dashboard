@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import { signalsApi, searchApi, chartApi } from '../../api/client.js';
+import AISignalsPanel from '../shared/SignalsPanel.jsx';
 import { speakSignal } from '../../utils/speakSignal.js';
 import { toTvSymbol, tvTimezone } from '../../utils/tvSymbol.js';
 
@@ -1021,6 +1022,9 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
 
       {/* Signal analysis panel */}
       <SignalPanel symbol={symbol} />
+
+      {/* AI Buy/Sell Signals */}
+      <AISignalsPanel symbol={symbol} />
     </div>
   );
 }
