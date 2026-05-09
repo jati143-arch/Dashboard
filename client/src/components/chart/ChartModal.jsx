@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createChart, createSeriesMarkers, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import { signalsApi, searchApi, chartApi } from '../../api/client.js';
 import AISignalsPanel from '../shared/SignalsPanel.jsx';
+import AISignalPanel from '../shared/AISignalPanel.jsx';
 import { speakSignal } from '../../utils/speakSignal.js';
 import { toTvSymbol, tvTimezone } from '../../utils/tvSymbol.js';
 
