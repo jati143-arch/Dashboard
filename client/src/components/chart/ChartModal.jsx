@@ -444,9 +444,14 @@ function LightweightChart({ symbol, entryPrice }) {
     return () => window.removeEventListener('resize', handle);
   }, []);
 
-  const { data: candles = [], isLoading, isError } = useQuery({
+  const { data: candles = [], isLoading, isError, error } = useQuery({
     queryKey: ['ohlcv', symbol, range],
-    queryFn: () => chartApi.ohlcv(symbol, range),
+    queryFn: async () => {
+      console.log('[Chart] Fetching', symbol, range);
+      const result = await chartApi.ohlcv(symbol, range);
+      console.log('[Chart] Got', result?.length, 'candles');
+      return result;
+    },
     staleTime: 5 * 60_000,
   });
 
@@ -878,7 +883,7 @@ function LightweightChart({ symbol, entryPrice }) {
         )}
         {isError && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)' }}>
-            Failed to load chart data
+            Failed: {error?.message || 'Unknown error'}
           </div>
         )}
         {!isLoading && !isError && candles.length === 0 && (
