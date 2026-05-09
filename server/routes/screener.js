@@ -59,8 +59,21 @@ router.get('/annual', async (req, res) => {
   if (cached && Date.now() - cached.at < CACHE_TTL) return res.json(cached.data);
 
   try {
-    const url = `https://www.screener.in/company/${ticker}/consolidated/`;
-    console.log('[screener/annual] fetching:', url);
+    // Step 1: Search for the company to get the correct URL slug
+    const searchResp = await fetch(
+      `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    const results = await searchResp.json();
+
+    if (!results?.length) {
+      return res.json({ symbol: ticker, annuals: [], message: `Company "${ticker}" not found on Screener.in` });
+    }
+
+    // Get the company slug from the search result
+    const companySlug = results[0].url.replace('/company/', '').replace('/', '');
+    const url = `https://www.screener.in/company/${companySlug}/consolidated/`;
+    console.log('[screener/annual] fetching:', url, 'from search:', results[0].name);
 
     const response = await fetch(url, {
       headers: {
@@ -84,26 +97,38 @@ router.get('/annual', async (req, res) => {
 
     try {
       const jsonData = JSON.parse(jsonMatch[1]);
+      console.log('[screener/annual] JSON keys:', Object.keys(jsonData || {}));
 
-      // Navigate through the JSON structure to find annual results
-      // The structure typically has company.annualResults or company.results
       const annuals = [];
 
-      // Try different paths in the JSON
-      const results = jsonData?.company?.annualResults || jsonData?.company?.results || [];
+      // Try different paths in the JSON - Screener.in stores data in various places
+      let resultsArray = [];
 
-      if (results.length > 0) {
-        for (const r of results.slice(0, 5)) {
+      // Path 1: company.annualResults
+      if (jsonData?.company?.annualResults) {
+        resultsArray = jsonData.company.annualResults;
+      }
+      // Path 2: company.results
+      else if (jsonData?.company?.results) {
+        resultsArray = jsonData.company.results;
+      }
+      // Path 3: company.profile.annual_results
+      else if (jsonData?.company?.profile?.annual_results) {
+        resultsArray = jsonData.company.profile.annual_results;
+      }
+
+      if (resultsArray.length > 0) {
+        for (const r of resultsArray.slice(0, 5)) {
           const year = r.year || r.closingDate?.slice(0, 4) || '';
           const formatCr = (val) => val ? `₹${(Number(val) / 10000000).toFixed(2)}Cr` : null;
 
           annuals.push({
             date: year,
-            revenue: formatCr(r.totalIncome || r.sales),
-            operatingIncome: formatCr(r.operatingIncome),
-            netIncome: formatCr(r.profitAfterTax || r.netProfit),
+            revenue: formatCr(r.totalIncome || r.sales || r.totalRevenue),
+            operatingIncome: formatCr(r.operatingIncome || r.operatingProfit),
+            netIncome: formatCr(r.profitAfterTax || r.netProfit || r.netIncome),
             grossProfit: formatCr(r.grossProfit),
-            basicEPS: r.eps ? Number(r.eps).toFixed(2) : null,
+            basicEPS: r.eps || r.basicEPS ? Number(r.eps || r.basicEPS).toFixed(2) : null,
             dividendPerShare: r.dividendPerShare ? Number(r.dividendPerShare).toFixed(2) : null,
           });
         }
@@ -112,23 +137,43 @@ router.get('/annual', async (req, res) => {
         return res.json({ symbol: ticker, annuals });
       }
 
-      // Try another path - sometimes data is in profiles or other structures
-      if (jsonData?.company?.profile?.financials) {
-        const financials = jsonData.company.profile.financials;
-        for (const [year, data] of Object.entries(financials).slice(0, 5)) {
+      // Try to find any financial data in the JSON
+      console.log('[screener/annual] checking all JSON paths...');
+      function searchForAnnual(obj, path = '') {
+        if (!obj || typeof obj !== 'object') return null;
+        if (Array.isArray(obj) && obj.length > 0 && obj[0]?.year) {
+          return obj;
+        }
+        for (const [key, val] of Object.entries(obj)) {
+          if (key.toLowerCase().includes('annual') || key.toLowerCase().includes('result')) {
+            const found = searchForAnnual(val, path + '.' + key);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+
+      const foundAnnual = searchForAnnual(jsonData);
+      if (foundAnnual && foundAnnual.length > 0) {
+        for (const r of foundAnnual.slice(0, 5)) {
+          const year = r.year || '';
+          const formatCr = (val) => val ? `₹${(Number(val) / 10000000).toFixed(2)}Cr` : null;
+
           annuals.push({
             date: year,
-            revenue: data.totalIncome ? `₹${(data.totalIncome / 10000000).toFixed(2)}Cr` : null,
-            netIncome: data.netProfit ? `₹${(data.netProfit / 10000000).toFixed(2)}Cr` : null,
+            revenue: formatCr(r.totalIncome || r.sales),
+            netIncome: formatCr(r.profitAfterTax || r.netProfit),
+            basicEPS: r.eps ? Number(r.eps).toFixed(2) : null,
           });
         }
+
         if (annuals.length > 0) {
           cache.set(cacheKey, { data: { symbol: ticker, annuals }, at: Date.now() });
           return res.json({ symbol: ticker, annuals });
         }
       }
 
-      console.log('[screener/annual] JSON structure keys:', Object.keys(jsonData));
+      console.log('[screener/annual] JSON structure:', JSON.stringify(jsonData).slice(0, 500));
       res.json({ symbol: ticker, annuals: [], message: 'No annual data found in Screener.in' });
     } catch (e) {
       console.log('[screener/annual] JSON parse error:', e.message);
