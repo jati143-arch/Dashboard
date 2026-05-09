@@ -97,8 +97,8 @@ router.get('/', async (req, res) => {
     cache.set(ySym, { data, at: Date.now() });
     res.json(data);
   } catch (err) {
-    console.error('[fundamentals]', ySym, err.message);
-    res.status(502).json({ error: err.message });
+    console.error('[fundamentals]', ySym, err.message, err.stack);
+    res.status(502).json({ error: 'Yahoo error: ' + err.message });
   }
 });
 
