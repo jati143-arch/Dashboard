@@ -214,27 +214,36 @@ router.get('/signals', async (req, res) => {
     let quote = null;
     let history = [];
 
-    try {
-      quote = await YahooFinance.quote(ySym);
-    } catch (e) {
-      console.log('[screener/signals] quote error:', e.message);
+    // Try with .NS first, then without
+    const symbolsToTry = [ySym, ySym.replace('.NS', '')];
+
+    for (const sym of symbolsToTry) {
+      try {
+        quote = await YahooFinance.quote(sym);
+        if (quote && quote.regularPrice) break;
+      } catch (e) { /* try next */ }
     }
 
-    try {
-      history = await YahooFinance.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' });
-    } catch (e) {
-      console.log('[screener/signals] history error:', e.message);
+    for (const sym of symbolsToTry) {
+      try {
+        history = await YahooFinance.historical(sym, { period1: '1y', period2: 'now', interval: '1d' });
+        if (history && history.length > 0) { ySym = sym; break; }
+      } catch (e) { /* try next */ }
     }
 
-    console.log('[screener/signals] quote:', !!quote, 'history:', history?.length);
+    console.log('[screener/signals] final symbol:', ySym, 'quote:', !!quote, 'history:', history?.length);
 
-    if (!quote || !history || history.length === 0) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Unable to fetch data for ' + ySym });
+    if ((!quote || !quote.regularPrice) && (!history || history.length === 0)) {
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data available on Yahoo Finance' });
     }
 
     const prices = history.slice(-30).map(h => h.close);
-    const currentPrice = quote.regularPrice || quote.previousClose || 0;
-    const priceChangePercent = quote.regularChange || 0;
+    const currentPrice = quote?.regularPrice || quote?.previousClose || (history.length > 0 ? history[history.length - 1].close : 0);
+    const priceChangePercent = quote?.regularChange || (history.length > 1 ? ((history[history.length - 1].close - history[history.length - 2].close) / history[history.length - 2].close * 100) : 0);
+
+    if (!currentPrice || currentPrice === 0) {
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'Invalid price data' });
+    }
 
     function calculateRSI(prices, period = 14) {
       if (prices.length < period + 1) return null;
