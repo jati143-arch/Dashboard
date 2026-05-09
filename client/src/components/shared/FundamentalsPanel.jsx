@@ -153,3 +153,54 @@ export function QuarterlyPanel({ symbol }) {
     </div>
   );
 }
+
+export function AnnualPanel({ symbol }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['fundamentals-annual', symbol],
+    queryFn: () => fundamentalsApi.annual(symbol),
+    staleTime: 24 * 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  if (isLoading) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="spinner" style={{ width: 14, height: 14 }} />
+      Loading annual data…
+    </div>
+  );
+  if (isError || !data?.annuals?.length) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
+      Annual data unavailable
+    </div>
+  );
+
+  const HEADERS = ['Year', 'Revenue', 'Op. Income', 'Net Income', 'EBITDA', 'Total Assets', 'Total Equity', 'EPS', 'DPS'];
+
+  return (
+    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+        Annual Financials · last {data.annuals.length} years
+      </div>
+      <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 700 }}>
+        <thead>
+          <tr>
+            {HEADERS.map((h, i) => (
+              <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', padding: '4px 10px', color: 'var(--text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.annuals.map(a => (
+            <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date.slice(0, 4)}</td>
+              {[a.revenue, a.operatingIncome, a.netIncome, a.ebitda, a.totalAssets, a.totalEquity, a.basicEPS, a.dividendPerShare].map((v, i) => (
+                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Yahoo Finance · Cached 24h</div>
+    </div>
+  );
+}

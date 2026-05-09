@@ -5,7 +5,7 @@ import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
-import { FundamentalsPanel, QuarterlyPanel } from '../components/shared/FundamentalsPanel.jsx';
+import { FundamentalsPanel, QuarterlyPanel, AnnualPanel } from '../components/shared/FundamentalsPanel.jsx';
 import { useChart } from '../context/ChartContext.jsx';
 
 function detectRegion(symbol, instrumentType) {
@@ -82,6 +82,7 @@ export default function Investments() {
   const [showImport, setShowImport] = useState(false);
   const [expandedFund, setExpandedFund] = useState(null);
   const [expandedQtly, setExpandedQtly] = useState(null);
+  const [expandedAnnual, setExpandedAnnual] = useState(null);
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -407,6 +408,14 @@ export default function Investments() {
                               {expandedQtly === t.symbol ? '▲ Qtly' : '📊 Qtly'}
                             </button>
                           )}
+                          {isIndian && (
+                            <button
+                              onClick={() => setExpandedAnnual(expandedAnnual === t.symbol ? null : t.symbol)}
+                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: expandedAnnual === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedAnnual === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                            >
+                              {expandedAnnual === t.symbol ? '▲ Year' : '📈 Year'}
+                            </button>
+                          )}
                           <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
                             onClick={() => setClosingTrade({ trade: t, currentPrice })}>
                             Close
@@ -424,6 +433,13 @@ export default function Investments() {
                         <tr>
                           <td colSpan={9} style={{ padding: 0 }}>
                             <QuarterlyPanel symbol={t.symbol} />
+                          </td>
+                        </tr>
+                      )}
+                      {expandedAnnual === t.symbol && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: 0 }}>
+                            <AnnualPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}

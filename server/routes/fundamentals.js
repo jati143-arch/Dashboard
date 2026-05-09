@@ -161,4 +161,70 @@ router.get('/quarterly', async (req, res) => {
   }
 });
 
+// GET /api/fundamentals/annual?symbol=RELIANCE.NS — last 5 years annual financials
+const aCache = new Map();
+const A_TTL = 24 * 60 * 60 * 1000; // 24h — annual data changes yearly
+
+router.get('/annual', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ySym = toYahoo(symbol);
+  const cached = aCache.get(ySym);
+  if (cached && Date.now() - cached.at < A_TTL) return res.json(cached.data);
+
+  try {
+    // Get last 5 years of annual data
+    const period1 = new Date(Date.now() - 5 * 365.25 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const period2 = new Date().toISOString().slice(0, 10);
+
+    const result = await yf.fundamentalsTimeSeries(ySym, {
+      type: 'annual',
+      period1,
+      period2,
+    });
+
+    function fmtBig(v) {
+      if (v == null) return null;
+      if (v >= 1e12) return (v / 1e12).toFixed(2) + 'T';
+      if (v >= 1e9)  return (v / 1e9).toFixed(2) + 'B';
+      if (v >= 1e7)  return (v / 1e7).toFixed(2) + 'Cr';
+      if (v >= 1e5)  return (v / 1e5).toFixed(2) + 'L';
+      return v != null ? String(Number(v).toFixed(2)) : null;
+    }
+
+    const arr = Array.isArray(result) ? result : [];
+    const rows = arr
+      .sort((a, b) => {
+        const da = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+        const db = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+        return db - da;
+      })
+      .slice(0, 5)
+      .map(a => ({
+        date:          (a.date instanceof Date ? a.date.toISOString() : String(a.date)).slice(0, 10),
+        revenue:       fmtBig(a.totalRevenue),
+        operatingIncome: fmtBig(a.operatingIncome),
+        netIncome:     fmtBig(a.netIncome),
+        grossProfit:   fmtBig(a.grossProfit),
+        ebitda:        fmtBig(a.EBITDA ?? a.ebitda),
+        totalAssets:   fmtBig(a.totalAssets),
+        totalLiabilities: fmtBig(a.totalLiabilities),
+        totalEquity:   fmtBig(a.totalStockholderEquity),
+        operatingCashFlow: fmtBig(a.operatingCashFlow),
+        freeCashFlow:  fmtBig(a.freeCashFlow),
+        basicEPS:      a.basicEPS   != null ? Number(a.basicEPS).toFixed(2)   : null,
+        dilutedEPS:    a.dilutedEPS != null ? Number(a.dilutedEPS).toFixed(2) : null,
+        dividendPerShare: a.dividendPerShare != null ? Number(a.dividendPerShare).toFixed(2) : null,
+      }));
+
+    const data = { symbol: ySym, annuals: rows };
+    aCache.set(ySym, { data, at: Date.now() });
+    res.json(data);
+  } catch (err) {
+    console.error('[fundamentals/annual]', ySym, err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
 module.exports = router;
