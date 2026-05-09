@@ -198,38 +198,100 @@ router.get('/signals', async (req, res) => {
   if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json(cached.data);
 
   try {
+    // Handle all symbol formats: NSE:RELIANCE, RELIANCE.NS, RELIANCE
     let ySym = symbol;
     if (symbol.startsWith('NSE:')) ySym = symbol.replace('NSE:', '') + '.NS';
     else if (symbol.startsWith('BSE:')) ySym = symbol.replace('BSE:', '') + '.BO';
+    else if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) ySym = symbol; // already formatted
     else if (!symbol.includes(':') && !symbol.includes('=')) ySym = symbol + '.NS';
 
     console.log('[screener/signals] input:', symbol, '-> yahoo:', ySym);
 
+    // Try multiple formats if first fails
     let quote = null, history = [];
-    try { quote = await yf.quote(ySym); } catch (e) { console.log('quote error:', e.message); }
-    try { history = await yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' }); } catch (e) { console.log('history error:', e.message); }
+    const formats = [ySym, ySym.replace('.NS', ''), ySym.replace('.BO', '')];
+    
+    for (const fmt of formats) {
+      try { quote = await yf.quote(fmt); if (quote?.regularMarketPrice) { ySym = fmt; break; } } catch (e) {}
+    }
+    for (const fmt of formats) {
+      try { history = await yf.historical(fmt, { period1: '1y', period2: 'now', interval: '1d' }); if (history?.length) { ySym = fmt; break; } } catch (e) {}
+    }
 
     if ((!quote?.regularMarketPrice) && (!history?.length)) {
-      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data for ' + ySym });
+      return res.json({ symbol: ticker, signal: 'HOLD', error: 'No data for ' + symbol });
     }
 
     const prices = history.slice(-30).map(h => h.close);
     const currentPrice = quote?.regularMarketPrice || (history.length ? history[history.length - 1].close : 0);
     if (!currentPrice) return res.json({ symbol: ticker, signal: 'HOLD', error: 'Invalid price' });
 
+    // More technical indicators
     const calcRSI = (p, p2) => { if (p.length < p2 + 1) return null; let g = 0, l = 0; for (let i = p.length - p2; i < p.length; i++) { const c = p[i] - p[i - 1]; if (c > 0) g += c; else l -= c; } const ag = g / p2, al = l / p2; if (al === 0) return 100; return 100 - (100 / (1 + ag / al)); };
     const calcSMA = (p, p2) => p.length < p2 ? null : p.slice(-p2).reduce((a, b) => a + b, 0) / p2;
+    const calcEMA = (p, p2) => { if (p.length < p2) return null; const k = 2 / (p2 + 1); let ema = p.slice(0, p2).reduce((a, b) => a + b, 0) / p2; for (let i = p2; i < p.length; i++) ema = p[i] * k + ema * (1 - k); return ema; };
 
     const rsi = calcRSI(prices, 14);
     const sma20 = calcSMA(prices, 20);
     const sma50 = calcSMA(prices, 50);
+    const sma200 = calcSMA(prices, 200);
+    const ema9 = calcEMA(prices, 9);
+    const ema21 = calcEMA(prices, 21);
+    
+    // Price momentum
+    const priceChange5d = prices.length >= 6 ? ((prices[prices.length-1] - prices[prices.length-6]) / prices[prices.length-6] * 100) : 0;
+    const priceChange20d = prices.length >= 21 ? ((prices[prices.length-1] - prices[prices.length-21]) / prices[prices.length-21] * 100) : 0;
+    
+    // Volume analysis
+    const avgVolume = history.slice(-20).reduce((s, c) => s + (c.volume || 0), 0) / 20;
+    const lastVolume = history[history.length-1]?.volume || 0;
+    const volumeRatio = avgVolume ? lastVolume / avgVolume : 1;
 
-    let signal = 'HOLD', confidence = 50, reasons = [];
-    if (rsi) { if (rsi < 30) { signal = 'BUY'; confidence = 70; reasons.push('RSI oversold ' + rsi.toFixed(0)); } else if (rsi > 70) { signal = 'SELL'; confidence = 70; reasons.push('RSI overbought ' + rsi.toFixed(0)); } else reasons.push('RSI ' + rsi.toFixed(0)); }
-    if (sma20 && sma50) { if (sma20 > sma50) { signal = signal === 'HOLD' ? 'BUY' : signal; confidence += 10; reasons.push('Golden cross'); } else if (sma20 < sma50) { signal = signal === 'HOLD' ? 'SELL' : signal; confidence += 10; reasons.push('Death cross'); } }
+    let signal = 'HOLD', confidence = 40, reasons = [];
+    let buyScore = 0, sellScore = 0;
 
-    const targets = signal === 'BUY' ? { t1: (currentPrice * 1.10).toFixed(2), t2: (currentPrice * 1.20).toFixed(2), t3: (currentPrice * 1.30).toFixed(2) } : signal === 'SELL' ? { t1: (currentPrice * 0.90).toFixed(2), t2: (currentPrice * 0.80).toFixed(2), t3: (currentPrice * 0.70).toFixed(2) } : {};
-    const data = { symbol: ticker, signal, confidence: Math.min(95, confidence), reasons, entryPrice: currentPrice.toFixed(2), targets, stopLoss: signal === 'BUY' ? (currentPrice * 0.95).toFixed(2) : signal === 'SELL' ? (currentPrice * 1.05).toFixed(2) : null, rsi: rsi?.toFixed(1), sma20: sma20?.toFixed(2), sma50: sma50?.toFixed(2) };
+    // RSI analysis
+    if (rsi) {
+      if (rsi < 30) { buyScore += 30; reasons.push('RSI oversold ' + rsi.toFixed(0)); }
+      else if (rsi < 40) { buyScore += 15; reasons.push('RSI near oversold ' + rsi.toFixed(0)); }
+      else if (rsi > 70) { sellScore += 30; reasons.push('RSI overbought ' + rsi.toFixed(0)); }
+      else if (rsi > 60) { sellScore += 15; reasons.push('RSI near overbought ' + rsi.toFixed(0)); }
+      else reasons.push('RSI neutral ' + rsi.toFixed(0));
+    }
+
+    // Moving average analysis
+    if (sma20 && sma50) {
+      if (sma20 > sma50) { buyScore += 20; reasons.push('Golden cross (20>50)'); }
+      else { sellScore += 20; reasons.push('Death cross (20<50)'); }
+    }
+    if (sma50 && sma200 && sma50 > sma200) { buyScore += 15; reasons.push('Above 200 SMA'); }
+    if (ema9 && ema21 && ema9 > ema21) { buyScore += 10; reasons.push('EMA 9>21 bullish'); }
+    else if (ema9 && ema21 && ema9 < ema21) { sellScore += 10; reasons.push('EMA 9<21 bearish'); }
+    
+    // Price momentum
+    if (priceChange5d < -5) { buyScore += 15; reasons.push('5d pullback ' + priceChange5d.toFixed(1) + '%'); }
+    if (priceChange5d > 5) { sellScore += 15; reasons.push('5d rally ' + priceChange5d.toFixed(1) + '%'); }
+    if (priceChange20d > 10) { buyScore += 10; reasons.push('Strong 20d trend +' + priceChange20d.toFixed(1) + '%'); }
+    if (priceChange20d < -10) { sellScore += 10; reasons.push('Weak 20d trend ' + priceChange20d.toFixed(1) + '%'); }
+    
+    // Volume
+    if (volumeRatio > 1.5) { buyScore += 5; reasons.push('High volume breakout'); }
+
+    // Determine signal
+    if (buyScore > sellScore + 10) { signal = 'BUY'; confidence = Math.min(90, 50 + buyScore - sellScore); }
+    else if (sellScore > buyScore + 10) { signal = 'SELL'; confidence = Math.min(90, 50 + sellScore - buyScore); }
+    else if (buyScore > sellScore) { signal = 'WEAK BUY'; confidence = 45 + buyScore - sellScore; }
+    else if (sellScore > buyScore) { signal = 'WEAK SELL'; confidence = 45 + sellScore - buyScore; }
+
+    const risk = currentPrice * 0.02;
+    const targets = (signal === 'BUY' || signal === 'WEAK BUY') ? { 
+      t1: (currentPrice + risk).toFixed(2), t2: (currentPrice + risk * 2).toFixed(2), t3: (currentPrice + risk * 3).toFixed(2), t4: (currentPrice + risk * 4).toFixed(2) 
+    } : (signal === 'SELL' || signal === 'WEAK SELL') ? { 
+      t1: (currentPrice - risk).toFixed(2), t2: (currentPrice - risk * 2).toFixed(2), t3: (currentPrice - risk * 3).toFixed(2), t4: (currentPrice - risk * 4).toFixed(2) 
+    } : {};
+    const trailingStop = (signal === 'BUY' || signal === 'WEAK BUY') ? (currentPrice * 0.97).toFixed(2) : (signal === 'SELL' || signal === 'WEAK SELL') ? (currentPrice * 1.03).toFixed(2) : null;
+    const hardStop = (signal === 'BUY' || signal === 'WEAK BUY') ? (currentPrice * 0.95).toFixed(2) : (signal === 'SELL' || signal === 'WEAK SELL') ? (currentPrice * 1.05).toFixed(2) : null;
+    const data = { symbol: ticker, signal, confidence: Math.min(95, 40 + Math.abs(buyScore - sellScore)), reasons, entryPrice: currentPrice.toFixed(2), targets, stopLoss: hardStop, trailingStop: trailingStop, riskReward: '1:2', rsi: rsi?.toFixed(1), sma20: sma20?.toFixed(2), sma50: sma50?.toFixed(2), sma200: sma200?.toFixed(2) };
 
     cache.set(cacheKey, { data, at: Date.now() });
     res.json(data);
