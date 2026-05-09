@@ -108,7 +108,7 @@ router.post('/', (req, res) => {
   if (isOpen) {
     const existing = db.prepare(`
       SELECT * FROM trades
-      WHERE symbol = ? AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
+      WHERE UPPER(symbol) = UPPER(?) AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
       ORDER BY date ASC LIMIT 1
     `).get(sym, direction);
 
@@ -178,10 +178,15 @@ router.put('/:id', (req, res) => {
 
   const isOpen = status === 'open';
 
+  const newRemainingSize = isOpen
+    ? (existing.remaining_size ?? existing.size)  // preserve existing or use size
+    : null;
+
   db.prepare(`
     UPDATE trades SET date=?, entry_time=?, exit_time=?, exit_date=?, symbol=?,
       instrument_type=?, direction=?, entry_price=?, exit_price=?, size=?,
-      pnl_dollar=?, pnl_percent=?, pattern_tag=?, notes=?, status=?, is_best_trade=?
+      pnl_dollar=?, pnl_percent=?, pattern_tag=?, notes=?, status=?, is_best_trade=?,
+      remaining_size=?
     WHERE id=?
   `).run(
     date,
@@ -200,6 +205,7 @@ router.put('/:id', (req, res) => {
     notes || null,
     status,
     is_best_trade ? 1 : 0,
+    newRemainingSize,
     req.params.id,
   );
 

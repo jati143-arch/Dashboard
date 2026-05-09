@@ -175,9 +175,10 @@ function parseCSV(buffer) {
         pnlDollar = direction === 'long'
           ? (exitPriceRaw - entryPrice) * size
           : (entryPrice - exitPriceRaw) * size;
-      } else if (isGoogleSheet && tradeStatus === 'closed') {
-        // Google Sheet has realized profit for closed portion in the Realized Profit column
-        pnlDollar = null; // already tried above via cleanNumber
+      } else if (isGoogleSheet && tradeStatus === 'closed' && hasRealExit) {
+        pnlDollar = direction === 'long'
+          ? (exitPriceRaw - entryPrice) * size
+          : (entryPrice - exitPriceRaw) * size;
       } else {
         pnlDollar = null;
       }

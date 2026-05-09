@@ -177,12 +177,15 @@ router.put('/:id', async (req, res) => {
       pattern_tag, notes, is_best_trade, status = ex.status,
     } = req.body;
     const isOpen = status === 'open';
+    const newRemainingSize = isOpen
+      ? (ex.remaining_size ?? ex.size)
+      : null;
     trades[idx]  = { ...ex, date, entry_time: entry_time || null, exit_time: exit_time || null,
       exit_date: exit_date || null, symbol: symbol.toUpperCase(), instrument_type, direction,
       entry_price: Number(entry_price),
       exit_price:  isOpen ? null : (exit_price  != null ? Number(exit_price)  : null),
       size:        Number(size),
-      remaining_size: isOpen ? Number(size) : null,
+      remaining_size: newRemainingSize,
       pnl_dollar:  isOpen ? null : (pnl_dollar  != null ? Number(pnl_dollar)  : null),
       pnl_percent: isOpen ? null : (pnl_percent != null ? Number(pnl_percent) : null),
       pattern_tag: pattern_tag || null, notes: notes || null,
