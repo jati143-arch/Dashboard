@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { screenerApi } from '../../api/client.js';
 
@@ -10,6 +11,8 @@ const SIGNAL_COLORS = {
 };
 
 export default function SignalsPanel({ symbol }) {
+  const [expanded, setExpanded] = useState(false);
+  
   const { data, isLoading, isError } = useQuery({
     queryKey: ['screener-signals', symbol],
     queryFn: () => screenerApi.signals(symbol),
@@ -40,7 +43,11 @@ export default function SignalsPanel({ symbol }) {
 
   return (
     <div style={{ padding: 16, background: 'var(--bg-surface)', borderRadius: 8, margin: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+      <div 
+        onClick={() => setExpanded(!expanded)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: expanded ? 16 : 0, cursor: 'pointer' }}
+      >
+        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{expanded ? '▼' : '▶'}</span>
         <div style={{
           padding: '8px 16px',
           borderRadius: 6,
@@ -59,86 +66,90 @@ export default function SignalsPanel({ symbol }) {
         </div>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Entry Price</div>
-        <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--accent)' }}>
-          ₹{data.entryPrice}
-        </div>
-      </div>
-
-      {data.targets && Object.keys(data.targets).length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Targets (1:2 R:R)</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {Object.entries(data.targets).map(([k, v]) => (
-              <div key={k} style={{ flex: 1, padding: 6, background: 'var(--bg-card)', borderRadius: 4, textAlign: 'center' }}>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{k.toUpperCase()}</div>
-                <div style={{ fontWeight: 600, color: 'var(--green)', fontSize: 11 }}>₹{v}</div>
-              </div>
-            ))}
+      {expanded && (
+        <>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Entry Price</div>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--text-mono)', color: 'var(--accent)' }}>
+              ₹{data.entryPrice}
+            </div>
           </div>
-        </div>
+
+          {data.targets && Object.keys(data.targets).length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Targets (1:2 R:R)</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {Object.entries(data.targets).map(([k, v]) => (
+                  <div key={k} style={{ flex: 1, padding: 6, background: 'var(--bg-card)', borderRadius: 4, textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>{k.toUpperCase()}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--green)', fontSize: 11 }}>₹{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(data.stopLoss || data.trailingStop) && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Stops</div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                {data.stopLoss && (
+                  <div>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Hard SL</div>
+                    <div style={{ fontWeight: 600, color: 'var(--red)', fontSize: 12 }}>₹{data.stopLoss}</div>
+                  </div>
+                )}
+                {data.trailingStop && (
+                  <div>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Trailing</div>
+                    <div style={{ fontWeight: 600, color: 'var(--yellow)', fontSize: 12 }}>₹{data.trailingStop}</div>
+                  </div>
+                )}
+                {data.riskReward && (
+                  <div>
+                    <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>R:R</div>
+                    <div style={{ fontWeight: 600, color: 'var(--accent)', fontSize: 12 }}>{data.riskReward}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {data.reasons && data.reasons.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Analysis</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {data.reasons.map((r, i) => (
+                  <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    • {r}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>RSI (14)</div>
+              <div style={{ fontWeight: 600, color: data.rsi < 30 ? 'var(--green)' : data.rsi > 70 ? 'var(--red)' : 'var(--text-primary)' }}>
+                {data.rsi || '—'}
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>SMA 20</div>
+              <div style={{ fontWeight: 600 }}>{data.sma20 || '—'}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>SMA 50</div>
+              <div style={{ fontWeight: 600 }}>{data.sma50 || '—'}</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', marginTop: 12 }}>
+            AI-powered signal • Data from Yahoo Finance
+          </div>
+        </>
       )}
-
-      {(data.stopLoss || data.trailingStop) && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Stops</div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {data.stopLoss && (
-              <div>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Hard SL</div>
-                <div style={{ fontWeight: 600, color: 'var(--red)', fontSize: 12 }}>₹{data.stopLoss}</div>
-              </div>
-            )}
-            {data.trailingStop && (
-              <div>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>Trailing</div>
-                <div style={{ fontWeight: 600, color: 'var(--yellow)', fontSize: 12 }}>₹{data.trailingStop}</div>
-              </div>
-            )}
-            {data.riskReward && (
-              <div>
-                <div style={{ fontSize: 9, color: 'var(--text-dim)' }}>R:R</div>
-                <div style={{ fontWeight: 600, color: 'var(--accent)', fontSize: 12 }}>{data.riskReward}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {data.reasons && data.reasons.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 6 }}>Analysis</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {data.reasons.map((r, i) => (
-              <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                • {r}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 12, marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>RSI (14)</div>
-          <div style={{ fontWeight: 600, color: data.rsi < 30 ? 'var(--green)' : data.rsi > 70 ? 'var(--red)' : 'var(--text-primary)' }}>
-            {data.rsi || '—'}
-          </div>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>SMA 20</div>
-          <div style={{ fontWeight: 600 }}>{data.sma20 || '—'}</div>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>SMA 50</div>
-          <div style={{ fontWeight: 600 }}>{data.sma50 || '—'}</div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', marginTop: 12 }}>
-        AI-powered signal • Data from Yahoo Finance
-      </div>
     </div>
   );
 }
