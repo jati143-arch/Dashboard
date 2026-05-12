@@ -38,50 +38,51 @@ async function scrapeWithAI(url, dataType, ticker) {
       signal: AbortSignal.timeout(20000),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.log(`[scrapeWithAI] HTTP error: ${response.status}`);
+      return null;
+    }
     const html = await response.text();
 
-    const promptMap = {
-      'quarterly': `Extract quarterly P&L data from this Screener.in page. Return a JSON array with up to 8 quarters. Each object should have: date (like "Mar 2025"), revenue, operatingIncome, netIncome, basicEPS. Example: [{"date": "Mar 2025", "revenue": "₹129,898 Cr", "operatingIncome": "₹14,315 Cr", "netIncome": "₹7,611 Cr", "basicEPS": "5.62"}]. If no data, return empty array.`,
-      'balance-sheet': `Extract balance sheet data from this Screener.in page. Return a JSON array with up to 5 years. Each object should have: date (year), equity, totalAssets, totalDebt, totalCash. Example: [{"date": "Mar 2025", "equity": "₹4,54,234 Cr", "totalAssets": "₹9,87,654 Cr", "totalDebt": "₹2,34,567 Cr", "totalCash": "₹45,678 Cr"}]. If no data, return empty array.`,
-      'cash-flow': `Extract cash flow data from this Screener.in page. Return a JSON array with up to 5 years. Each object should have: date (year), operating, investing, financing, freeCashFlow. Example: [{"date": "Mar 2025", "operating": "₹34,567 Cr", "investing": "-₹12,345 Cr", "financing": "-₹23,456 Cr", "freeCashFlow": "₹22,222 Cr"}]. If no data, return empty array.`,
-      'annual': `Extract annual P&L data from this Screener.in page. Return a JSON array with up to 5 years. Each object should have: date (year), revenue, operatingIncome, netIncome, basicEPS, dividendPerShare. Example: [{"date": "Mar 2025", "revenue": "₹5,87,234 Cr", "operatingIncome": "₹54,321 Cr", "netIncome": "₹45,678 Cr", "basicEPS": "33.75", "dividendPerShare": "6.5"}]. If no data, return empty array.`
-    };
-
     const groqKey = process.env.GROQ_API_KEY;
-    if (!groqKey) return null;
+    if (!groqKey) {
+      console.log('[scrapeWithAI] GROQ_API_KEY not set');
+      return null;
+    }
 
     const { default: Groq } = require('groq-sdk');
     const groq = new Groq({ apiKey: groqKey });
 
-    // Extract text content from page (first 8000 chars to avoid token limits)
+    const promptMap = {
+      'quarterly': `Extract quarterly P&L data from this Screener.in page. Return JSON array with up to 8 quarters. Each: {"date": "Mar 2025", "revenue": "₹129898", "operatingIncome": "₹14315", "netIncome": "₹7611", "basicEPS": "5.62"}. Return empty array if no data.`,
+      'balance-sheet': `Extract balance sheet data. Return JSON array with up to 5 years. Each: {"date": "2025", "equity": "₹454234", "totalAssets": "₹987654", "totalDebt": "₹234567", "totalCash": "₹45678"}. Return empty array if no data.`,
+      'cash-flow': `Extract cash flow data. Return JSON array with up to 5 years. Each: {"date": "2025", "operating": "₹34567", "investing": "₹-12345", "financing": "₹-23456", "freeCashFlow": "₹22222"}. Return empty array if no data.`,
+      'annual': `Extract annual P&L data. Return JSON array with up to 5 years. Each: {"date": "Mar 2025", "revenue": "₹587234", "operatingIncome": "₹54321", "netIncome": "₹45678", "basicEPS": "33.75", "dividendPerShare": "6.5"}. Return empty array if no data.`
+    };
+
     const $ = cheerio.load(html);
-    const pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 8000);
-
-    const aiPrompt = `You are a financial data extraction AI. Based on the following HTML content from a Screener.in page for ${ticker}, extract the ${dataType} data.
-
-${promptMap[dataType]}
-
-IMPORTANT: Return ONLY valid JSON array, no markdown, no explanation. Example format for quarterly: [{"date": "Mar 2025", "revenue": "₹129,898 Cr", ...}]`;
+    const pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 6000);
 
     const chat = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'system', content: 'You extract structured financial data from HTML content. Return ONLY valid JSON.' },
-        { role: 'user', content: `${aiPrompt}\n\nPage content:\n${pageText}` }
+        { role: 'system', content: 'You extract financial data from HTML. Return ONLY valid JSON array, nothing else.' },
+        { role: 'user', content: `${promptMap[dataType]}\n\nHTML:\n${pageText}` }
       ],
-      max_tokens: 1024,
+      max_tokens: 512,
       temperature: 0.1,
     });
 
     const content = chat.choices[0]?.message?.content || '';
-    const jsonMatch = content.match(/\[.*\]/s);
+    console.log(`[scrapeWithAI] ${dataType} raw response:`, content.slice(0, 200));
+    
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
     return null;
   } catch (err) {
-    console.log(`[screener/scrapeWithAI] ${dataType} error:`, err.message);
+    console.error(`[scrapeWithAI] ${dataType} error:`, err.message);
     return null;
   }
 }
