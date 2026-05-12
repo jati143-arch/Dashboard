@@ -5,7 +5,7 @@ import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
-import { FundamentalsPanel, QuarterlyPanel, ScreenerAnnualPanel } from '../components/shared/FundamentalsPanel.jsx';
+import { FundamentalsPanel, ScreenerQuarterlyPanel, ScreenerBalanceSheetPanel, ScreenerCashFlowPanel, ScreenerAnnualPanel } from '../components/shared/FundamentalsPanel.jsx';
 import { useChart } from '../context/ChartContext.jsx';
 
 function detectRegion(symbol, instrumentType) {
@@ -82,7 +82,10 @@ export default function Investments() {
   const [showImport, setShowImport] = useState(false);
   const [expandedFund, setExpandedFund] = useState(null);
   const [expandedQtly, setExpandedQtly] = useState(null);
+  const [expandedBal, setExpandedBal] = useState(null);
+  const [expandedCash, setExpandedCash] = useState(null);
   const [expandedAnnual, setExpandedAnnual] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   function switchTab(tab) {
     setActiveTab(tab);
@@ -144,8 +147,9 @@ export default function Investments() {
 
   const filtered = openTrades.filter(t => {
     const r = detectRegion(t.symbol, t.instrument_type);
-    if (activeTab === 'all') return r !== 'mf'; // all tab excludes MF
-    return r === activeTab;
+    const matchesTab = activeTab === 'all' ? r !== 'mf' : r === activeTab;
+    const matchesSearch = !searchQuery || t.symbol.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
   });
 
   const isMfTab = activeTab === 'mf';
@@ -191,7 +195,7 @@ export default function Investments() {
       </div>
 
       {/* Sub-tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
         {SUB_TABS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => switchTab(key)} style={{
             padding: '6px 16px', fontSize: 12, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
@@ -203,6 +207,42 @@ export default function Investments() {
             {label} ({counts[key]})
           </button>
         ))}
+      </div>
+
+      {/* Search bar */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        <input
+          type="text"
+          placeholder="🔍 Search symbol..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid var(--border)',
+            background: 'var(--bg-card)',
+            color: 'var(--text-primary)',
+            fontSize: 13,
+            outline: 'none',
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-dim)',
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+          >
+            ✕ Clear
+          </button>
+        )}
       </div>
 
       {/* Summary card */}
@@ -403,9 +443,25 @@ export default function Investments() {
                           {isIndian && (
                             <button
                               onClick={() => setExpandedQtly(expandedQtly === t.symbol ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: expandedQtly === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedQtly === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedQtly === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedQtly === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
                             >
-                              {expandedQtly === t.symbol ? '▲ Qtly' : '📊 Qtly'}
+                              {expandedQtly === t.symbol ? '▲ P&L Q' : '📊 P&L Q'}
+                            </button>
+                          )}
+                          {isIndian && (
+                            <button
+                              onClick={() => setExpandedBal(expandedBal === t.symbol ? null : t.symbol)}
+                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedBal === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedBal === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                            >
+                              {expandedBal === t.symbol ? '▲ Balance' : '📋 Balance'}
+                            </button>
+                          )}
+                          {isIndian && (
+                            <button
+                              onClick={() => setExpandedCash(expandedCash === t.symbol ? null : t.symbol)}
+                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedCash === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedCash === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                            >
+                              {expandedCash === t.symbol ? '▲ Cash Flow' : '💰 Cash Flow'}
                             </button>
                           )}
                           {isIndian && (
@@ -413,7 +469,7 @@ export default function Investments() {
                               onClick={() => setExpandedAnnual(expandedAnnual === t.symbol ? null : t.symbol)}
                               style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: expandedAnnual === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedAnnual === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
                             >
-                              {expandedAnnual === t.symbol ? '▲ Year' : '📈 Year'}
+                              {expandedAnnual === t.symbol ? '▲ P&L Y' : '📈 P&L Y'}
                             </button>
                           )}
                           <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
@@ -432,7 +488,21 @@ export default function Investments() {
                       {expandedQtly === t.symbol && (
                         <tr>
                           <td colSpan={9} style={{ padding: 0 }}>
-                            <QuarterlyPanel symbol={t.symbol} />
+                            <ScreenerQuarterlyPanel symbol={t.symbol} />
+                          </td>
+                        </tr>
+                      )}
+                      {expandedBal === t.symbol && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: 0 }}>
+                            <ScreenerBalanceSheetPanel symbol={t.symbol} />
+                          </td>
+                        </tr>
+                      )}
+                      {expandedCash === t.symbol && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: 0 }}>
+                            <ScreenerCashFlowPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}

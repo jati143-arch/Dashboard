@@ -103,32 +103,39 @@ export function FundamentalsPanel({ symbol }) {
   );
 }
 
-export function QuarterlyPanel({ symbol }) {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['fundamentals-qtly', symbol],
-    queryFn: () => fundamentalsApi.quarterly(symbol),
-    staleTime: 4 * 60 * 60 * 1000,
+// Screener Quarterly P&L Panel
+export function ScreenerQuarterlyPanel({ symbol }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['screener-quarterly', symbol],
+    queryFn: () => screenerApi.quarterly(symbol),
+    staleTime: 6 * 60 * 60 * 1000,
     retry: 1,
   });
 
   if (isLoading) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
       <div className="spinner" style={{ width: 14, height: 14 }} />
-      Loading quarterly data…
+      Loading quarterly P&L…
     </div>
   );
   if (isError || !data?.quarters?.length) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
-      Quarterly data unavailable
+      Quarterly P&L unavailable{data?.message ? `: ${data.message}` : ''}
+      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
     </div>
   );
 
-  const HEADERS = ['Quarter', 'Revenue', 'Net Income', 'Gross Profit', 'EBITDA', 'Basic EPS', 'Diluted EPS'];
+  const HEADERS = ['Quarter', 'Revenue', 'Op. Income', 'Net Income', 'Gross Profit', 'EBITDA', 'EPS'];
 
   return (
     <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
-      <div style={{ fontWeight: 700, marginBottom: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
-        Quarterly Results · last {data.quarters.length} quarters
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+          Quarterly P&L · last {data.quarters.length} quarters
+        </div>
+        <button onClick={() => refetch()} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>
+          ↻ Refresh
+        </button>
       </div>
       <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 600 }}>
         <thead>
@@ -142,44 +149,51 @@ export function QuarterlyPanel({ symbol }) {
           {data.quarters.map(q => (
             <tr key={q.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <td style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{q.date}</td>
-              {[q.revenue, q.netIncome, q.grossProfit, q.ebitda, q.basicEPS, q.dilutedEPS].map((v, i) => (
+              {[q.revenue, q.operatingIncome, q.netIncome, q.grossProfit, q.ebitda, q.basicEPS].map((v, i) => (
                 <td key={i} style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Yahoo Finance · Cached 4h</div>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Screener.in · Cached 6h</div>
     </div>
   );
 }
 
-export function AnnualPanel({ symbol }) {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['fundamentals-annual', symbol],
-    queryFn: () => fundamentalsApi.annual(symbol),
-    staleTime: 24 * 60 * 60 * 1000,
+// Screener Balance Sheet Panel
+export function ScreenerBalanceSheetPanel({ symbol }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['screener-balance-sheet', symbol],
+    queryFn: () => screenerApi.balanceSheet(symbol),
+    staleTime: 6 * 60 * 60 * 1000,
     retry: 1,
   });
 
   if (isLoading) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
       <div className="spinner" style={{ width: 14, height: 14 }} />
-      Loading annual data…
+      Loading balance sheet…
     </div>
   );
-  if (isError || !data?.annuals?.length) return (
+  if (isError || !data?.balanceSheets?.length) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
-      Annual data unavailable
+      Balance sheet unavailable{data?.message ? `: ${data.message}` : ''}
+      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
     </div>
   );
 
-  const HEADERS = ['Year', 'Revenue', 'Op. Income', 'Net Income', 'EBITDA', 'Total Assets', 'Total Equity', 'EPS', 'DPS'];
+  const HEADERS = ['Year', 'Equity', 'Total Assets', 'Net Debt', 'Total Debt', 'Cash', 'Fixed Assets', 'Current Assets'];
 
   return (
     <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
-      <div style={{ fontWeight: 700, marginBottom: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
-        Annual Financials · last {data.annuals.length} years
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+          Balance Sheet · last {data.balanceSheets.length} years
+        </div>
+        <button onClick={() => refetch()} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>
+          ↻ Refresh
+        </button>
       </div>
       <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 700 }}>
         <thead>
@@ -190,23 +204,82 @@ export function AnnualPanel({ symbol }) {
           </tr>
         </thead>
         <tbody>
-          {data.annuals.map(a => (
+          {data.balanceSheets.map(a => (
             <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-              <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date.slice(0, 4)}</td>
-              {[a.revenue, a.operatingIncome, a.netIncome, a.ebitda, a.totalAssets, a.totalEquity, a.basicEPS, a.dividendPerShare].map((v, i) => (
+              <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
+              {[a.equity, a.totalAssets, a.netDebt, a.totalDebt, a.totalCash, a.fixedAssets, a.currentAssets].map((v, i) => (
                 <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Yahoo Finance · Cached 24h</div>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Screener.in · Cached 6h</div>
     </div>
   );
 }
 
+// Screener Cash Flow Panel
+export function ScreenerCashFlowPanel({ symbol }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['screener-cash-flow', symbol],
+    queryFn: () => screenerApi.cashFlow(symbol),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  if (isLoading) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="spinner" style={{ width: 14, height: 14 }} />
+      Loading cash flow…
+    </div>
+  );
+  if (isError || !data?.cashFlows?.length) return (
+    <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
+      Cash flow unavailable{data?.message ? `: ${data.message}` : ''}
+      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
+    </div>
+  );
+
+  const HEADERS = ['Year', 'Operating CF', 'Investing CF', 'Financing CF', 'Free Cash Flow', 'Capex'];
+
+  return (
+    <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+          Cash Flow · last {data.cashFlows.length} years
+        </div>
+        <button onClick={() => refetch()} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>
+          ↻ Refresh
+        </button>
+      </div>
+      <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 600 }}>
+        <thead>
+          <tr>
+            {HEADERS.map((h, i) => (
+              <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', padding: '4px 10px', color: 'var(--text-dim)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.cashFlows.map(a => (
+            <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
+              {[a.operating, a.investing, a.financing, a.freeCashFlow, a.capex].map((v, i) => (
+                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Screener.in · Cached 6h</div>
+    </div>
+  );
+}
+
+// Screener Annual P&L Panel
 export function ScreenerAnnualPanel({ symbol }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['screener-annual', symbol],
     queryFn: () => screenerApi.annual(symbol),
     staleTime: 6 * 60 * 60 * 1000,
@@ -216,12 +289,13 @@ export function ScreenerAnnualPanel({ symbol }) {
   if (isLoading) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
       <div className="spinner" style={{ width: 14, height: 14 }} />
-      Loading Screener.in annual data…
+      Loading annual P&L…
     </div>
   );
   if (isError || !data?.annuals?.length) return (
     <div style={{ padding: '14px 20px', color: 'var(--text-dim)', fontSize: 12 }}>
-      Annual data unavailable{data?.message ? `: ${data.message}` : ''}
+      Annual P&L unavailable{data?.message ? `: ${data.message}` : ''}
+      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
     </div>
   );
 
@@ -229,8 +303,13 @@ export function ScreenerAnnualPanel({ symbol }) {
 
   return (
     <div style={{ padding: '14px 20px', background: 'var(--bg-surface)', borderTop: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
-      <div style={{ fontWeight: 700, marginBottom: 10, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
-        Annual Financials · last {data.annuals.length} years
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.08em' }}>
+          Annual P&L · last {data.annuals.length} years
+        </div>
+        <button onClick={() => refetch()} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>
+          ↻ Refresh
+        </button>
       </div>
       <table style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 500 }}>
         <thead>

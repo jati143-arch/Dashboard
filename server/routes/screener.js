@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const cheerio = require('cheerio');
 
 const cache = new Map(); // ticker → { data, at }
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6h
@@ -183,6 +184,264 @@ router.get('/annual', async (req, res) => {
     }
   } catch (err) {
     console.error('[screener/annual]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/screener/quarterly?symbol=RELIANCE.NS — scrape quarterly P&L from Screener.in
+router.get('/quarterly', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  const cacheKey = `quarterly_${ticker}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL) return res.json(cached.data);
+
+  try {
+    const searchResp = await fetch(
+      `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    const results = await searchResp.json();
+    if (!results?.length) {
+      return res.json({ symbol: ticker, quarters: [], message: `Company "${ticker}" not found` });
+    }
+
+    const companySlug = results[0].url.replace('/company/', '').replace('/', '');
+    const url = `https://www.screener.in/company/${companySlug}/quarters/`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Screener.in returned ${response.status}` });
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const quarters = [];
+
+    $('table').each((_, table) => {
+      const rows = $(table).find('tr');
+      if (rows.length < 2) return;
+
+      const headers = [];
+      rows.eq(0).find('th, td').each((i, cell) => {
+        headers.push($(cell).text().trim());
+      });
+
+      rows.slice(1).each((rowIdx, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 2) return;
+
+        const rowData = {};
+        headers.forEach((h, i) => {
+          const val = cells.eq(i).text().trim();
+          rowData[h] = val;
+        });
+
+        const firstCell = cells.eq(0).text().trim();
+        if (firstCell && /^\d{4}/.test(firstCell)) {
+          quarters.push({
+            date: firstCell,
+            revenue: rowData['Sales'] || rowData['Revenue'] || rowData['Total Income'] || null,
+            operatingIncome: rowData['Operating Profit'] || rowData['Op. Income'] || null,
+            netIncome: rowData['Profit after tax'] || rowData['Net Profit'] || rowData['Net Income'] || null,
+            grossProfit: rowData['Gross Profit'] || null,
+            ebitda: rowData['EBITDA'] || null,
+            basicEPS: rowData['Basic EPS'] || rowData['EPS'] || null,
+            dilutedEPS: rowData['Diluted EPS'] || null,
+          });
+        }
+      });
+    });
+
+    if (quarters.length > 0) {
+      cache.set(cacheKey, { data: { symbol: ticker, quarters }, at: Date.now() });
+      return res.json({ symbol: ticker, quarters });
+    }
+
+    res.json({ symbol: ticker, quarters: [], message: 'No quarterly data found' });
+  } catch (err) {
+    console.error('[screener/quarterly]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/screener/balance-sheet?symbol=RELIANCE.NS — scrape balance sheet from Screener.in
+router.get('/balance-sheet', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  const cacheKey = `balancesheet_${ticker}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL) return res.json(cached.data);
+
+  try {
+    const searchResp = await fetch(
+      `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    const results = await searchResp.json();
+    if (!results?.length) {
+      return res.json({ symbol: ticker, balanceSheets: [], message: `Company "${ticker}" not found` });
+    }
+
+    const companySlug = results[0].url.replace('/company/', '').replace('/', '');
+    const url = `https://www.screener.in/company/${companySlug}/balancesheet/`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Screener.in returned ${response.status}` });
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const balanceSheets = [];
+
+    $('table').each((_, table) => {
+      const rows = $(table).find('tr');
+      if (rows.length < 2) return;
+
+      const headers = [];
+      rows.eq(0).find('th, td').each((i, cell) => {
+        headers.push($(cell).text().trim());
+      });
+
+      rows.slice(1).each((rowIdx, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 2) return;
+
+        const rowData = {};
+        headers.forEach((h, i) => {
+          const val = cells.eq(i).text().trim();
+          rowData[h] = val;
+        });
+
+        const firstCell = cells.eq(0).text().trim();
+        if (firstCell && /^\d{4}/.test(firstCell)) {
+          balanceSheets.push({
+            date: firstCell,
+            equity: rowData['Equity Share Capital'] || rowData['Shareholders Fund'] || rowData['Total Equity'] || null,
+            totalAssets: rowData['Total Assets'] || rowData['Total Assets/ Liabilities'] || null,
+            totalLiabilities: rowData['Total Liabilities'] || null,
+            netDebt: rowData['Net Debt'] || null,
+            totalDebt: rowData['Borrowings'] || rowData['Total Debt'] || null,
+            totalCash: rowData['Cash And Cash Equivalents'] || rowData['Cash'] || null,
+            fixedAssets: rowData['Net block'] || rowData['Fixed Assets'] || null,
+            currentAssets: rowData['Current Assets'] || null,
+            currentLiabilities: rowData['Current Liabilities'] || null,
+          });
+        }
+      });
+    });
+
+    if (balanceSheets.length > 0) {
+      cache.set(cacheKey, { data: { symbol: ticker, balanceSheets }, at: Date.now() });
+      return res.json({ symbol: ticker, balanceSheets });
+    }
+
+    res.json({ symbol: ticker, balanceSheets: [], message: 'No balance sheet data found' });
+  } catch (err) {
+    console.error('[screener/balance-sheet]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/screener/cash-flow?symbol=RELIANCE.NS — scrape cash flow from Screener.in
+router.get('/cash-flow', async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  const cacheKey = `cashflow_${ticker}`;
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL) return res.json(cached.data);
+
+  try {
+    const searchResp = await fetch(
+      `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    const results = await searchResp.json();
+    if (!results?.length) {
+      return res.json({ symbol: ticker, cashFlows: [], message: `Company "${ticker}" not found` });
+    }
+
+    const companySlug = results[0].url.replace('/company/', '').replace('/', '');
+    const url = `https://www.screener.in/company/${companySlug}/cashflow/`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ error: `Screener.in returned ${response.status}` });
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const cashFlows = [];
+
+    $('table').each((_, table) => {
+      const rows = $(table).find('tr');
+      if (rows.length < 2) return;
+
+      const headers = [];
+      rows.eq(0).find('th, td').each((i, cell) => {
+        headers.push($(cell).text().trim());
+      });
+
+      rows.slice(1).each((rowIdx, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 2) return;
+
+        const rowData = {};
+        headers.forEach((h, i) => {
+          const val = cells.eq(i).text().trim();
+          rowData[h] = val;
+        });
+
+        const firstCell = cells.eq(0).text().trim();
+        if (firstCell && /^\d{4}/.test(firstCell)) {
+          cashFlows.push({
+            date: firstCell,
+            operating: rowData['Operating Cash Flow'] || rowData['Cash from operations'] || rowData['Net Cash From Operations'] || null,
+            investing: rowData['Investing Cash Flow'] || rowData['Cash from investments'] || rowData['Net Cash From Investing Activities'] || null,
+            financing: rowData['Financing Cash Flow'] || rowData['Cash from financing'] || rowData['Net Cash From Financing Activities'] || null,
+            freeCashFlow: rowData['Free Cash Flow'] || null,
+            capex: rowData['Capital Expenditure'] || rowData['Capex'] || null,
+          });
+        }
+      });
+    });
+
+    if (cashFlows.length > 0) {
+      cache.set(cacheKey, { data: { symbol: ticker, cashFlows }, at: Date.now() });
+      return res.json({ symbol: ticker, cashFlows });
+    }
+
+    res.json({ symbol: ticker, cashFlows: [], message: 'No cash flow data found' });
+  } catch (err) {
+    console.error('[screener/cash-flow]', err.message);
     res.status(502).json({ error: err.message });
   }
 });
