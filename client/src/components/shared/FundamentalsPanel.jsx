@@ -150,7 +150,7 @@ export function ScreenerQuarterlyPanel({ symbol }) {
             <tr key={q.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <td style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{q.date}</td>
               {[q.revenue, q.operatingIncome, q.netIncome, q.grossProfit, q.ebitda, q.basicEPS].map((v, i) => (
-                <td key={i} style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
+                <td key={i} style={{ padding: '5px 12px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v != null ? v?.toLocaleString() : '—'}</td>
               ))}
             </tr>
           ))}
@@ -207,9 +207,9 @@ export function ScreenerBalanceSheetPanel({ symbol }) {
           {data.balanceSheets.map(a => (
             <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
-              {[a.equity, a.totalAssets, a.netDebt, a.totalDebt, a.totalCash, a.fixedAssets, a.currentAssets].map((v, i) => (
-                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
-              ))}
+{[a.equity, a.totalAssets, a.netDebt, a.totalDebt, a.totalCash, a.fixedAssets, a.currentAssets].map((v, i) => (
+                 <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v != null ? v?.toLocaleString() : '—'}</td>
+               ))}
             </tr>
           ))}
         </tbody>
@@ -265,9 +265,9 @@ export function ScreenerCashFlowPanel({ symbol }) {
           {data.cashFlows.map(a => (
             <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
-              {[a.operating, a.investing, a.financing, a.freeCashFlow, a.capex].map((v, i) => (
-                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
-              ))}
+{[a.operating, a.investing, a.financing, a.freeCashFlow, a.capex].map((v, i) => (
+                 <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v != null ? v?.toLocaleString() : '—'}</td>
+               ))}
             </tr>
           ))}
         </tbody>
@@ -323,9 +323,9 @@ export function ScreenerAnnualPanel({ symbol }) {
           {data.annuals.map(a => (
             <tr key={a.date} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <td style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{a.date}</td>
-              {[a.revenue, a.operatingIncome, a.netIncome, a.basicEPS, a.dividendPerShare].map((v, i) => (
-                <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v ?? '—'}</td>
-              ))}
+{[a.revenue, a.operatingIncome, a.netIncome, a.basicEPS, a.dividendPerShare].map((v, i) => (
+                 <td key={i} style={{ padding: '5px 10px', fontFamily: 'var(--text-mono)', fontWeight: 600, textAlign: 'right', color: v == null ? 'var(--text-dim)' : 'var(--text-primary)' }}>{v != null ? v?.toLocaleString() : '—'}</td>
+               ))}
             </tr>
           ))}
         </tbody>

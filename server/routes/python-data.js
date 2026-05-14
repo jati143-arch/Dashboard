@@ -4,17 +4,18 @@ const path = require('path');
 
 const router = express.Router();
 
-const PYTHON_PATH = process.env.NODE_ENV === 'production' 
-  ? 'python3' 
+const PYTHON_PATH = process.env.NODE_ENV === 'production'
+  ? 'python3'
   : 'python';
 
-function runPythonScript(args) {
+const SCRIPT_PATH = path.join(__dirname, '..', '..', 'python', 'runner.py');
+
+function runPythonScript(args, timeoutMs = 25000) {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, '..', '..', 'python', 'runner.py');
-    
-    const proc = spawn(PYTHON_PATH, [scriptPath, ...args], {
-      timeout: 30000,
-      shell: true
+    let completed = false;
+    const proc = spawn(PYTHON_PATH, [SCRIPT_PATH, ...args], {
+      timeout: timeoutMs,
+      shell: true,
     });
 
     let stdout = '';
@@ -29,11 +30,13 @@ function runPythonScript(args) {
     });
 
     proc.on('close', (code) => {
+      completed = true;
       if (code !== 0) {
         reject(new Error(stderr || `Process exited with code ${code}`));
       } else {
         try {
-          resolve(JSON.parse(stdout.trim()));
+          const result = JSON.parse(stdout.trim());
+          resolve(result);
         } catch (e) {
           resolve({ success: true, raw: stdout });
         }
@@ -41,31 +44,41 @@ function runPythonScript(args) {
     });
 
     proc.on('error', (err) => {
-      reject(err);
+      if (!completed) reject(err);
     });
+
+    // Force-kill if hanging past timeout
+    setTimeout(() => {
+      if (!completed) {
+        proc.kill();
+        reject(new Error('Script timeout'));
+      }
+    }, timeoutMs);
   });
 }
 
+// GET /api/python-data/quote/NSE:RELIANCE
 router.get('/quote/:symbol', async (req, res) => {
   try {
-    const symbol = req.params.symbol;
-    const result = await runPythonScript(['quote', symbol]);
+    const result = await runPythonScript(['quote', req.params.symbol]);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// GET /api/python-data/intraday/NSE:RELIANCE?resolution=5
 router.get('/intraday/:symbol', async (req, res) => {
   try {
-    const symbol = req.params.symbol;
-    const result = await runPythonScript(['intraday', symbol]);
+    const resolution = req.query.resolution || '5';
+    const result = await runPythonScript(['intraday', req.params.symbol, resolution]);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// GET /api/python-data/news
 router.get('/news', async (req, res) => {
   try {
     const result = await runPythonScript(['news']);

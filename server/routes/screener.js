@@ -19,13 +19,25 @@ function formatCr(val) {
 }
 
 async function getCompanySlug(ticker) {
-  const searchResp = await fetch(
-    `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
-    { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
-  );
-  const results = await searchResp.json();
-  if (!results?.length) return null;
-  return results[0].url.replace('/company/', '').replace('/', '');
+  try {
+    const searchResp = await fetch(
+      `https://www.screener.in/api/company/search/?q=${encodeURIComponent(ticker)}`,
+      { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) }
+    );
+    if (!searchResp.ok) {
+      console.log('[screener] Search HTTP error:', searchResp.status);
+      return null;
+    }
+    const results = await searchResp.json();
+    if (!results?.length) return null;
+    // Extract slug from URL like "/company/reliance/"
+    const url = results[0].url || results[0].link || '';
+    const slugMatch = url.match(/\/company\/([^\/]+)/);
+    return slugMatch ? slugMatch[1] : null;
+  } catch (err) {
+    console.error('[screener] getCompanySlug error:', err.message);
+    return null;
+  }
 }
 
 async function scrapeWithAI(url, dataType, ticker) {
@@ -35,7 +47,7 @@ async function scrapeWithAI(url, dataType, ticker) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': 'text/html,application/xhtml+xml',
       },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(25000),
     });
 
     if (!response.ok) {
@@ -54,28 +66,28 @@ async function scrapeWithAI(url, dataType, ticker) {
     const groq = new Groq({ apiKey: groqKey });
 
     const promptMap = {
-      'quarterly': `Extract quarterly P&L data from this Screener.in page. Return JSON array with up to 8 quarters. Each: {"date": "Mar 2025", "revenue": "₹129898", "operatingIncome": "₹14315", "netIncome": "₹7611", "basicEPS": "5.62"}. Return empty array if no data.`,
-      'balance-sheet': `Extract balance sheet data. Return JSON array with up to 5 years. Each: {"date": "2025", "equity": "₹454234", "totalAssets": "₹987654", "totalDebt": "₹234567", "totalCash": "₹45678"}. Return empty array if no data.`,
-      'cash-flow': `Extract cash flow data. Return JSON array with up to 5 years. Each: {"date": "2025", "operating": "₹34567", "investing": "₹-12345", "financing": "₹-23456", "freeCashFlow": "₹22222"}. Return empty array if no data.`,
-      'annual': `Extract annual P&L data. Return JSON array with up to 5 years. Each: {"date": "Mar 2025", "revenue": "₹587234", "operatingIncome": "₹54321", "netIncome": "₹45678", "basicEPS": "33.75", "dividendPerShare": "6.5"}. Return empty array if no data.`
+      'quarterly': `Extract quarterly P&L data from this Screener.in page. Return JSON array with up to 8 quarters. Each: {"date": "Mar 2025", "revenue": 129898, "operatingIncome": 14315, "netIncome": 7611, "basicEPS": 5.62}. Use numbers, not strings. Return empty array if no data.`,
+      'balance-sheet': `Extract balance sheet data. Return JSON array with up to 5 years. Each: {"date": "2025", "equity": 454234, "totalAssets": 987654, "totalDebt": 234567, "totalCash": 45678}. Use numbers. Return empty array if no data.`,
+      'cash-flow': `Extract cash flow data. Return JSON array with up to 5 years. Each: {"date": "2025", "operating": 34567, "investing": -12345, "financing": -23456, "freeCashFlow": 22222}. Use numbers. Return empty array if no data.`,
+      'annual': `Extract annual P&L data. Return JSON array with up to 5 years. Each: {"date": "Mar 2025", "revenue": 587234, "operatingIncome": 54321, "netIncome": 45678, "basicEPS": 33.75, "dividendPerShare": 6.5}. Use numbers. Return empty array if no data.`,
     };
 
     const $ = cheerio.load(html);
-    const pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 6000);
+    const pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 8000);
 
     const chat = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        { role: 'system', content: 'You extract financial data from HTML. Return ONLY valid JSON array, nothing else.' },
+        { role: 'system', content: 'You extract financial data from HTML. Return ONLY valid JSON array, nothing else. All numeric values must be numbers (not strings).' },
         { role: 'user', content: `${promptMap[dataType]}\n\nHTML:\n${pageText}` }
       ],
-      max_tokens: 512,
+      max_tokens: 800,
       temperature: 0.1,
     });
 
     const content = chat.choices[0]?.message?.content || '';
     console.log(`[scrapeWithAI] ${dataType} raw response:`, content.slice(0, 200));
-    
+
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
@@ -105,8 +117,18 @@ router.get('/quarterly', async (req, res) => {
     const data = await scrapeWithAI(url, 'quarterly', ticker);
 
     if (data && data.length > 0) {
-      cache.set(cacheKey, { data: { symbol: ticker, quarters: data }, at: Date.now() });
-      return res.json({ symbol: ticker, quarters: data });
+      // Normalize date format
+      const quarters = data.map(q => ({
+        date: q.date || q.quarter || '',
+        revenue: q.revenue ?? q.total_revenue ?? q.sales ?? null,
+        operatingIncome: q.operatingIncome ?? q.operating_profit ?? q.operating ?? null,
+        netIncome: q.netIncome ?? q.net_profit ?? null,
+        grossProfit: q.grossProfit ?? q.gross_profit ?? null,
+        ebitda: q.ebitda ?? null,
+        basicEPS: q.basicEPS ?? q.basic_eps ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, quarters }, at: Date.now() });
+      return res.json({ symbol: ticker, quarters });
     }
 
     res.json({ symbol: ticker, quarters: [], message: 'No quarterly data found' });
@@ -134,8 +156,18 @@ router.get('/balance-sheet', async (req, res) => {
     const data = await scrapeWithAI(url, 'balance-sheet', ticker);
 
     if (data && data.length > 0) {
-      cache.set(cacheKey, { data: { symbol: ticker, balanceSheets: data }, at: Date.now() });
-      return res.json({ symbol: ticker, balanceSheets: data });
+      const balanceSheets = data.map(bs => ({
+        date: bs.date || bs.year || '',
+        equity: bs.equity ?? null,
+        totalAssets: bs.totalAssets ?? bs.total_assets ?? null,
+        totalDebt: bs.totalDebt ?? bs.total_debt ?? null,
+        totalCash: bs.totalCash ?? bs.total_cash ?? null,
+        netDebt: bs.netDebt ?? bs.net_debt ?? ((bs.totalDebt ?? 0) - (bs.totalCash ?? 0)),
+        fixedAssets: bs.fixedAssets ?? bs.fixed_assets ?? null,
+        currentAssets: bs.currentAssets ?? bs.current_assets ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, balanceSheets }, at: Date.now() });
+      return res.json({ symbol: ticker, balanceSheets });
     }
 
     res.json({ symbol: ticker, balanceSheets: [], message: 'No balance sheet data found' });
@@ -159,12 +191,38 @@ router.get('/cash-flow', async (req, res) => {
     const slug = await getCompanySlug(ticker);
     if (!slug) return res.json({ symbol: ticker, cashFlows: [], message: `Company "${ticker}" not found` });
 
-    const url = `https://www.screener.in/company/${slug}/`;
+    // Try consolidated cash flow page
+    const url = `https://www.screener.in/company/${slug}/consolidated/`;
     const data = await scrapeWithAI(url, 'cash-flow', ticker);
 
     if (data && data.length > 0) {
-      cache.set(cacheKey, { data: { symbol: ticker, cashFlows: data }, at: Date.now() });
-      return res.json({ symbol: ticker, cashFlows: data });
+      const cashFlows = data.map(cf => ({
+        date: cf.date || cf.year || '',
+        operating: cf.operating ?? cf.operating_cash_flow ?? null,
+        investing: cf.investing ?? cf.investing_cash_flow ?? null,
+        financing: cf.financing ?? cf.financing_cash_flow ?? null,
+        freeCashFlow: cf.freeCashFlow ?? cf.free_cash_flow ?? ((cf.operating ?? 0) + (cf.investing ?? 0)),
+        capex: cf.capex ?? cf.capital_expenditure ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, cashFlows }, at: Date.now() });
+      return res.json({ symbol: ticker, cashFlows });
+    }
+
+    // Try non-consolidated as fallback
+    const url2 = `https://www.screener.in/company/${slug}/`;
+    const data2 = await scrapeWithAI(url2, 'cash-flow', ticker);
+
+    if (data2 && data2.length > 0) {
+      const cashFlows = data2.map(cf => ({
+        date: cf.date || cf.year || '',
+        operating: cf.operating ?? cf.operating_cash_flow ?? null,
+        investing: cf.investing ?? cf.investing_cash_flow ?? null,
+        financing: cf.financing ?? cf.financing_cash_flow ?? null,
+        freeCashFlow: cf.freeCashFlow ?? cf.free_cash_flow ?? ((cf.operating ?? 0) + (cf.investing ?? 0)),
+        capex: cf.capex ?? cf.capital_expenditure ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, cashFlows }, at: Date.now() });
+      return res.json({ symbol: ticker, cashFlows });
     }
 
     res.json({ symbol: ticker, cashFlows: [], message: 'No cash flow data found' });
@@ -174,7 +232,7 @@ router.get('/cash-flow', async (req, res) => {
   }
 });
 
-// GET /api/screener/annual?symbol=RELIANCE.NS — scrape annual P&L from Screener.in
+// GET /api/screener/annual?symbol=RELIANCE.NS
 router.get('/annual', async (req, res) => {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
@@ -194,8 +252,16 @@ router.get('/annual', async (req, res) => {
     const data = await scrapeWithAI(url, 'annual', ticker);
 
     if (data && data.length > 0) {
-      cache.set(cacheKey, { data: { symbol: ticker, annuals: data }, at: Date.now() });
-      return res.json({ symbol: ticker, annuals: data });
+      const annuals = data.map(a => ({
+        date: a.date || a.year || '',
+        revenue: a.revenue ?? a.total_revenue ?? a.sales ?? a.turnover ?? null,
+        operatingIncome: a.operatingIncome ?? a.operating_profit ?? a.operating ?? null,
+        netIncome: a.netIncome ?? a.net_profit ?? a.pat ?? null,
+        basicEPS: a.basicEPS ?? a.basic_eps ?? a.eps ?? null,
+        dividendPerShare: a.dividendPerShare ?? a.dividend ?? a.dps ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, annuals }, at: Date.now() });
+      return res.json({ symbol: ticker, annuals });
     }
 
     res.json({ symbol: ticker, annuals: [], message: 'No annual data found' });
