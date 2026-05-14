@@ -2,7 +2,7 @@ import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi, signalsApi } from '../../api/client.js';
 import { FundamentalsPanel } from '../shared/FundamentalsPanel.jsx';
-import { SignalsPanel } from '../shared/SignalsPanel.jsx';
+import SignalsPanel from '../shared/SignalsPanel.jsx';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
