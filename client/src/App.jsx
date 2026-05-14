@@ -11,7 +11,7 @@ import Sidebar from './components/layout/Sidebar.jsx';
 import DailyDashboard from './pages/DailyDashboard.jsx';
 import TradeLog from './pages/TradeLog.jsx';
 import Performance from './pages/Performance.jsx';
-import PatternLibrary from './pages/PatternLibrary.jsx';
+
 import AiInsights from './pages/AiInsights.jsx';
 import Investments from './pages/Investments.jsx';
 import Backtest from './pages/Backtest.jsx';
@@ -140,7 +140,6 @@ function AppShell() {
               <Route path="/calendar"    element={<EconomicCalendar />} />
               <Route path="/backtest"    element={<Backtest />} />
               <Route path="/screener"    element={<Screener />} />
-              <Route path="/patterns"    element={<PatternLibrary />} />
               <Route path="/ai"          element={<AiInsights />} />
               <Route path="/settings"    element={<Settings />} />
               <Route path="*"            element={<Navigate to="/" replace />} />

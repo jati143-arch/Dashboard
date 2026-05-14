@@ -11,7 +11,6 @@ const links = [
   { to: '/calendar',    label: 'Calendar' },
   { to: '/backtest',    label: 'Backtest' },
   { to: '/screener',    label: 'Screener' },
-  { to: '/patterns',    label: 'Patterns' },
   { to: '/ai',          label: 'AI' },
   { to: '/settings',    label: 'Settings' },
 ];
