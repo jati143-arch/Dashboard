@@ -31,23 +31,17 @@ const searchRouter   = require('./routes/search');
 const newsRouter     = require('./routes/news');
 const mfRouter       = require('./routes/mf');
 const nseRouter      = require('./routes/nse');
-<<<<<<< Updated upstream
-const backtestRouter  = require('./routes/backtest');
-const signalsRouter   = require('./routes/signals');
-const aiRouter        = require('./routes/ai');
-const authRouter      = require('./routes/auth');
-const marketRouter    = require('./routes/market');
+const backtestRouter = require('./routes/backtest');
+const signalsRouter  = require('./routes/signals');
+const aiRouter       = require('./routes/ai');
+const authRouter     = require('./routes/auth');
+const marketRouter   = require('./routes/market');
 const watchlistRouter = require('./routes/watchlist');
 const calendarRouter  = require('./routes/calendar');
 const riskRouter      = require('./routes/risk');
 const settingsRouter      = require('./routes/settings');
 const fundamentalsRouter  = require('./routes/fundamentals');
 const screenerRouter      = require('./routes/screener');
-=======
-const backtestRouter = require('./routes/backtest');
-const signalsRouter  = require('./routes/signals');
-const aiRouter       = require('./routes/ai');
-const authRouter     = require('./routes/auth');
 const pythonDataRouter = require('./routes/python-data');
 
 // ── Drive-backed data routes ─────────────────────────────────────────────────
