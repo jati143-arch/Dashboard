@@ -784,3 +784,52 @@ MoneyControl does NOT have an official public API. The data is fetched via their
 - **Backtest price chart with entry/exit markers** — candle chart with ▲▼ trade markers
 - **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of CurrencyContext
 - **Price lines in TradingView widget mode** — only available in Yahoo/Lightweight Charts fallback mode
+
+---
+
+## Phase 29 — Full Design Overhaul (Agon/NEXUS → DASHBOARD)
+
+### Design Reference
+Used the Agon AI design from `fintrack-gbv3.arcada.app` as the reference design. Exported as React/Tailwind code and ported to the existing codebase.
+
+### What Changed
+
+#### Design System (`client/src/styles/global.css`)
+- Tailwind CSS v4 with `@tailwindcss/vite` plugin
+- Background: `#050505` with `48px` grid line pattern overlay
+- Cards: `border-radius: 24px`, border `rgba(255,255,255,0.06)`, padding `28px`
+- Buttons: pill shape `border-radius: 9999px`, white bg when active
+- Accents: green `#22ff88`, cyan `#00d4ff`, red `#ff4444`
+- Font: JetBrains Mono for numbers, Inter for text
+- All old `var(--)` CSS variables replaced with static values
+
+#### Layout Changes
+- `App.jsx` — renamed NEXUS → DASHBOARD in TopNav, pill tab bar (Overview/Trade Log/Analytics/Watchlist/Market)
+- `Sidebar.jsx` — "DASHBOARD" logo text, pill nav items
+- `StatusBar.jsx` — "DASHBOARD TRADING" text
+- `TopBar.jsx` — **DELETED** (merged into TopNav in App.jsx)
+- `MarketTicker.jsx` — all static colors, updated styling
+
+#### Pages Redesigned (11 files)
+| Page | Key Design Changes |
+|------|-------------------|
+| `MarketHub.jsx` | 24px rounded sections, pill live indicator, large mono stats |
+| `Watchlist.jsx` | Pill tab bar, white "+ New List" button, 24px cards |
+| `TradeLog.jsx` | Large mono stat numbers, pill buttons, 24px rounded cards |
+| `Performance.jsx` | Pill tab bar (Overview/Sectors/Risk), mono stat cards, period pills |
+| `Backtest.jsx` | 24px rounded form, large mono stats, pill WIN/LOSS badges |
+| `EconomicCalendar.jsx` | Pill country/impact filters, pill nav arrows |
+| `Investments.jsx` | Pill sub-tabs, white pill Import/Export, large mono stats |
+| `PatternLibrary.jsx` | 24px rounded pattern cards, pill badges |
+| `AiInsights.jsx` | Pill message bubbles (green user, dark AI), white pill send |
+| `Screener.jsx` | Pill search button, pill filter pills, 24px rounded |
+| `Settings.jsx` | Pill radio buttons for AI provider, green accent on selected |
+
+#### Shared Components Redesigned (8 files)
+`Modal.jsx`, `SignIn.jsx`, `LoadingSpinner.jsx`, `PnlBadge.jsx`, `CurrencyToggle.jsx`, `BestSetups.jsx`, `NewsWidget.jsx`, `ClosePositionForm.jsx`
+
+#### Feature Components Redesigned (15 files)
+`TradeFilters.jsx`, `TradeTable.jsx`, `TradeForm.jsx`, `CsvImport.jsx`, `TickerInput.jsx`, `WatchlistTable.jsx`, `IndexCard.jsx`, `SectorHeatmap.jsx`, `TopMovers.jsx`, `EventStrip.jsx`, `PortfolioChart.jsx`, `PnlHeatmap.jsx`, `RiskMetrics.jsx`, `EventRow.jsx`, `FredChart.jsx`
+
+### Files Changed
+39 files changed, +2162 insertions, -1080 deletions
