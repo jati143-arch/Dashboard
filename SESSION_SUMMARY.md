@@ -772,6 +772,69 @@ MoneyControl does NOT have an official public API. The data is fetched via their
 
 ---
 
+## Phase 30 — ScrapeGraphAI Integration (Option A - Fallback)
+
+### What Was Built
+
+Added ScrapeGraphAI as a **fallback scraper** for Screener.in data. When the original HTML-parsing approach fails to extract data, the system now automatically retries using AI-powered scraping via ScrapeGraphAI + Groq.
+
+### New Files
+
+#### `python/sg_scraper.py`
+- AI-powered fallback scraper using ScrapeGraphAI library
+- Functions:
+  - `sg_scrape_quarterly(symbol)` — Quarterly P&L from Screener.in
+  - `sg_scrape_balance_sheet(symbol)` — Balance sheet
+  - `sg_scrape_cash_flow(symbol)` — Cash flow statement
+  - `sg_scrape_annual(symbol)` — Annual P&L
+- Uses Groq's `llama-3.3-70b-versatile` (free)
+- Handles company slug extraction automatically
+
+#### `python/requirements.txt`
+- Added `scrapegraphai>=2.1.0`
+- Still requires `requests>=2.28.0`
+
+### Updated Files
+
+#### `server/routes/screener.js`
+- Added `runFallbackScraper(ticker, dataType, groqKey)` function
+- Updated all 4 routes (`/quarterly`, `/balance-sheet`, `/cash-flow`, `/annual`) with fallback logic:
+  1. Try original HTML scraping first (fast)
+  2. If empty or null → try ScrapeGraphAI fallback (slower but more reliable)
+  3. Cache result regardless of source
+
+### How It Works
+
+```
+Request comes in
+    ↓
+Original scraper (cheerio + Groq simple parse)
+    ↓ (if empty/fails)
+ScrapeGraphAI fallback (SmartScraperGraph with Groq)
+    ↓
+Return structured JSON to frontend
+```
+
+### Usage
+
+No frontend changes needed. Users just click "▼ Fund", "📋 Balance", "💰 Cash Flow", or "📈 P&L Y" buttons on Investments page — the fallback runs automatically.
+
+### Render Deployment Notes
+
+- **No settings changes needed**
+- `GROQ_API_KEY` already required (already set)
+- `scrapegraphai` package installed via `pip install -r python/requirements.txt`
+- Free tier compatible (Groq has 14,400 req/day free)
+- Build time increase: ~15 seconds for pip install
+
+### Limitations
+
+- Slower than original scraping (~2-5 seconds per fallback request)
+- Depends on Groq API availability
+- ScrapeGraphAI may need additional configuration for complex JavaScript-rendered pages
+
+---
+
 ## Deferred / Not Yet Done
 
 - **Cmd+K command palette** — stock search + page navigation shortcut (cmdk library)
