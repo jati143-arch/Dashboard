@@ -833,3 +833,32 @@ Used the Agon AI design from `fintrack-gbv3.arcada.app` as the reference design.
 
 ### Files Changed
 39 files changed, +2162 insertions, -1080 deletions
+
+---
+
+## Phase 30 — Fix: AI Power Signal "No Data for Ticker"
+
+### Problem
+AI Power Signal (POST /api/screener/ai-analyze) and Signal Panel (GET /api/signals/:symbol) failed for most tickers because Yahoo Finance couldn't resolve the symbol format.
+
+### Solution
+Replaced single-format `toYahoo()` calls with multi-format fallback retry logic in both routes:
+
+- **screener.js /ai-analyze (line 399):** Built `tickerFormats[]` array with all likely Yahoo Finance formats per exchange (e.g., for AAPL: `.NS`, `.N`, `.O`, raw), then iterates trying `yf.quote()` and `yf.historical()` until one succeeds.
+- **signals.js fetchCandles() (line 134):** Same multi-format fallback logic. Removed now-unused `toYahoo` import.
+
+### Supported Formats
+| Exchange | Formats tried |
+|----------|--------------|
+| NSE: | `.NS`, raw ticker |
+| BSE: | `.BO`, raw ticker |
+| NASDAQ: | raw, `.O` suffix |
+| NYSE: | raw, `.N` suffix |
+| AMEX: | raw, `.A` suffix |
+| NYSEARCA: | raw, `.P` suffix |
+| BINANCE/COINBASE/FX/FX_IDC/SP/TVC: | stripped prefix |
+| Already-formatted (.NS, .BO) | as-is |
+| Unknown | `.NS`, `.N`, `.O`, raw |
+
+### Files Changed
+`server/routes/screener.js`, `server/routes/signals.js` (+169, -14 lines)
