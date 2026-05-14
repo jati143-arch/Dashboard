@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
-const { toYahoo } = require('../utils/symbolConvert');
+
 
 // --- Indicator math ---
 
@@ -134,10 +134,42 @@ function detectOrderBlock(candles, atr) {
 async function fetchCandles(symbol) {
   const period1 = new Date();
   period1.setDate(period1.getDate() - 120);
-  const data = await yf.chart(toYahoo(symbol), {
-    period1: period1.toISOString().slice(0, 10),
-    interval: '1d',
-  }, { validateResult: false });
+  const endDate = 'now';
+
+  const sym = symbol.toUpperCase();
+  let tickerFormats = [];
+
+  if (sym.startsWith('NSE:')) {
+    tickerFormats = [symbol.replace('NSE:', '') + '.NS', symbol.replace('NSE:', '')];
+  } else if (sym.startsWith('BSE:')) {
+    tickerFormats = [symbol.replace('BSE:', '') + '.BO', symbol.replace('BSE:', '')];
+  } else if (sym.startsWith('NASDAQ:')) {
+    tickerFormats = [symbol.replace('NASDAQ:', ''), sym.replace('NASDAQ:', '') + '.O'];
+  } else if (sym.startsWith('NYSE:')) {
+    tickerFormats = [symbol.replace('NYSE:', ''), sym.replace('NYSE:', '') + '.N'];
+  } else if (sym.startsWith('AMEX:')) {
+    tickerFormats = [symbol.replace('AMEX:', ''), sym.replace('AMEX:', '') + '.A'];
+  } else if (sym.startsWith('NYSEARCA:')) {
+    tickerFormats = [symbol.replace('NYSEARCA:', ''), sym.replace('NYSEARCA:', '') + '.P'];
+  } else if (sym.startsWith('BINANCE:') || sym.startsWith('COINBASE:') || sym.startsWith('FX:') || sym.startsWith('FX_IDC:') || sym.startsWith('SP:') || sym.startsWith('TVC:')) {
+    tickerFormats = [symbol.replace(/^(BINANCE:|COINBASE:|FX:|FX_IDC:|SP:|TVC:)/, '')];
+  } else if (sym.endsWith('.NS') || sym.endsWith('.BO')) {
+    tickerFormats = [symbol];
+  } else {
+    tickerFormats = [symbol + '.NS', symbol + '.N', symbol + '.O', symbol];
+  }
+
+  let data = null;
+  for (const fmt of tickerFormats) {
+    try {
+      data = await yf.chart(fmt, {
+        period1: period1.toISOString().slice(0, 10),
+        interval: '1d',
+      }, { validateResult: false });
+      if (data?.quotes?.length) break;
+    } catch (e) {}
+  }
+
   return (data?.quotes || [])
     .filter(r => r.open && r.close)
     .map(r => ({

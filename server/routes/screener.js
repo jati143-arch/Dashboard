@@ -3,6 +3,8 @@ const router = express.Router();
 const { default: YahooFinance } = require('yahoo-finance2');
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 const cheerio = require('cheerio');
+const { spawn } = require('child_process');
+const path = require('path');
 
 const cache = new Map();
 const CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -99,6 +101,44 @@ async function scrapeWithAI(url, dataType, ticker) {
   }
 }
 
+// ScrapeGraphAI fallback scraper
+function runFallbackScraper(ticker, dataType, groqKey) {
+  return new Promise((resolve, reject) => {
+    const sgPath = path.join(__dirname, '..', '..', 'python', 'sg_scraper.py');
+
+    const proc = spawn('python', [sgPath, `sg_${dataType}`, ticker], {
+      timeout: 60000,
+      shell: true,
+      env: { ...process.env, GROQ_API_KEY: groqKey }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`[SG fallback] exit ${code}: ${stderr}`);
+        resolve(null);
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim()));
+      } catch (e) {
+        console.error('[SG fallback] parse error:', e.message);
+        resolve(null);
+      }
+    });
+
+    proc.on('error', (err) => {
+      console.error('[SG fallback] spawn error:', err.message);
+      resolve(null);
+    });
+  });
+}
+
 // GET /api/screener/quarterly?symbol=RELIANCE.NS
 router.get('/quarterly', async (req, res) => {
   const { symbol } = req.query;
@@ -114,7 +154,16 @@ router.get('/quarterly', async (req, res) => {
     if (!slug) return res.json({ symbol: ticker, quarters: [], message: `Company "${ticker}" not found` });
 
     const url = `https://www.screener.in/company/${slug}/`;
-    const data = await scrapeWithAI(url, 'quarterly', ticker);
+    let data = await scrapeWithAI(url, 'quarterly', ticker);
+
+    // ScrapeGraphAI fallback if simple scraping returns empty
+    if (!data || data.length === 0) {
+      console.log('[screener/quarterly] Trying SG fallback for', ticker);
+      const sgResult = await runFallbackScraper(ticker, 'quarterly', process.env.GROQ_API_KEY);
+      if (sgResult?.success && sgResult?.data?.length > 0) {
+        data = sgResult.data;
+      }
+    }
 
     if (data && data.length > 0) {
       // Normalize date format
@@ -153,7 +202,16 @@ router.get('/balance-sheet', async (req, res) => {
     if (!slug) return res.json({ symbol: ticker, balanceSheets: [], message: `Company "${ticker}" not found` });
 
     const url = `https://www.screener.in/company/${slug}/`;
-    const data = await scrapeWithAI(url, 'balance-sheet', ticker);
+    let data = await scrapeWithAI(url, 'balance-sheet', ticker);
+
+    // ScrapeGraphAI fallback
+    if (!data || data.length === 0) {
+      console.log('[screener/balance-sheet] Trying SG fallback for', ticker);
+      const sgResult = await runFallbackScraper(ticker, 'balancesheet', process.env.GROQ_API_KEY);
+      if (sgResult?.success && sgResult?.data?.length > 0) {
+        data = sgResult.data;
+      }
+    }
 
     if (data && data.length > 0) {
       const balanceSheets = data.map(bs => ({
@@ -395,15 +453,80 @@ router.post('/ai-analyze', async (req, res) => {
   const ticker = stripToTicker(symbol.toUpperCase());
   
   try {
-    // First get technical data
-    let ySym = symbol;
-    if (symbol.startsWith('NSE:')) ySym = symbol.replace('NSE:', '') + '.NS';
-    else if (symbol.endsWith('.NS') || symbol.endsWith('.BO')) {} // already formatted
-    else ySym = symbol + '.NS';
+    let tickerFormats = [];
+    const sym = symbol.toUpperCase();
+    if (sym.startsWith('NSE:')) {
+      tickerFormats = [symbol.replace('NSE:', '') + '.NS', symbol.replace('NSE:', '')];
+    } else if (sym.startsWith('BSE:')) {
+      tickerFormats = [symbol.replace('BSE:', '') + '.BO', symbol.replace('BSE:', '')];
+    } else if (sym.startsWith('NASDAQ:')) {
+      tickerFormats = [symbol.replace('NASDAQ:', ''), sym.replace('NASDAQ:', '') + '.O'];
+    } else if (sym.startsWith('NYSE:')) {
+      tickerFormats = [symbol.replace('NYSE:', ''), sym.replace('NYSE:', '') + '.N'];
+    } else if (sym.startsWith('AMEX:')) {
+      tickerFormats = [symbol.replace('AMEX:', ''), sym.replace('AMEX:', '') + '.A'];
+    } else if (sym.startsWith('NYSEARCA:')) {
+      tickerFormats = [symbol.replace('NYSEARCA:', ''), sym.replace('NYSEARCA:', '') + '.P'];
+    } else if (sym.startsWith('BINANCE:') || sym.startsWith('COINBASE:') || sym.startsWith('FX:') || sym.startsWith('FX_IDC:') || sym.startsWith('SP:') || sym.startsWith('TVC:')) {
+      tickerFormats = [symbol.replace(/^(BINANCE:|COINBASE:|FX:|FX_IDC:|SP:|TVC:)/, '')];
+    } else if (sym.endsWith('.NS') || sym.endsWith('.BO')) {
+      tickerFormats = [symbol];
+    } else {
+      tickerFormats = [symbol + '.NS', symbol + '.N', symbol + '.O', symbol];
+    }
 
+    let ySym = tickerFormats[0];
     let quote = null, history = [];
-    try { quote = await yf.quote(ySym); } catch (e) {}
-    try { history = await yf.historical(ySym, { period1: '1y', period2: 'now', interval: '1d' }); } catch (e) {}
+    for (const fmt of tickerFormats) {
+      try { quote = await yf.quote(fmt); if (quote?.regularMarketPrice) { ySym = fmt; break; } } catch (e) {}
+      try { const h = await yf.historical(fmt, { period1: '1y', period2: 'now', interval: '1d' }); if (h?.length) { history = h; ySym = fmt; break; } } catch (e) {}
+    }
+
+    if (!quote?.regularMarketPrice && !history?.length) {
+      return res.json({ error: 'No data for ' + symbol });
+    }
+  } catch (err) {
+    console.error('[screener/signals]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/screener/ai-analyze — Groq AI analysis with VOB strategy
+router.post('/ai-analyze', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: 'symbol required' });
+
+  const ticker = stripToTicker(symbol.toUpperCase());
+  
+  try {
+    let tickerFormats = [];
+    const sym = symbol.toUpperCase();
+    if (sym.startsWith('NSE:')) {
+      tickerFormats = [symbol.replace('NSE:', '') + '.NS', symbol.replace('NSE:', '')];
+    } else if (sym.startsWith('BSE:')) {
+      tickerFormats = [symbol.replace('BSE:', '') + '.BO', symbol.replace('BSE:', '')];
+    } else if (sym.startsWith('NASDAQ:')) {
+      tickerFormats = [symbol.replace('NASDAQ:', ''), sym.replace('NASDAQ:', '') + '.O'];
+    } else if (sym.startsWith('NYSE:')) {
+      tickerFormats = [symbol.replace('NYSE:', ''), sym.replace('NYSE:', '') + '.N'];
+    } else if (sym.startsWith('AMEX:')) {
+      tickerFormats = [symbol.replace('AMEX:', ''), sym.replace('AMEX:', '') + '.A'];
+    } else if (sym.startsWith('NYSEARCA:')) {
+      tickerFormats = [symbol.replace('NYSEARCA:', ''), sym.replace('NYSEARCA:', '') + '.P'];
+    } else if (sym.startsWith('BINANCE:') || sym.startsWith('COINBASE:') || sym.startsWith('FX:') || sym.startsWith('FX_IDC:') || sym.startsWith('SP:') || sym.startsWith('TVC:')) {
+      tickerFormats = [symbol.replace(/^(BINANCE:|COINBASE:|FX:|FX_IDC:|SP:|TVC:)/, '')];
+    } else if (sym.endsWith('.NS') || sym.endsWith('.BO')) {
+      tickerFormats = [symbol];
+    } else {
+      tickerFormats = [symbol + '.NS', symbol + '.N', symbol + '.O', symbol];
+    }
+
+    let ySym = tickerFormats[0];
+    let quote = null, history = [];
+    for (const fmt of tickerFormats) {
+      try { quote = await yf.quote(fmt); if (quote?.regularMarketPrice) { ySym = fmt; break; } } catch (e) {}
+      try { const h = await yf.historical(fmt, { period1: '1y', period2: 'now', interval: '1d' }); if (h?.length) { history = h; ySym = fmt; break; } } catch (e) {}
+    }
 
     if (!quote?.regularMarketPrice && !history?.length) {
       return res.json({ error: 'No data for ' + symbol });
