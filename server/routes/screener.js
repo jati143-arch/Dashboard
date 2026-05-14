@@ -283,6 +283,22 @@ router.get('/cash-flow', async (req, res) => {
       return res.json({ symbol: ticker, cashFlows });
     }
 
+    // ScrapeGraphAI fallback
+    console.log('[screener/cash-flow] Trying SG fallback for', ticker);
+    const sgResult = await runFallbackScraper(ticker, 'cashflow', process.env.GROQ_API_KEY);
+    if (sgResult?.success && sgResult?.data?.length > 0) {
+      const cashFlows = sgResult.data.map(cf => ({
+        date: cf.date || cf.year || '',
+        operating: cf.operating ?? cf.operating_cash_flow ?? null,
+        investing: cf.investing ?? cf.investing_cash_flow ?? null,
+        financing: cf.financing ?? cf.financing_cash_flow ?? null,
+        freeCashFlow: cf.freeCashFlow ?? cf.free_cash_flow ?? ((cf.operating ?? 0) + (cf.investing ?? 0)),
+        capex: cf.capex ?? cf.capital_expenditure ?? null,
+      }));
+      cache.set(cacheKey, { data: { symbol: ticker, cashFlows }, at: Date.now() });
+      return res.json({ symbol: ticker, cashFlows });
+    }
+
     res.json({ symbol: ticker, cashFlows: [], message: 'No cash flow data found' });
   } catch (err) {
     console.error('[screener/cash-flow]', err.message);
@@ -307,7 +323,16 @@ router.get('/annual', async (req, res) => {
     const url = `https://www.screener.in/company/${slug}/consolidated/`;
     console.log('[screener/annual] fetching:', url);
 
-    const data = await scrapeWithAI(url, 'annual', ticker);
+    let data = await scrapeWithAI(url, 'annual', ticker);
+
+    // ScrapeGraphAI fallback
+    if (!data || data.length === 0) {
+      console.log('[screener/annual] Trying SG fallback for', ticker);
+      const sgResult = await runFallbackScraper(ticker, 'annual', process.env.GROQ_API_KEY);
+      if (sgResult?.success && sgResult?.data?.length > 0) {
+        data = sgResult.data;
+      }
+    }
 
     if (data && data.length > 0) {
       const annuals = data.map(a => ({
