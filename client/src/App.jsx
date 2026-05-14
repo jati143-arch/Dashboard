@@ -120,7 +120,7 @@ function TopNav({ onToggle }) {
 }
 
 function AppShell() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const { chartState, closeChart } = useChart();
 
   return (

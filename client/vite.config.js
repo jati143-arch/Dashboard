@@ -10,4 +10,15 @@ export default defineConfig({
       '/auth': 'http://localhost:3001',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          charts: ['recharts', 'lightweight-charts'],
+          charts2: ['@tanstack/react-query'],
+        },
+      },
+    },
+  },
 });

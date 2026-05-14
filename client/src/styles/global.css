@@ -215,3 +215,7 @@ tr:last-child td { border-bottom: none; }
   table { font-size: 12px; }
   .card { padding: 16px; border-radius: 16px; }
 }
+
+@media (min-width: 769px) {
+  .sidebar { position: relative; height: 100vh; flex-shrink: 0; }
+}
