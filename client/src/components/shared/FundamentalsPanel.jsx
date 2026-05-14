@@ -118,12 +118,13 @@ export function ScreenerQuarterlyPanel({ symbol }) {
       Loading quarterly P&L…
     </div>
   );
-  if (isError || !data?.quarters?.length) return (
-    <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
-      Quarterly P&L unavailable{data?.message ? `: ${data.message}` : ''}
-      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
-    </div>
-  );
+if (isError || !data?.quarters?.length) return (
+     <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
+       Quarterly P&L unavailable{data?.message ? `: ${data.message}` : ''}
+       <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
+       {isError && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-red)' }}>⚠ Network error — trying ScrapeGraphAI fallback on server</span>}
+     </div>
+   );
 
   const HEADERS = ['Quarter', 'Revenue', 'Op. Income', 'Net Income', 'Gross Profit', 'EBITDA', 'EPS'];
 
@@ -176,12 +177,13 @@ export function ScreenerBalanceSheetPanel({ symbol }) {
       Loading balance sheet…
     </div>
   );
-  if (isError || !data?.balanceSheets?.length) return (
-    <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
-      Balance sheet unavailable{data?.message ? `: ${data.message}` : ''}
-      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
-    </div>
-  );
+if (isError || !data?.balanceSheets?.length) return (
+     <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
+       Balance sheet unavailable{data?.message ? `: ${data.message}` : ''}
+       <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
+       {isError && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-red)' }}>⚠ Network error — trying ScrapeGraphAI fallback on server</span>}
+     </div>
+   );
 
   const HEADERS = ['Year', 'Equity', 'Total Assets', 'Net Debt', 'Total Debt', 'Cash', 'Fixed Assets', 'Current Assets'];
 
@@ -234,12 +236,13 @@ export function ScreenerCashFlowPanel({ symbol }) {
       Loading cash flow…
     </div>
   );
-  if (isError || !data?.cashFlows?.length) return (
-    <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
-      Cash flow unavailable{data?.message ? `: ${data.message}` : ''}
-      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
-    </div>
-  );
+if (isError || !data?.cashFlows?.length) return (
+     <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
+       Cash flow unavailable{data?.message ? `: ${data.message}` : ''}
+       <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
+       {isError && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-red)' }}>⚠ Network error — trying ScrapeGraphAI fallback on server</span>}
+     </div>
+   );
 
   const HEADERS = ['Year', 'Operating CF', 'Investing CF', 'Financing CF', 'Free Cash Flow', 'Capex'];
 
@@ -292,12 +295,13 @@ export function ScreenerAnnualPanel({ symbol }) {
       Loading annual P&L…
     </div>
   );
-  if (isError || !data?.annuals?.length) return (
-    <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
-      Annual P&L unavailable{data?.message ? `: ${data.message}` : ''}
-      <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
-    </div>
-  );
+if (isError || !data?.annuals?.length) return (
+     <div style={{ padding: '14px 20px', color: 'var(--color-text-dim)', fontSize: 12 }}>
+       Annual P&L unavailable{data?.message ? `: ${data.message}` : ''}
+       <button onClick={() => refetch()} style={{ marginLeft: 10, background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-dim)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', borderRadius: 4 }}>↻ Retry</button>
+       {isError && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--color-red)' }}>⚠ Network error — trying ScrapeGraphAI fallback on server</span>}
+     </div>
+   );
 
   const HEADERS = ['Year', 'Revenue', 'Op. Income', 'Net Income', 'EPS', 'DPS'];
 

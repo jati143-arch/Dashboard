@@ -355,8 +355,6 @@ router.get('/annual', async (req, res) => {
 });
 
 // GET /api/screener/signals?symbol=RELIANCE.NS — AI-generated buy/sell signals
-
-// GET /api/screener/signals?symbol=RELIANCE.NS — AI-generated buy/sell signals
 router.get('/signals', async (req, res) => {
   const { symbol } = req.query;
   if (!symbol) return res.status(400).json({ error: 'symbol required' });
@@ -464,52 +462,6 @@ router.get('/signals', async (req, res) => {
 
     cache.set(cacheKey, { data, at: Date.now() });
     res.json(data);
-  } catch (err) {
-    console.error('[screener/signals]', err.message);
-    res.status(502).json({ error: err.message });
-  }
-});
-
-// POST /api/screener/ai-analyze — Groq AI analysis with VOB strategy
-router.post('/ai-analyze', async (req, res) => {
-  const { symbol } = req.body;
-  if (!symbol) return res.status(400).json({ error: 'symbol required' });
-
-  const ticker = stripToTicker(symbol.toUpperCase());
-  
-  try {
-    let tickerFormats = [];
-    const sym = symbol.toUpperCase();
-    if (sym.startsWith('NSE:')) {
-      tickerFormats = [symbol.replace('NSE:', '') + '.NS', symbol.replace('NSE:', '')];
-    } else if (sym.startsWith('BSE:')) {
-      tickerFormats = [symbol.replace('BSE:', '') + '.BO', symbol.replace('BSE:', '')];
-    } else if (sym.startsWith('NASDAQ:')) {
-      tickerFormats = [symbol.replace('NASDAQ:', ''), sym.replace('NASDAQ:', '') + '.O'];
-    } else if (sym.startsWith('NYSE:')) {
-      tickerFormats = [symbol.replace('NYSE:', ''), sym.replace('NYSE:', '') + '.N'];
-    } else if (sym.startsWith('AMEX:')) {
-      tickerFormats = [symbol.replace('AMEX:', ''), sym.replace('AMEX:', '') + '.A'];
-    } else if (sym.startsWith('NYSEARCA:')) {
-      tickerFormats = [symbol.replace('NYSEARCA:', ''), sym.replace('NYSEARCA:', '') + '.P'];
-    } else if (sym.startsWith('BINANCE:') || sym.startsWith('COINBASE:') || sym.startsWith('FX:') || sym.startsWith('FX_IDC:') || sym.startsWith('SP:') || sym.startsWith('TVC:')) {
-      tickerFormats = [symbol.replace(/^(BINANCE:|COINBASE:|FX:|FX_IDC:|SP:|TVC:)/, '')];
-    } else if (sym.endsWith('.NS') || sym.endsWith('.BO')) {
-      tickerFormats = [symbol];
-    } else {
-      tickerFormats = [symbol + '.NS', symbol + '.N', symbol + '.O', symbol];
-    }
-
-    let ySym = tickerFormats[0];
-    let quote = null, history = [];
-    for (const fmt of tickerFormats) {
-      try { quote = await yf.quote(fmt); if (quote?.regularMarketPrice) { ySym = fmt; break; } } catch (e) {}
-      try { const h = await yf.historical(fmt, { period1: '1y', period2: 'now', interval: '1d' }); if (h?.length) { history = h; ySym = fmt; break; } } catch (e) {}
-    }
-
-    if (!quote?.regularMarketPrice && !history?.length) {
-      return res.json({ error: 'No data for ' + symbol });
-    }
   } catch (err) {
     console.error('[screener/signals]', err.message);
     res.status(502).json({ error: err.message });

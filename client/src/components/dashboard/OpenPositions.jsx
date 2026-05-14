@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi, signalsApi } from '../../api/client.js';
 import { FundamentalsPanel } from '../shared/FundamentalsPanel.jsx';
+import { SignalsPanel } from '../shared/SignalsPanel.jsx';
 import Modal from '../shared/Modal.jsx';
 import ClosePositionForm from '../trades/ClosePositionForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
@@ -32,6 +33,7 @@ export default function OpenPositions({ onAddPosition }) {
   const { currency: displayCurrency, rates } = useCurrency();
   const [closingTrade, setClosingTrade] = useState(null);
   const [expandedFund, setExpandedFund] = useState(null);
+  const [showFundTab, setShowFundTab] = useState('fundamentals');
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
   const [signals, setSignals] = useState({});
@@ -239,9 +241,43 @@ export default function OpenPositions({ onAddPosition }) {
                         </button>
                       </td>
                     </tr>
-                    {fundOpen && (
-                      <tr><td colSpan={12} style={{ padding: 0 }}><FundamentalsPanel symbol={t.symbol} /></td></tr>
-                    )}
+{/* Expandable row: Fundamentals + Signals sub-panels */}
+                     {fundOpen && (
+                       <tr><td colSpan={12} style={{ padding: 0 }}>
+                         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                           <button
+                             onClick={() => setShowFundTab('fundamentals')}
+                             style={{
+                               padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                               background: showFundTab === 'fundamentals' ? 'var(--color-accent)' : 'transparent',
+                               color: showFundTab === 'fundamentals' ? '#000' : 'var(--color-text-dim)',
+                               border: 'none', cursor: 'pointer',
+                               borderBottom: showFundTab === 'fundamentals' ? '2px solid #22ff88' : 'none',
+                             }}
+                           >
+                             Fundamentals
+                           </button>
+                           <button
+                             onClick={() => setShowFundTab('signals')}
+                             style={{
+                               padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                               background: showFundTab === 'signals' ? 'var(--color-accent)' : 'transparent',
+                               color: showFundTab === 'signals' ? '#000' : 'var(--color-text-dim)',
+                               border: 'none', cursor: 'pointer',
+                               borderBottom: showFundTab === 'signals' ? '2px solid #22ff88' : 'none',
+                             }}
+                           >
+                             Signal Analysis
+                           </button>
+                         </div>
+                         <div style={{ display: showFundTab === 'fundamentals' ? 'block' : 'none' }}>
+                           <FundamentalsPanel symbol={t.symbol} />
+                         </div>
+                         <div style={{ display: showFundTab === 'signals' ? 'block' : 'none' }}>
+                           <SignalsPanel symbol={t.symbol} />
+                         </div>
+                       </td></tr>
+                     )}
                   </Fragment>
                 );
               })}

@@ -501,8 +501,6 @@ When a user added a new **Open Position** for a symbol+direction that already ha
 
 ---
 
----
-
 ## Phase 24 — Design Overhaul + Fundamentals Tab + Status Bar
 
 ### Design System Upgrade (`client/src/styles/global.css`)
@@ -522,7 +520,7 @@ When a user added a new **Open Position** for a symbol+direction that already ha
 - **Scrollbar hover**: `::-webkit-scrollbar-thumb:hover` now brightens slightly
 
 ### Fundamentals Backend (`server/routes/fundamentals.js` — new)
-- `GET /api/fundamentals?symbol=NSE:RELIANCE` — uses existing `yahoo-finance2` SDK with `quoteSummary()` 
+- `GET /api/fundamentals?symbol=NSE:RELIANCE` — uses existing `yahoo-finance2` SDK with `quoteSummary()`
 - Fetches 4 modules: `defaultKeyStatistics`, `financialData`, `summaryDetail`, `assetProfile`
 - Returns structured JSON: company profile, valuation, market data, profitability, financial health, analyst consensus
 - **1-hour server-side cache** per symbol (Map-based TTL)
@@ -870,99 +868,52 @@ The design overhaul used static color values in `global.css` with `--color-*` pr
 
 ---
 
-## Deferred / Not Yet Done
+## Phase 32 — Frontend Fallback UI & Python News Integration (2026-05-14)
 
-- **Cmd+K command palette** — stock search + page navigation shortcut (cmdk library)
-- **Table sparklines** — mini 30-day price charts inline in portfolio/watchlist tables
-- **Bento grid home layout** — variable-size tile dashboard replacing stacked cards
-- **FII/DII daily panel** — NSE institutional flow data widget
-- **Option chain viewer** — PCR, Max Pain, OI heatmap (NSE API)
-- **Upstox OAuth scaffolding** — real-time NSE quotes (needs Upstox developer account)
-- **Pine Script generator** — button to generate Pine Script v5 code for the composite strategy
-- **Backtest price chart with entry/exit markers** — candle chart with ▲▼ trade markers
-- **Portfolio chart currency fix** — PortfolioChart uses hardcoded ₹ instead of CurrencyContext
-- **Price lines in TradingView widget mode** — only available in Yahoo/Lightweight Charts fallback mode
+### What Was Built
 
----
+#### Frontend API Client (`client/src/api/client.js`)
+- Added `pythonDataApi` object with three new methods:
+  - `quote(symbol)` — `GET /api/python-data/quote/:symbol`
+  - `intraday(symbol, resolution)` — `GET /api/python-data/intraday/:symbol`
+  - `news()` — `GET /api/python-data/news`
+- These endpoints call Python scripts via child_process (MoneyControl + NSE data)
 
-## Phase 29 — Full Design Overhaul (Agon/NEXUS → DASHBOARD)
+#### NewsWidget (`client/src/components/dashboard/NewsWidget.jsx`)
+- Primary source changed to Python-backed MoneyControl news endpoint
+- Yahoo RSS per-symbol news kept as fallback when Python returns empty
+- Merged/deduplicated news items by title
+- Removed `!enabled` early-return (Python news works without open positions)
 
-### Design Reference
-Used the Agon AI design from `fintrack-gbv3.arcada.app` as the reference design. Exported as React/Tailwind code and ported to the existing codebase.
+#### Screener Panel Error Fallback UI (`client/src/components/shared/FundamentalsPanel.jsx`)
+- Quarterly P&L, Balance Sheet, Cash Flow, and Annual P&L error states now show:
+  `"⚠ Network error — trying ScrapeGraphAI fallback on server"`
+- Users understand server-side fallback is active when direct scraping fails
+- Retry button preserved alongside the hint
 
-### What Changed
+#### OpenPositions Signal Integration (`client/src/components/dashboard/OpenPositions.jsx`)
+- Imported `SignalsPanel` from shared components
+- Expandable position rows now have **tabbed view**: "Fundamentals" and "Signal Analysis"
+- New `showFundTab` state (`'fundamentals'` | `'signals'`) for tab switching
+- Clean tab buttons with accent-colored active indicator
 
-#### Design System (`client/src/styles/global.css`)
-- Tailwind CSS v4 with `@tailwindcss/vite` plugin
-- Background: `#050505` with `48px` grid line pattern overlay
-- Cards: `border-radius: 24px`, border `rgba(255,255,255,0.06)`, padding `28px`
-- Buttons: pill shape `border-radius: 9999px`, white bg when active
-- Accents: green `#22ff88`, cyan `#00d4ff`, red `#ff4444`
-- Font: JetBrains Mono for numbers, Inter for text
-- All old `var(--)` CSS variables replaced with static values
+#### Local Dev Environment (`server/.env.example`)
+- Added `GROQ_API_KEY` placeholder at top of file with comment grouping all AI providers
+- Documented all four supported providers: Groq, Anthropic, Gemini, OpenRouter
 
-#### Layout Changes
-- `App.jsx` — renamed NEXUS → DASHBOARD in TopNav, pill tab bar (Overview/Trade Log/Analytics/Watchlist/Market)
-- `Sidebar.jsx` — "DASHBOARD" logo text, pill nav items
-- `StatusBar.jsx` — "DASHBOARD TRADING" text
-- `TopBar.jsx` — **DELETED** (merged into TopNav in App.jsx)
-- `MarketTicker.jsx` — all static colors, updated styling
-
-#### Pages Redesigned (11 files)
-| Page | Key Design Changes |
-|------|-------------------|
-| `MarketHub.jsx` | 24px rounded sections, pill live indicator, large mono stats |
-| `Watchlist.jsx` | Pill tab bar, white "+ New List" button, 24px cards |
-| `TradeLog.jsx` | Large mono stat numbers, pill buttons, 24px rounded cards |
-| `Performance.jsx` | Pill tab bar (Overview/Sectors/Risk), mono stat cards, period pills |
-| `Backtest.jsx` | 24px rounded form, large mono stats, pill WIN/LOSS badges |
-| `EconomicCalendar.jsx` | Pill country/impact filters, pill nav arrows |
-| `Investments.jsx` | Pill sub-tabs, white pill Import/Export, large mono stats |
-| `PatternLibrary.jsx` | 24px rounded pattern cards, pill badges |
-| `AiInsights.jsx` | Pill message bubbles (green user, dark AI), white pill send |
-| `Screener.jsx` | Pill search button, pill filter pills, 24px rounded |
-| `Settings.jsx` | Pill radio buttons for AI provider, green accent on selected |
-
-#### Shared Components Redesigned (8 files)
-`Modal.jsx`, `SignIn.jsx`, `LoadingSpinner.jsx`, `PnlBadge.jsx`, `CurrencyToggle.jsx`, `BestSetups.jsx`, `NewsWidget.jsx`, `ClosePositionForm.jsx`
-
-#### Feature Components Redesigned (15 files)
-`TradeFilters.jsx`, `TradeTable.jsx`, `TradeForm.jsx`, `CsvImport.jsx`, `TickerInput.jsx`, `WatchlistTable.jsx`, `IndexCard.jsx`, `SectorHeatmap.jsx`, `TopMovers.jsx`, `EventStrip.jsx`, `PortfolioChart.jsx`, `PnlHeatmap.jsx`, `RiskMetrics.jsx`, `EventRow.jsx`, `FredChart.jsx`
+### How It Works
+- **Python data flows**: Node.js spawns `python runner.py [action] [symbol]` via child_process, parses JSON stdout, returns to frontend
+- **News priority**: Python MoneyControl news (general market) → Yahoo RSS (per-symbol fallback)
+- **Signal visibility**: Open positions table now shows signal badges inline, with full signal analysis available via expandable row tab
+- **Fallback chain**: When Screener.in scraping fails, ScrapeGraphAI (Groq LLM) retries automatically server-side; frontend hints user about this
 
 ### Files Changed
-39 files changed, +2162 insertions, -1080 deletions
+| File | Change |
+|------|--------|
+| `client/src/api/client.js` | Added `pythonDataApi` with quote, intraday, news methods |
+| `client/src/components/dashboard/NewsWidget.jsx` | Python news primary, Yahoo fallback, dedup |
+| `client/src/components/shared/FundamentalsPanel.jsx` | Added SG fallback hint text to 4 error states |
+| `client/src/components/dashboard/OpenPositions.jsx` | Tabbed Fundamentals/Signals view in expandable rows |
+| `server/.env.example` | Added GROQ_API_KEY placeholder with provider docs |
 
 ---
-
-## Phase 31 — Bug Fixes: CSS Variables + groq-sdk
-
-### Bugs Found & Fixed
-
-#### 1. Server startup crash — missing `groq-sdk`
-- `server/services/aiProvider.js` required `groq-sdk` but it wasn't installed
-- **Fix:** `npm install groq-sdk` in `server/`
-
-#### 2. Old CSS variable names (182 occurrences across 14 files)
-The design overhaul used static color values in `global.css` with `--color-*` prefixes, but many components still used the old shorthand variable names (`--green`, `--text-dim`, `--bg-card`, etc.) that were never defined.
-
-**Fix:** Replaced all old names across 14 files:
-- `--green` → `--color-green`
-- `--red` → `--color-red`
-- `--yellow` → `--color-yellow`
-- `--border` → `--color-border`
-- `--text-primary` → `--color-text-primary`
-- `--text-secondary` → `--color-text-secondary`
-- `--text-dim` → `--color-text-dim`
-- `--text-mono` → `--color-text-mono`
-- `--bg-card` → `--color-bg-card`
-- `--bg-surface` → `--color-bg-surface`
-- `--bg-base` → `--color-bg-base`
-- `--accent` → `--color-accent`
-
-**Files fixed:** `FundamentalsPanel.jsx`, `AISignalPanel.jsx`, `SectorExposure.jsx`, `SignalsPanel.jsx`, `ChartModal.jsx`, `ReturnDistribution.jsx`, `TodayTradeTable.jsx`, `AlertForm.jsx`, `SparklineCell.jsx`, `OpenPositionsSelect.jsx`, `DailyDashboard.jsx`, `global.css`
-
-#### 3. Added `--radius: 24px` to global.css (used by `SectorExposure.jsx`)
-#### 4. Added `--color-text-mono` to global.css @theme
-
-### Files Changed
-14 files changed, +221, -219 lines

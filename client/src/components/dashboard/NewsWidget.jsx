@@ -1,18 +1,31 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { newsApi } from '../../api/client.js';
+import { newsApi, pythonDataApi } from '../../api/client.js';
 
 export default function NewsWidget({ symbols }) {
   const [open, setOpen] = useState(false);
   const enabled = symbols && symbols.length > 0;
 
-  const { data: news = [], isLoading } = useQuery({
+  // Primary: Python-backed MoneyControl news (general market news)
+  const { data: pythonNews = [], isLoading: pythonLoading } = useQuery({
+    queryKey: ['news-python'],
+    queryFn: () => pythonDataApi.news(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  // Fallback: Yahoo RSS per-symbol news
+  const { data: yahooNews = [], isLoading: yahooLoading } = useQuery({
     queryKey: ['news', (symbols || []).join(',')],
     queryFn: () => newsApi.get(symbols),
     enabled,
-    refetchInterval: 5 * 60_000,
     staleTime: 5 * 60_000,
+    retry: 1,
   });
+
+  const isLoading = pythonLoading || yahooLoading;
+  // Merge and deduplicate by title
+  const allNews = pythonNews.length > 0 ? pythonNews : yahooNews;
 
   return (
     <div style={{
@@ -56,17 +69,15 @@ export default function NewsWidget({ symbols }) {
       {open && (
         isLoading ? (
           <div style={{ color: '#52525b', fontSize: 13 }}>Loading news…</div>
-        ) : !enabled ? (
-          <div style={{ color: '#52525b', fontSize: 13 }}>No open positions to show news for.</div>
-        ) : news.length === 0 ? (
+        ) : allNews.length === 0 ? (
           <div style={{ color: '#52525b', fontSize: 13 }}>No recent news found.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {news.map((item, i) => (
+            {allNews.map((item, i) => (
               <div
                 key={i}
                 style={{
-                  borderBottom: i < news.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  borderBottom: i < allNews.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                   paddingBottom: 12,
                 }}
               >
@@ -81,7 +92,7 @@ export default function NewsWidget({ symbols }) {
                     padding: '2px 8px',
                     marginRight: 8,
                   }}>
-                    {item.symbol}
+                    {item.symbol || 'MC'}
                   </span>
                   <a
                     href={item.link}

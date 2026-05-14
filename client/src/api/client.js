@@ -132,12 +132,19 @@ export const fundamentalsApi = {
 };
 
 export const screenerApi = {
-  company: (symbol) => api.get('/screener/company', { params: { symbol } }).then(r => r.data),
-  annual:  (symbol) => api.get('/screener/annual',  { params: { symbol } }).then(r => r.data),
-  quarterly: (symbol) => api.get('/screener/quarterly', { params: { symbol } }).then(r => r.data),
-  balanceSheet: (symbol) => api.get('/screener/balance-sheet', { params: { symbol } }).then(r => r.data),
-  cashFlow: (symbol) => api.get('/screener/cash-flow', { params: { symbol } }).then(r => r.data),
-  signals: (symbol) => api.get('/screener/signals', { params: { symbol } }).then(r => r.data),
-  screen:  (query) => api.post('/screener/screen', { query }).then(r => r.data),
-  aiAnalyze: (symbol) => api.post('/screener/ai-analyze', { symbol }).then(r => r.data),
+   company: (symbol) => api.get('/screener/company', { params: { symbol } }).then(r => r.data),
+   annual:  (symbol) => api.get('/screener/annual',  { params: { symbol } }).then(r => r.data),
+   quarterly: (symbol) => api.get('/screener/quarterly', { params: { symbol } }).then(r => r.data),
+   balanceSheet: (symbol) => api.get('/screener/balance-sheet', { params: { symbol } }).then(r => r.data),
+   cashFlow: (symbol) => api.get('/screener/cash-flow', { params: { symbol } }).then(r => r.data),
+   signals: (symbol) => api.get('/screener/signals', { params: { symbol } }).then(r => r.data),
+   screen:  (query) => api.post('/screener/screen', { query }).then(r => r.data),
+   aiAnalyze: (symbol) => api.post('/screener/ai-analyze', { symbol }).then(r => r.data),
+};
+
+// Python-backed data endpoints (MoneyControl/NSE via child_process)
+export const pythonDataApi = {
+   quote:     (symbol) => api.get(`/python-data/quote/${encodeURIComponent(symbol)}`).then(r => r.data),
+   intraday:  (symbol, resolution = '5') => api.get(`/python-data/intraday/${encodeURIComponent(symbol)}`, { params: { resolution } }).then(r => r.data),
+   news:       () => api.get('/python-data/news').then(r => r.data),
 };

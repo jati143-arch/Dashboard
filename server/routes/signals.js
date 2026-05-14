@@ -309,8 +309,8 @@ router.get('/:symbol', async (req, res) => {
     else if (score >= 3) { signal = 'BUY';          confidence = 'Medium'; }
     else if (score >= 1) { signal = 'WEAK BUY';     confidence = 'Low';    }
     else if (score === 0){ signal = 'NEUTRAL';       confidence = 'Low';    }
-    else if (score >= -2){ signal = 'WEAK SELL';     confidence = 'Low';    }
-    else if (score >= -4){ signal = 'SELL';          confidence = 'Medium'; }
+else if (score >= -3){ signal = 'WEAK SELL';     confidence = 'Low';    }
+     else if (score >= -4){ signal = 'SELL';          confidence = 'Medium'; }
     else                 { signal = 'STRONG SELL';  confidence = 'High';   }
 
     const isBuy = signal.includes('BUY');
@@ -444,8 +444,8 @@ router.get('/:symbol', async (req, res) => {
       maxScore:   8,
       isBuy,
       isSell,
-      reasons:    isBuy || signal === 'NEUTRAL' ? bullReasons : bearReasons,
-      risks:      isBuy || signal === 'NEUTRAL' ? bearReasons : bullReasons,
+reasons: signal === 'NEUTRAL' ? [...bullReasons, ...bearReasons] : isBuy ? bullReasons : bearReasons,
+       risks: signal === 'NEUTRAL' ? [] : isBuy ? bearReasons : bullReasons,
       sl:         sl != null ? +sl.toFixed(2) : null,
       slPct:      slPct != null ? Math.abs(slPct) : null,
       targets,
