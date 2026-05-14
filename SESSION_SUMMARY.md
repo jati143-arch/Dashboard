@@ -704,6 +704,74 @@ Each item in the array has all fields as direct properties, so no reshape loop i
 
 ---
 
+## Phase 28 — Python Integration for MoneyControl/NSE Data
+
+### What Was Built
+
+Added Python integration to fetch data from MoneyControl and NSE India APIs, enabling additional data sources beyond Yahoo Finance.
+
+### Architecture (Option B - Embedded Python)
+
+Python scripts run as subprocesses from Node.js - single service deployment on Render.
+
+### New Files
+
+#### `python/runner.py`
+- `python runner.py quote <symbol>` — Get live quote from MoneyControl → NSE fallback
+- `python runner.py intraday <symbol>` — Get intraday OHLCV data from MoneyControl
+- `python runner.py news` — Get market news from MoneyControl
+
+#### `python/mc_scraper.py` (legacy/scraping utilities)
+- MoneyControl API wrappers for intraday data, quotes, and news
+
+#### `python/requirements.txt`
+```
+requests>=2.28.0
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+```
+
+#### `server/routes/python-data.js`
+- `GET /api/python-data/quote/:symbol` — Calls Python to fetch quote
+- `GET /api/python-data/intraday/:symbol` — Calls Python for intraday data
+- `GET /api/python-data/news` — Calls Python for market news
+
+#### `build.sh`
+- Updated to include `pip install -r python/requirements.txt`
+
+### Usage
+
+```bash
+# Local testing
+python python/runner.py quote NSE:RELIANCE
+python python/runner.py intraday NSE:RELIANCE
+python python/runner.py news
+```
+
+### API Endpoints (from React)
+```javascript
+// Quote
+fetch('/api/python-data/quote/NSE:RELIANCE')
+
+// Intraday
+fetch('/api/python-data/intraday/NSE:RELIANCE')
+
+// News
+fetch('/api/python-data/news')
+```
+
+### Render Deployment
+
+- Python buildpack automatically detected by Nixpacks
+- Single service (Node.js) calls Python scripts via `child_process`
+- Same URL as before
+
+### Note
+
+MoneyControl does NOT have an official public API. The data is fetched via their unofficial endpoints which may change or be blocked. Yahoo Finance (`yahoo-finance2`) remains the primary data source.
+
+---
+
 ## Deferred / Not Yet Done
 
 - **Cmd+K command palette** — stock search + page navigation shortcut (cmdk library)

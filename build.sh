@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+echo "==> Installing Python dependencies..."
+pip install -r python/requirements.txt --quiet
+
 echo "==> Installing client dependencies..."
 cd client
 npm install
