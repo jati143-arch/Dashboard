@@ -56,19 +56,18 @@ function getInitCurrency(tab) {
 }
 
 
-// Inline component to fetch AMFI NAV for a single MF position row
 function MfNavCell({ schemeCode }) {
   const { data, isLoading } = useQuery({
     queryKey: ['mf-nav', schemeCode],
     queryFn: () => mfApi.nav(schemeCode),
-    staleTime: 60 * 60_000, // NAV updates once per day
+    staleTime: 60 * 60_000,
   });
-  if (isLoading) return <span style={{ color: 'var(--text-dim)' }}>Loading…</span>;
-  if (!data) return <span style={{ color: 'var(--text-dim)' }}>—</span>;
+  if (isLoading) return <span style={{ color: '#52525b' }}>Loading…</span>;
+  if (!data) return <span style={{ color: '#52525b' }}>—</span>;
   return (
-    <span style={{ fontFamily: 'var(--text-mono)' }}>
+    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
       ₹{data.nav.toFixed(4)}
-      {data.date && <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 4 }}>({data.date})</span>}
+      {data.date && <span style={{ fontSize: 10, color: '#52525b', marginLeft: 4 }}>({data.date})</span>}
     </span>
   );
 }
@@ -102,7 +101,6 @@ export default function Investments() {
     queryFn: () => tradesApi.list({ status: 'open' }),
   });
 
-  // Only fetch Yahoo Finance prices for non-MF symbols
   const tradeSymbols = [...new Set(
     openTrades
       .filter(t => t.instrument_type !== 'mutual_fund')
@@ -137,7 +135,6 @@ export default function Investments() {
     return fromUSD(toUSD(price, native, usdInr, eurUsd), displayCurrency, usdInr, eurUsd);
   }
 
-  // Count by region (exclude MF from 'all' count since they're separate)
   const counts = { all: 0, us: 0, indian: 0, crypto: 0, etf: 0, mf: 0 };
   openTrades.forEach(t => {
     const r = detectRegion(t.symbol, t.instrument_type);
@@ -170,47 +167,96 @@ export default function Investments() {
       }
     });
   } else {
-    // For MF tab: invested = sum of entry_price * size in INR
     filtered.forEach(t => {
       totalInvested += t.entry_price * (t.remaining_size ?? t.size);
     });
   }
 
-  const pnlColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
+  const pnlColor = totalUnrealized >= 0 ? '#22ff88' : '#ff4444';
   const allTimePnl = tabStats?.total_pnl;
-  const allTimePnlColor = allTimePnl == null ? 'var(--text-dim)' : allTimePnl >= 0 ? 'var(--green)' : 'var(--red)';
+  const allTimePnlColor = allTimePnl == null ? '#52525b' : allTimePnl >= 0 ? '#22ff88' : '#ff4444';
   const currencyOpts = CURRENCY_OPTIONS[activeTab];
 
   return (
     <div>
-      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Investments</div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Open positions · Prices refresh every 60s</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>Investments</div>
+          <div style={{ fontSize: 12, color: '#52525b', fontFamily: "'Inter', system-ui, sans-serif" }}>Open positions · Prices refresh every 60s</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => setShowImport(true)}>⬆ Import CSV</button>
-          <button className="btn-ghost" onClick={() => tradesApi.exportCSV(activeTab)}>⬇ Export CSV</button>
+          <button
+            onClick={() => setShowImport(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '9999px',
+              color: '#71717a',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
+          >
+            ⬆ Import CSV
+          </button>
+          <button
+            onClick={() => tradesApi.exportCSV(activeTab)}
+            style={{
+              padding: '10px 20px',
+              background: '#ffffff',
+              border: 'none',
+              borderRadius: '9999px',
+              color: '#050505',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
+          >
+            ⬇ Export CSV
+          </button>
         </div>
       </div>
 
-      {/* Sub-tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+      {/* Pill sub-tabs */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        marginBottom: 16,
+        flexWrap: 'wrap',
+        padding: 4,
+        background: '#0a0a0a',
+        borderRadius: '9999px',
+        border: '1px solid rgba(255,255,255,0.06)',
+        width: 'fit-content',
+      }}>
         {SUB_TABS.map(([key, label]) => (
-          <button key={key} type="button" onClick={() => switchTab(key)} style={{
-            padding: '6px 16px', fontSize: 12, borderRadius: 4, cursor: 'pointer', fontWeight: 600,
-            border: activeTab === key ? 'none' : '1px solid var(--border)',
-            background: activeTab === key ? 'var(--accent)' : 'var(--bg-card)',
-            color: activeTab === key ? '#000' : 'var(--text-secondary)',
-            transition: 'background 0.15s',
-          }}>
+          <button
+            key={key}
+            type="button"
+            onClick={() => switchTab(key)}
+            style={{
+              padding: '8px 16px',
+              fontSize: 12,
+              borderRadius: '9999px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              border: 'none',
+              background: activeTab === key ? '#ffffff' : 'transparent',
+              color: activeTab === key ? '#050505' : '#71717a',
+              fontFamily: "'Inter', system-ui, sans-serif",
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
             {label} ({counts[key]})
           </button>
         ))}
       </div>
 
       {/* Search bar */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+      <div style={{ marginBottom: 20, display: 'flex', gap: 8 }}>
         <input
           type="text"
           placeholder="🔍 Search symbol..."
@@ -218,12 +264,13 @@ export default function Investments() {
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             flex: 1,
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            background: 'var(--bg-card)',
-            color: 'var(--text-primary)',
+            padding: '10px 16px',
+            borderRadius: 24,
+            border: '1px solid rgba(255,255,255,0.06)',
+            background: '#111111',
+            color: '#ffffff',
             fontSize: 13,
+            fontFamily: "'Inter', system-ui, sans-serif",
             outline: 'none',
           }}
         />
@@ -231,13 +278,14 @@ export default function Investments() {
           <button
             onClick={() => setSearchQuery('')}
             style={{
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              color: 'var(--text-dim)',
+              padding: '10px 16px',
+              borderRadius: 24,
+              border: '1px solid rgba(255,255,255,0.06)',
+              background: '#111111',
+              color: '#52525b',
               cursor: 'pointer',
               fontSize: 12,
+              fontFamily: "'Inter', system-ui, sans-serif",
             }}
           >
             ✕ Clear
@@ -245,42 +293,64 @@ export default function Investments() {
         )}
       </div>
 
-      {/* Summary card */}
-      <div className="card" style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
+      {/* Summary card - large mono stats */}
+      <div style={{
+        marginBottom: 20,
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 32,
+        flexWrap: 'wrap',
+        borderLeft: '3px solid #22ff88',
+      }}>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Positions</div>
-          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)' }}>{filtered.length}</div>
+          <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6, fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>Positions</div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 28, color: '#ffffff' }}>{filtered.length}</div>
         </div>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Total Invested</div>
-          <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)' }}>
+          <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6, fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>Total Invested</div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 28, color: '#ffffff' }}>
             {isMfTab ? `₹${totalInvested.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : fmt(totalInvested)}
           </div>
         </div>
         {!isMfTab && (
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Unrealized P&L</div>
-            <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: pnlColor }}>
+            <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6, fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>Unrealized P&L</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 28, color: pnlColor }}>
               {totalUnrealized >= 0 ? '+' : '-'}{fmt(totalUnrealized)}
             </div>
           </div>
         )}
         {allTimePnl != null && (
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>All-Time Realized P&L</div>
-            <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 22, color: allTimePnlColor }}>
+            <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6, fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>All-Time Realized P&L</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 28, color: allTimePnlColor }}>
               {allTimePnl >= 0 ? '+' : '-'}{isMfTab ? `₹${Math.abs(allTimePnl).toFixed(2)}` : `$${Math.abs(allTimePnl).toFixed(2)}`}
             </div>
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
           {currencyOpts.map(c => (
-            <button key={c} type="button" onClick={() => switchCurrency(c)} style={{
-              padding: '4px 10px', fontSize: 11, borderRadius: 4, cursor: 'pointer', fontWeight: 700,
-              border: displayCurrency === c ? 'none' : '1px solid var(--border)',
-              background: displayCurrency === c ? 'var(--accent)' : 'transparent',
-              color: displayCurrency === c ? '#000' : 'var(--text-dim)',
-            }}>{c}</button>
+            <button
+              key={c}
+              type="button"
+              onClick={() => switchCurrency(c)}
+              style={{
+                padding: '6px 14px',
+                fontSize: 11,
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                border: 'none',
+                background: displayCurrency === c ? '#22ff88' : 'transparent',
+                color: displayCurrency === c ? '#050505' : '#52525b',
+                fontFamily: "'Inter', system-ui, sans-serif",
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >{c}</button>
           ))}
         </div>
       </div>
@@ -289,26 +359,31 @@ export default function Investments() {
       {isLoading ? (
         <LoadingSpinner text="Loading positions..." />
       ) : isMfTab ? (
-        /* MF Tab — special table with AMFI NAV */
-        <div className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: '3px solid var(--accent)' }}>
+        <div style={{
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 24,
+          overflow: 'hidden',
+          borderLeft: '3px solid #22ff88',
+        }}>
           <div style={{ overflowX: 'auto' }}>
-            <table>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th>Scheme Code</th>
-                  <th>Dir</th>
-                  <th>Entry Date</th>
-                  <th>Entry NAV</th>
-                  <th>Latest NAV</th>
-                  <th>Units</th>
-                  <th>Invested</th>
-                  <th></th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Scheme Code</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Dir</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Entry Date</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Entry NAV</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Latest NAV</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Units</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Invested</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '32px 20px' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', color: '#52525b', padding: '40px 20px', fontSize: 13 }}>
                       No mutual fund positions. Add one using "Open Position" with type "Indian Mutual Fund".
                     </td>
                   </tr>
@@ -316,19 +391,33 @@ export default function Investments() {
                   const remaining = t.remaining_size ?? t.size;
                   return (
                     <tr key={t.id}>
-                      <td>
-                        <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700 }}>{t.symbol}</span>
-                        <span className="badge badge-stock" style={{ marginLeft: 6, fontSize: 9 }}>MF</span>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#ffffff' }}>{t.symbol}</span>
+                        <span style={{ marginLeft: 8, fontSize: 9, padding: '2px 8px', background: '#1a1a1a', color: '#71717a', borderRadius: 9999, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif" }}>MF</span>
                       </td>
-                      <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
-                      <td style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>₹{t.entry_price.toFixed(4)}</td>
-                      <td><MfNavCell schemeCode={t.symbol} /></td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
-                      <td style={{ fontFamily: 'var(--text-mono)' }}>₹{(t.entry_price * remaining).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                      <td>
-                        <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                          onClick={() => setClosingTrade({ trade: t, currentPrice: null })}>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 9999, fontWeight: 600, background: t.direction === 'long' ? 'rgba(34,255,136,0.15)' : 'rgba(255,68,68,0.15)', color: t.direction === 'long' ? '#22ff88' : '#ff4444', fontFamily: "'Inter', system-ui, sans-serif" }}>{t.direction}</span>
+                      </td>
+                      <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#71717a', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{t.date}</td>
+                      <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>₹{t.entry_price.toFixed(4)}</td>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><MfNavCell schemeCode={t.symbol} /></td>
+                      <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{remaining}</td>
+                      <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>₹{(t.entry_price * remaining).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <button
+                          onClick={() => setClosingTrade({ trade: t, currentPrice: null })}
+                          style={{
+                            padding: '6px 14px',
+                            background: '#ffffff',
+                            border: 'none',
+                            borderRadius: 9999,
+                            color: '#050505',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            fontFamily: "'Inter', system-ui, sans-serif",
+                          }}
+                        >
                           Redeem
                         </button>
                       </td>
@@ -340,27 +429,32 @@ export default function Investments() {
           </div>
         </div>
       ) : (
-        /* All other tabs — Yahoo Finance prices */
-        <div className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: '3px solid var(--accent)' }}>
+        <div style={{
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 24,
+          overflow: 'hidden',
+          borderLeft: '3px solid #22ff88',
+        }}>
           <div style={{ overflowX: 'auto' }}>
-            <table>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th>Dir</th>
-                  <th>Entry Date</th>
-                  <th>Entry Price</th>
-                  <th>Current Price</th>
-                  <th>Change %</th>
-                  <th>Remaining</th>
-                  <th>Unrealized P&L</th>
-                  <th></th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Symbol</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Dir</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Entry Date</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Entry Price</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Current Price</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Change %</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Remaining</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Unrealized P&L</th>
+                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '32px 20px' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', color: '#52525b', padding: '40px 20px', fontSize: 13 }}>
                       No open positions in this market
                     </td>
                   </tr>
@@ -384,7 +478,7 @@ export default function Investments() {
                     calc = { pnlD, pnlP: cost !== 0 ? (pnlD / cost) * 100 : 0 };
                   }
 
-                  const rowPnlColor = !calc ? 'var(--text-dim)' : calc.pnlD >= 0 ? 'var(--green)' : 'var(--red)';
+                  const rowPnlColor = !calc ? '#52525b' : calc.pnlD >= 0 ? '#22ff88' : '#ff4444';
                   const nativeSymbol = native === 'INR' ? '₹' : '$';
 
                   const isIndian = region === 'indian';
@@ -393,49 +487,61 @@ export default function Investments() {
                   return (
                     <Fragment key={t.id}>
                       <tr>
-                        <td>
+                        <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           <span
-                            style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                            style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#22ff88', cursor: 'pointer' }}
                             onClick={() => openChart(t.symbol, t.entry_price)}
                             title="View chart"
                           >{t.symbol}</span>
-                          <span className={`badge badge-${t.instrument_type}`} style={{ marginLeft: 6, fontSize: 9 }}>{t.instrument_type}</span>
+                          <span style={{ marginLeft: 8, fontSize: 9, padding: '2px 8px', background: '#1a1a1a', color: '#71717a', borderRadius: 9999, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif" }}>{t.instrument_type}</span>
                         </td>
-                        <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
-                        <td style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>{t.date}</td>
-                        <td style={{ fontFamily: 'var(--text-mono)' }}>
+                        <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 9999, fontWeight: 600, background: t.direction === 'long' ? 'rgba(34,255,136,0.15)' : 'rgba(255,68,68,0.15)', color: t.direction === 'long' ? '#22ff88' : '#ff4444', fontFamily: "'Inter', system-ui, sans-serif" }}>{t.direction}</span>
+                        </td>
+                        <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#71717a', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{t.date}</td>
+                        <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           {entryC != null ? fmt(entryC) : `${nativeSymbol}${t.entry_price}`}
                         </td>
-                        <td style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>
+                        <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           {currentC != null
                             ? fmt(currentC)
-                            : <span style={{ color: 'var(--text-dim)' }}>Loading...</span>}
+                            : <span style={{ color: '#52525b' }}>Loading...</span>}
                         </td>
-                        <td>
+                        <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           {liveData && (
-                            <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: liveData.changePercent >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: liveData.changePercent >= 0 ? '#22ff88' : '#ff4444' }}>
                               {liveData.changePercent >= 0 ? '+' : ''}{liveData.changePercent.toFixed(2)}%
                             </span>
                           )}
                         </td>
-                        <td style={{ fontFamily: 'var(--text-mono)' }}>{remaining}</td>
-                        <td>
+                        <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{remaining}</td>
+                        <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           {calc ? (
-                            <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: rowPnlColor }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: rowPnlColor }}>
                               {calc.pnlD >= 0 ? '+' : '-'}{fmt(calc.pnlD)}
                               <span style={{ fontSize: '0.8em', marginLeft: 5, opacity: 0.8 }}>
                                 ({calc.pnlP >= 0 ? '+' : ''}{calc.pnlP.toFixed(1)}%)
                               </span>
                             </span>
                           ) : (
-                            <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>
+                            <span style={{ color: '#52525b', fontSize: 12 }}>—</span>
                           )}
                         </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 24px', whiteSpace: 'nowrap', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           {isIndian && (
                             <button
                               onClick={() => setExpandedFund(fundOpen ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: fundOpen ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: fundOpen ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                marginRight: 4,
+                                background: fundOpen ? 'rgba(34,255,136,0.15)' : 'transparent',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: fundOpen ? '#22ff88' : '#52525b',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                              }}
                             >
                               {fundOpen ? '▲ Fund' : '▼ Fund'}
                             </button>
@@ -443,7 +549,17 @@ export default function Investments() {
                           {isIndian && (
                             <button
                               onClick={() => setExpandedQtly(expandedQtly === t.symbol ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedQtly === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedQtly === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                marginRight: 4,
+                                background: expandedQtly === t.symbol ? 'rgba(34,255,136,0.15)' : 'transparent',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: expandedQtly === t.symbol ? '#22ff88' : '#52525b',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                              }}
                             >
                               {expandedQtly === t.symbol ? '▲ P&L Q' : '📊 P&L Q'}
                             </button>
@@ -451,7 +567,17 @@ export default function Investments() {
                           {isIndian && (
                             <button
                               onClick={() => setExpandedBal(expandedBal === t.symbol ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedBal === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedBal === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                marginRight: 4,
+                                background: expandedBal === t.symbol ? 'rgba(34,255,136,0.15)' : 'transparent',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: expandedBal === t.symbol ? '#22ff88' : '#52525b',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                              }}
                             >
                               {expandedBal === t.symbol ? '▲ Balance' : '📋 Balance'}
                             </button>
@@ -459,7 +585,17 @@ export default function Investments() {
                           {isIndian && (
                             <button
                               onClick={() => setExpandedCash(expandedCash === t.symbol ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 4, background: expandedCash === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedCash === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                marginRight: 4,
+                                background: expandedCash === t.symbol ? 'rgba(34,255,136,0.15)' : 'transparent',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: expandedCash === t.symbol ? '#22ff88' : '#52525b',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                              }}
                             >
                               {expandedCash === t.symbol ? '▲ Cash Flow' : '💰 Cash Flow'}
                             </button>
@@ -467,48 +603,70 @@ export default function Investments() {
                           {isIndian && (
                             <button
                               onClick={() => setExpandedAnnual(expandedAnnual === t.symbol ? null : t.symbol)}
-                              style={{ padding: '4px 10px', fontSize: 11, marginRight: 6, background: expandedAnnual === t.symbol ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)', color: expandedAnnual === t.symbol ? 'var(--accent)' : 'var(--text-dim)', borderRadius: 'var(--radius)', cursor: 'pointer' }}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                marginRight: 6,
+                                background: expandedAnnual === t.symbol ? 'rgba(34,255,136,0.15)' : 'transparent',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                color: expandedAnnual === t.symbol ? '#22ff88' : '#52525b',
+                                borderRadius: 9999,
+                                cursor: 'pointer',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                              }}
                             >
                               {expandedAnnual === t.symbol ? '▲ P&L Y' : '📈 P&L Y'}
                             </button>
                           )}
-                          <button className="btn-primary" style={{ padding: '4px 10px', fontSize: 11 }}
-                            onClick={() => setClosingTrade({ trade: t, currentPrice })}>
+                          <button
+                            onClick={() => setClosingTrade({ trade: t, currentPrice })}
+                            style={{
+                              padding: '6px 14px',
+                              background: '#ffffff',
+                              border: 'none',
+                              borderRadius: 9999,
+                              color: '#050505',
+                              cursor: 'pointer',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              fontFamily: "'Inter', system-ui, sans-serif",
+                            }}
+                          >
                             Close
                           </button>
                         </td>
                       </tr>
                       {fundOpen && (
                         <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <FundamentalsPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}
                       {expandedQtly === t.symbol && (
                         <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <ScreenerQuarterlyPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}
                       {expandedBal === t.symbol && (
                         <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <ScreenerBalanceSheetPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}
                       {expandedCash === t.symbol && (
                         <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <ScreenerCashFlowPanel symbol={t.symbol} />
                           </td>
                         </tr>
                       )}
                       {expandedAnnual === t.symbol && (
                         <tr>
-                          <td colSpan={9} style={{ padding: 0 }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <ScreenerAnnualPanel symbol={t.symbol} />
                           </td>
                         </tr>

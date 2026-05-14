@@ -29,7 +29,40 @@ const TIMEFRAMES = [
 
 const INTRADAY = ['5m', '15m', '30m', '1h'];
 
-const STAT_COLOR = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text-secondary)';
+const CARD = {
+  background: '#111111',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: 24,
+  padding: 28,
+};
+
+const TEXT_DIM = '#52525b';
+const TEXT_SECONDARY = '#71717a';
+const TEXT_PRIMARY = '#ffffff';
+const GREEN = '#22ff88';
+const RED = '#ff4444';
+const CYAN = '#00d4ff';
+
+const PILL_BTN = {
+  padding: '10px 24px',
+  borderRadius: 9999,
+  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#111111',
+  color: TEXT_SECONDARY,
+  cursor: 'pointer',
+  fontSize: 13,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 500,
+};
+
+const PILL_BTN_ACTIVE = {
+  ...PILL_BTN,
+  background: '#ffffff',
+  color: '#000000',
+  border: '1px solid #ffffff',
+};
+
+const STAT_COLOR = v => v > 0 ? GREEN : v < 0 ? RED : TEXT_SECONDARY;
 
 export default function Backtest() {
   const [symbol, setSymbol] = useState('');
@@ -56,16 +89,15 @@ export default function Backtest() {
 
   return (
     <div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Strategy Backtester</div>
-        <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>Test strategies against historical data · Results are historical, not a guarantee</div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, marginBottom: 6, fontFamily: 'Inter, system-ui, sans-serif' }}>Strategy Backtester</div>
+        <div style={{ fontSize: 13, color: TEXT_SECONDARY, fontFamily: 'Inter, system-ui, sans-serif' }}>Test strategies against historical data · Results are historical, not a guarantee</div>
       </div>
 
-      {/* Controls */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 16 }}>
+      <div style={CARD}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
           <div>
-            <label>Symbol</label>
+            <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Symbol</label>
             <TickerInput
               value={symbol}
               onChange={setSymbol}
@@ -73,52 +105,51 @@ export default function Backtest() {
             />
           </div>
           <div>
-            <label>Strategy</label>
-            <select value={form.strategy} onChange={e => set('strategy', e.target.value)}>
+            <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Strategy</label>
+            <select value={form.strategy} onChange={e => set('strategy', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
               {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
-            <label>Timeframe</label>
-            <select value={form.timeframe} onChange={e => { set('timeframe', e.target.value); setResult(null); }}>
+            <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Timeframe</label>
+            <select value={form.timeframe} onChange={e => { set('timeframe', e.target.value); setResult(null); }} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
               {TIMEFRAMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           {!isIntraday && (
             <>
               <div>
-                <label>From</label>
-                <input type="date" value={form.from} onChange={e => set('from', e.target.value)} />
+                <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>From</label>
+                <input type="date" value={form.from} onChange={e => set('from', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
               </div>
               <div>
-                <label>To</label>
-                <input type="date" value={form.to} onChange={e => set('to', e.target.value)} />
+                <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>To</label>
+                <input type="date" value={form.to} onChange={e => set('to', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
               </div>
             </>
           )}
         </div>
 
         {isIntraday && tfInfo?.note && (
-          <div style={{ marginBottom: 12, padding: '8px 12px', background: '#1a1200', border: '1px solid #3a2a00', borderRadius: 6, fontSize: 12, color: '#ccaa44' }}>
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#1a1200', border: '1px solid #3a2a00', borderRadius: 12, fontSize: 13, color: '#ccaa44', fontFamily: 'Inter, system-ui, sans-serif' }}>
             ⚠ {tfInfo.note} — date pickers are disabled for intraday timeframes
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
-            className="btn-primary"
+            style={{ ...PILL_BTN_ACTIVE, opacity: (isPending || !symbol.trim()) ? 0.5 : 1 }}
             onClick={() => mutate()}
             disabled={isPending || !symbol.trim()}
-            style={{ padding: '8px 24px' }}
           >
             {isPending ? '⟳ Running…' : '▶ Run Backtest'}
           </button>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+          <div style={{ fontSize: 13, color: TEXT_DIM, fontFamily: 'Inter, system-ui, sans-serif' }}>
             {STRATEGIES.find(s => s.value === form.strategy)?.desc}
           </div>
         </div>
         {error && (
-          <div style={{ marginTop: 10, color: 'var(--red)', fontSize: 12 }}>
+          <div style={{ marginTop: 12, color: RED, fontSize: 13, fontFamily: 'Inter, system-ui, sans-serif' }}>
             {error.response?.data?.error || error.message}
           </div>
         )}
@@ -126,53 +157,50 @@ export default function Backtest() {
 
       {stats && (
         <>
-          {/* Stats cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }}>
             {[
-              { label: 'Win Rate',      value: `${stats.winRate}%`,         color: stats.winRate >= 50 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Total Trades',  value: stats.totalTrades,            color: 'var(--text-primary)' },
-              { label: 'Wins / Losses', value: `${stats.wins} / ${stats.losses}`, color: 'var(--text-primary)' },
-              { label: 'Avg Win',       value: `+${stats.avgWinPct}%`,      color: 'var(--green)' },
-              { label: 'Avg Loss',      value: `${stats.avgLossPct}%`,      color: 'var(--red)' },
-              { label: 'Profit Factor', value: stats.profitFactor ?? '—',   color: (stats.profitFactor ?? 0) >= 1.5 ? 'var(--green)' : 'var(--red)' },
-              { label: 'Max Drawdown',  value: `-${stats.maxDrawdownPct}%`, color: 'var(--red)' },
+              { label: 'Win Rate',      value: `${stats.winRate}%`,         color: stats.winRate >= 50 ? GREEN : RED },
+              { label: 'Total Trades',  value: stats.totalTrades,            color: TEXT_PRIMARY },
+              { label: 'Wins / Losses', value: `${stats.wins} / ${stats.losses}`, color: TEXT_PRIMARY },
+              { label: 'Avg Win',       value: `+${stats.avgWinPct}%`,      color: GREEN },
+              { label: 'Avg Loss',      value: `${stats.avgLossPct}%`,      color: RED },
+              { label: 'Profit Factor', value: stats.profitFactor ?? '—',   color: (stats.profitFactor ?? 0) >= 1.5 ? GREEN : RED },
+              { label: 'Max Drawdown',  value: `-${stats.maxDrawdownPct}%`, color: RED },
               { label: 'Final Equity',  value: `${stats.finalEquity}`,      color: STAT_COLOR(stats.finalEquity - 100) },
             ].map(({ label, value, color }) => (
-              <div key={label} className="card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</div>
-                <div style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 20, color }}>{value}</div>
+              <div key={label} style={{ ...CARD, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>{label}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 24, color }}>{value}</div>
               </div>
             ))}
           </div>
 
-          {/* Equity curve */}
           {curve.length > 1 && (
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            <div style={{ ...CARD, marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, fontFamily: 'Inter, system-ui, sans-serif' }}>
                 Equity Curve (₹100 starting capital)
               </div>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={curve} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
-                  <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 10 }} tickFormatter={d => d.slice(0, 10).slice(5)} />
-                  <YAxis tick={{ fill: '#888', fontSize: 10 }} domain={['auto', 'auto']} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                  <XAxis dataKey="date" tick={{ fill: '#666', fontSize: 10 }} tickFormatter={d => d.slice(0, 10).slice(5)} />
+                  <YAxis tick={{ fill: '#666', fontSize: 10 }} domain={['auto', 'auto']} />
                   <Tooltip
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6 }}
-                    labelStyle={{ color: '#888' }}
+                    contentStyle={{ background: '#111111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }}
+                    labelStyle={{ color: '#666' }}
                     formatter={v => [`${v.toFixed(1)}`, 'Equity']}
                   />
-                  <ReferenceLine y={100} stroke="#444" strokeDasharray="4 4" />
-                  <Line type="monotone" dataKey="value" stroke="#00aaff" dot={false} strokeWidth={2} />
+                  <ReferenceLine y={100} stroke="#333" strokeDasharray="4 4" />
+                  <Line type="monotone" dataKey="value" stroke={CYAN} dot={false} strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           )}
 
-          {/* Trade list */}
           {trades.length > 0 && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Trade List ({trades.length} trades)
                 </span>
               </div>
@@ -193,21 +221,21 @@ export default function Backtest() {
                   <tbody>
                     {trades.map((t, i) => (
                       <tr key={i}>
-                        <td style={{ color: 'var(--text-dim)', fontSize: 11 }}>{i + 1}</td>
-                        <td className="mono" style={{ fontSize: 12 }}>{t.entryDate}</td>
-                        <td className="mono" style={{ fontSize: 12 }}>{t.exitDate}</td>
-                        <td className="mono">{t.entryPrice}</td>
-                        <td className="mono">{t.exitPrice}</td>
-                        <td className="mono" style={{ color: t.pnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        <td style={{ color: TEXT_DIM, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>{i + 1}</td>
+                        <td style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>{t.entryDate}</td>
+                        <td style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>{t.exitDate}</td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>{t.entryPrice}</td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>{t.exitPrice}</td>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", color: t.pnl >= 0 ? GREEN : RED }}>
                           {t.pnl >= 0 ? '+' : ''}{t.pnl}
                         </td>
-                        <td className="mono" style={{ color: t.pnlPct >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                        <td style={{ fontFamily: "'JetBrains Mono', monospace", color: t.pnlPct >= 0 ? GREEN : RED }}>
                           {t.pnlPct >= 0 ? '+' : ''}{t.pnlPct}%
                         </td>
                         <td>
-                          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3,
-                            background: t.win ? '#00ff8822' : '#ff335522',
-                            color: t.win ? 'var(--green)' : 'var(--red)',
+                          <span style={{ fontSize: 10, padding: '4px 10px', borderRadius: 9999,
+                            background: t.win ? 'rgba(34,255,136,0.12)' : 'rgba(255,68,68,0.12)',
+                            color: t.win ? GREEN : RED, fontWeight: 600,
                           }}>{t.win ? 'WIN' : 'LOSS'}</span>
                         </td>
                       </tr>
@@ -221,10 +249,10 @@ export default function Backtest() {
       )}
 
       {!stats && !isPending && (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-dim)' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⊕</div>
-          <div style={{ fontSize: 14 }}>Enter a symbol, select a strategy and timeframe, then click Run Backtest</div>
-          <div style={{ fontSize: 12, marginTop: 6 }}>Supports NSE (.NS), US stocks, crypto · 8 strategies available</div>
+        <div style={{ ...CARD, textAlign: 'center', padding: '64px 32px', color: TEXT_DIM }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⊕</div>
+          <div style={{ fontSize: 15, fontFamily: 'Inter, system-ui, sans-serif', color: TEXT_SECONDARY }}>Enter a symbol, select a strategy and timeframe, then click Run Backtest</div>
+          <div style={{ fontSize: 13, marginTop: 8, fontFamily: 'Inter, system-ui, sans-serif' }}>Supports NSE (.NS), US stocks, crypto · 8 strategies available</div>
         </div>
       )}
     </div>

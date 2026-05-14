@@ -47,7 +47,7 @@ export default function Sidebar({ open, onClose }) {
               <div className="flex items-center justify-center w-8 h-8 rounded-2xl bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-accent-secondary)] shadow-[0_0_22px_-2px] shadow-[var(--color-accent)]">
                 <BarChart3 className="w-4 h-4 text-black" />
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>NEXUS</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>DASHBOARD</div>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

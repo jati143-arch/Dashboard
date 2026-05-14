@@ -6,30 +6,40 @@ export default function SignIn({ error }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'var(--bg-base)',
+      background: '#0a0a0f',
       padding: 24,
     }}>
       <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 16,
-        padding: '48px 40px',
-        maxWidth: 380,
+        background: 'rgba(20,20,25,0.95)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        padding: 48,
+        maxWidth: 420,
         width: '100%',
         textAlign: 'center',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
       }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>📈</div>
 
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-          Trading Dashboard
+        <div style={{ fontSize: 22, fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>
+          DASHBOARD
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 32 }}>
+        <div style={{ fontSize: 13, color: '#71717a', marginBottom: 32 }}>
           Your personal trading journal.<br />
           Data saved securely in your Google Drive.
         </div>
 
         {error && (
-          <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 16, padding: '8px 12px', background: 'rgba(255,51,85,0.1)', borderRadius: 8 }}>
+          <div style={{
+            fontSize: 12,
+            color: '#ff4444',
+            marginBottom: 16,
+            padding: '10px 16px',
+            background: 'rgba(255,68,68,0.1)',
+            border: '1px solid rgba(255,68,68,0.2)',
+            borderRadius: 9999,
+          }}>
             Sign-in failed. Please try again.
           </div>
         )}
@@ -41,18 +51,19 @@ export default function SignIn({ error }) {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 12,
-            background: '#fff',
-            color: '#1f1f1f',
-            border: '1px solid #dadce0',
-            borderRadius: 8,
-            padding: '12px 24px',
+            background: '#ffffff',
+            color: '#000000',
+            border: 'none',
+            borderRadius: 9999,
+            padding: '12px 28px',
             fontSize: 15,
             fontWeight: 600,
+            fontFamily: "'JetBrains Mono', monospace",
             textDecoration: 'none',
             cursor: 'pointer',
             transition: 'box-shadow 0.15s',
           }}
-          onMouseOver={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'}
+          onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 20px rgba(255,255,255,0.15)'}
           onMouseOut={e => e.currentTarget.style.boxShadow = 'none'}
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
@@ -64,7 +75,7 @@ export default function SignIn({ error }) {
           Sign in with Google
         </a>
 
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 20, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, color: '#52525b', marginTop: 24, lineHeight: 1.6 }}>
           We only access a single file in your Drive.<br/>
           Your data never leaves your Google account.
         </div>

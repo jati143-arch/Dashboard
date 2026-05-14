@@ -14,6 +14,37 @@ import { nativeOf } from '../utils/currency.js';
 
 const EMPTY_FILTERS = { from: '', to: '', symbol: '', direction: '', pattern_tag: '' };
 
+const CARD = {
+  background: '#111111',
+  border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: 24,
+};
+
+const TEXT_DIM = '#52525b';
+const TEXT_SECONDARY = '#71717a';
+const TEXT_PRIMARY = '#ffffff';
+const GREEN = '#22ff88';
+const RED = '#ff4444';
+
+const PILL_BTN = {
+  padding: '8px 20px',
+  borderRadius: 9999,
+  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#111111',
+  color: TEXT_SECONDARY,
+  cursor: 'pointer',
+  fontSize: 13,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 500,
+};
+
+const PILL_BTN_ACTIVE = {
+  ...PILL_BTN,
+  background: '#ffffff',
+  color: '#000000',
+  border: '1px solid #ffffff',
+};
+
 export default function TradeLog() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [showForm, setShowForm] = useState(false);
@@ -33,33 +64,33 @@ export default function TradeLog() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Trades Shown</div>
-            <div style={{ fontFamily: 'var(--text-mono)', fontSize: 20, fontWeight: 700 }}>{trades.length}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ ...CARD, padding: '20px 24px', minWidth: 120 }}>
+            <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Trades Shown</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: TEXT_PRIMARY }}>{trades.length}</div>
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total P&L</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}><PnlBadge value={totalPnl} /></div>
+          <div style={{ ...CARD, padding: '20px 24px', minWidth: 140 }}>
+            <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Total P&L</div>
+            <div style={{ fontSize: 32, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}><PnlBadge value={totalPnl} /></div>
           </div>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win Rate</div>
-            <div style={{ fontFamily: 'var(--text-mono)', fontSize: 20, fontWeight: 700, color: winRate >= 50 ? 'var(--green)' : 'var(--red)' }}>
+          <div style={{ ...CARD, padding: '20px 24px', minWidth: 120 }}>
+            <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Win Rate</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: winRate >= 50 ? GREEN : RED }}>
               {trades.length ? `${winRate}%` : '—'}
             </div>
           </div>
           <CurrencyToggle />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => setShowImport(true)}>↑ Import CSV</button>
-          <button className="btn-primary" onClick={() => { setEditingTrade(null); setShowForm(true); }}>+ Add Trade</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={PILL_BTN} onClick={() => setShowImport(true)}>↑ Import CSV</button>
+          <button style={PILL_BTN_ACTIVE} onClick={() => { setEditingTrade(null); setShowForm(true); }}>+ Add Trade</button>
         </div>
       </div>
 
       <TradeFilters filters={filters} onChange={setFilters} />
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
         {isLoading ? (
           <LoadingSpinner text="Loading trades..." />
         ) : (

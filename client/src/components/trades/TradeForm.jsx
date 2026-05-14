@@ -13,6 +13,16 @@ const EMPTY = {
   is_best_trade: false, status: 'closed',
 };
 
+const inputStyle = {
+  width: '100%', background: '#111111', border: '1px solid rgba(255,255,255,0.06)',
+  borderRadius: 9999, padding: '8px 14px', color: '#ffffff', fontSize: 13, boxSizing: 'border-box',
+};
+
+const labelStyle = {
+  display: 'block', fontSize: 10, color: '#52525b', textTransform: 'uppercase',
+  letterSpacing: '0.07em', marginBottom: 8, fontWeight: 600,
+};
+
 export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }) {
   const qc = useQueryClient();
   const initStatus = trade?.status || defaultStatus || 'closed';
@@ -41,7 +51,6 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
 
   const isOpen = form.status === 'open';
 
-  // Fetch symbol hint when symbol changes (debounced)
   useEffect(() => {
     const sym = form.symbol.trim();
     if (!sym || isOpen) { setSymbolHint(null); return; }
@@ -84,29 +93,26 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
     mutate(payload);
   }
 
-  // When closing an existing position (trade.id exists), show TickerInput with pre-filled value
-  // When adding a new closed trade (no trade.id, status=closed), show OpenPositionsSelect
   const isClosingNewRecord = !trade?.id && form.status === 'closed';
 
-  const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 };
-  const row3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 };
+  const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 };
+  const row3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 };
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Status toggle — Open Position first, Closed Trade second */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         {['open', 'closed'].map(s => (
           <button
             key={s}
             type="button"
             onClick={() => set('status', s)}
             style={{
-              flex: 1, padding: '8px 0', borderRadius: 'var(--radius)',
-              border: form.status === s ? 'none' : '1px solid var(--border)',
+              flex: 1, padding: '10px 0', borderRadius: 9999,
               background: form.status === s
-                ? (s === 'open' ? 'var(--yellow)' : 'var(--green)')
+                ? (s === 'open' ? '#ffd60a' : '#22ff88')
                 : 'transparent',
-              color: form.status === s ? '#000' : 'var(--text-secondary)',
+              border: form.status === s ? 'none' : '1px solid rgba(255,255,255,0.06)',
+              color: form.status === s ? '#000' : '#71717a',
               fontWeight: 700, fontSize: 13, cursor: 'pointer',
             }}
           >
@@ -117,11 +123,11 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
 
       <div style={row2}>
         <div>
-          <label>Entry Date</label>
-          <input type="date" value={form.date} onChange={e => set('date', e.target.value)} required />
+          <label style={labelStyle}>Entry Date</label>
+          <input type="date" value={form.date} onChange={e => set('date', e.target.value)} required style={inputStyle} />
         </div>
         <div>
-          <label>Symbol</label>
+          <label style={labelStyle}>Symbol</label>
           {form.instrument_type === 'mutual_fund' ? (
             <>
               <input
@@ -130,8 +136,9 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
                 onChange={e => set('symbol', e.target.value.trim())}
                 placeholder="AMFI scheme code (e.g. 120503)"
                 required
+                style={inputStyle}
               />
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#52525b', marginTop: 6 }}>
                 Enter the AMFI scheme code number. Find it at amfiindia.com.
               </div>
             </>
@@ -151,7 +158,7 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
                 onSelect={(sym, type) => setForm(f => ({ ...f, symbol: sym, instrument_type: type }))}
               />
               {symbolHint && (
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#52525b', marginTop: 6 }}>
                   Previously traded · Last buy: ${symbolHint.last_buy_price.toFixed(2)}
                   {' · '}Avg buy: ${symbolHint.avg_buy_price.toFixed(2)}
                   {' · '}{symbolHint.trade_count} trade{symbolHint.trade_count !== 1 ? 's' : ''}
@@ -164,8 +171,8 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
 
       <div style={row3}>
         <div>
-          <label>Instrument</label>
-          <select value={form.instrument_type} onChange={e => set('instrument_type', e.target.value)}>
+          <label style={labelStyle}>Instrument</label>
+          <select value={form.instrument_type} onChange={e => set('instrument_type', e.target.value)} style={inputStyle}>
             <option value="stock">Stock</option>
             <option value="crypto">Crypto</option>
             <option value="etf">ETF / Index Fund</option>
@@ -173,84 +180,83 @@ export default function TradeForm({ trade, onClose, defaultDate, defaultStatus }
           </select>
         </div>
         <div>
-          <label>Direction</label>
-          <select value={form.direction} onChange={e => set('direction', e.target.value)}>
+          <label style={labelStyle}>Direction</label>
+          <select value={form.direction} onChange={e => set('direction', e.target.value)} style={inputStyle}>
             <option value="long">Long</option>
             <option value="short">Short</option>
           </select>
         </div>
         <div>
-          <label>Size / Shares</label>
-          <input type="number" step="any" min="0" value={form.size} onChange={e => set('size', e.target.value)} placeholder="100" required />
+          <label style={labelStyle}>Size / Shares</label>
+          <input type="number" step="any" min="0" value={form.size} onChange={e => set('size', e.target.value)} placeholder="100" required style={inputStyle} />
         </div>
       </div>
 
       <div style={row2}>
         <div>
-          <label>{form.instrument_type === 'mutual_fund' ? 'Entry NAV ₹' : form.instrument_type === 'stock' && form.symbol.match(/\.(NS|BO)$/) ? 'Entry Price ₹' : 'Entry Price $'}</label>
-          <input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required />
+          <label style={labelStyle}>{form.instrument_type === 'mutual_fund' ? 'Entry NAV ₹' : form.instrument_type === 'stock' && form.symbol.match(/\.(NS|BO)$/) ? 'Entry Price ₹' : 'Entry Price $'}</label>
+          <input type="number" step="any" value={form.entry_price} onChange={e => set('entry_price', e.target.value)} placeholder="0.00" required style={inputStyle} />
         </div>
         <div>
-          <label>Pattern / Setup</label>
-          <select value={form.pattern_tag || ''} onChange={e => set('pattern_tag', e.target.value)}>
+          <label style={labelStyle}>Pattern / Setup</label>
+          <select value={form.pattern_tag || ''} onChange={e => set('pattern_tag', e.target.value)} style={inputStyle}>
             <option value="">— None —</option>
             {patterns.map(p => <option key={p.slug} value={p.slug}>{p.name}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Exit fields — only shown for closed trades */}
       {!isOpen && (
         <>
           <div style={row2}>
             <div>
-              <label>Exit Price $</label>
-              <input type="number" step="any" value={form.exit_price || ''} onChange={e => { setAutoCalc(false); set('exit_price', e.target.value); }} placeholder="0.00" />
+              <label style={labelStyle}>Exit Price $</label>
+              <input type="number" step="any" value={form.exit_price || ''} onChange={e => { setAutoCalc(false); set('exit_price', e.target.value); }} placeholder="0.00" style={inputStyle} />
             </div>
             <div>
-              <label>Exit Date <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(if different)</span></label>
-              <input type="date" value={form.exit_date || ''} onChange={e => set('exit_date', e.target.value)} />
+              <label style={labelStyle}>Exit Date <span style={{ color: '#52525b', fontWeight: 400 }}>(if different)</span></label>
+              <input type="date" value={form.exit_date || ''} onChange={e => set('exit_date', e.target.value)} style={inputStyle} />
             </div>
           </div>
 
           <div style={row2}>
             <div>
-              <label>P&L $ {autoCalc && <span style={{ color: 'var(--accent)', fontWeight: 400 }}>(auto)</span>}</label>
+              <label style={labelStyle}>P&L $ {autoCalc && <span style={{ color: '#00d4ff', fontWeight: 400 }}>(auto)</span>}</label>
               <input type="number" step="any" value={form.pnl_dollar}
                 onChange={e => { setAutoCalc(false); set('pnl_dollar', e.target.value); }}
-                placeholder="Auto-calculated" />
+                placeholder="Auto-calculated" style={inputStyle} />
             </div>
             <div>
-              <label>P&L %</label>
+              <label style={labelStyle}>P&L %</label>
               <input type="number" step="any" value={form.pnl_percent}
                 onChange={e => { setAutoCalc(false); set('pnl_percent', e.target.value); }}
-                placeholder="Auto-calculated" />
+                placeholder="Auto-calculated" style={inputStyle} />
             </div>
           </div>
         </>
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0, fontSize: 13, color: 'var(--text-primary)', marginBottom: 0 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0, fontSize: 13, color: '#ffffff', marginBottom: 0, cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={!!form.is_best_trade}
             onChange={e => set('is_best_trade', e.target.checked)}
-            style={{ width: 16, height: 16, accentColor: 'var(--yellow)' }}
+            style={{ width: 16, height: 16, accentColor: '#ffd60a' }}
           />
           ★ Mark as best trade
         </label>
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <label>Notes / Lesson</label>
+        <label style={labelStyle}>Notes / Lesson</label>
         <textarea rows={3} value={form.notes || ''} onChange={e => set('notes', e.target.value)}
-          placeholder="What happened? What did you learn?" style={{ resize: 'vertical' }} />
+          placeholder="What happened? What did you learn?" style={{ ...inputStyle, resize: 'vertical', borderRadius: 16, padding: '10px 14px' }} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-        <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn-primary" disabled={isPending}>
+        <button type="button" onClick={onClose} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.06)', color: '#71717a', padding: '8px 18px', borderRadius: 9999, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+        <button type="submit" disabled={isPending} style={{ background: '#22ff88', border: 'none', color: '#000', padding: '8px 18px', borderRadius: 9999, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
           {isPending ? 'Saving...' : trade ? 'Update Trade' : (isOpen ? 'Open Position' : 'Add Trade')}
         </button>
       </div>

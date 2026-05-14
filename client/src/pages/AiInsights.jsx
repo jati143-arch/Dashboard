@@ -13,7 +13,6 @@ export default function AiInsights() {
   const [patternExplanation, setPatternExplanation] = useState('');
   const [aiError, setAiError] = useState('');
 
-  // Chat state
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
@@ -81,61 +80,105 @@ export default function AiInsights() {
   }
 
   const preStyle = {
-    fontFamily: 'var(--font-sans)',
+    fontFamily: "'Inter', system-ui, sans-serif",
     fontSize: 13,
-    color: 'var(--text-primary)',
+    color: '#ffffff',
     whiteSpace: 'pre-wrap',
     lineHeight: 1.9,
-    background: 'var(--bg-surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    padding: 16,
+    background: '#0a0a0a',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 24,
+    padding: 20,
     margin: 0,
   };
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.6, flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+        <p style={{ color: '#71717a', fontSize: 13, margin: 0, lineHeight: 1.6, flex: 1, fontFamily: "'Inter', system-ui, sans-serif" }}>
           AI-powered analysis of your full trading portfolio. Responses are saved and only regenerated when you click the button.
         </p>
         {providerInfo && (
           <span style={{
-            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
-            background: providerInfo.provider === 'groq' ? '#1a3a1a' : providerInfo.provider === 'claude' ? '#1a1a3a' : providerInfo.provider === 'gemini' ? '#1a2a3a' : providerInfo.provider === 'openrouter' ? '#2a1a2a' : 'var(--bg-card)',
-            color: providerInfo.provider === 'groq' ? '#86efac' : providerInfo.provider === 'claude' ? '#a5b4fc' : providerInfo.provider === 'gemini' ? '#7dd3fc' : providerInfo.provider === 'openrouter' ? '#d8b4fe' : 'var(--text-dim)',
-            border: '1px solid var(--border)',
+            padding: '6px 14px',
+            borderRadius: 9999,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            background: providerInfo.provider === 'groq' ? 'rgba(34,255,136,0.15)' : providerInfo.provider === 'claude' ? 'rgba(165,180,252,0.15)' : providerInfo.provider === 'gemini' ? 'rgba(125,211,252,0.15)' : providerInfo.provider === 'openrouter' ? 'rgba(216,180,254,0.15)' : '#111111',
+            color: providerInfo.provider === 'groq' ? '#86efac' : providerInfo.provider === 'claude' ? '#a5b4fc' : providerInfo.provider === 'gemini' ? '#7dd3fc' : providerInfo.provider === 'openrouter' ? '#d8b4fe' : '#52525b',
+            border: '1px solid rgba(255,255,255,0.06)',
+            fontFamily: "'Inter', system-ui, sans-serif",
           }}>
             {providerInfo.provider === 'none' ? '⚠ No AI key' : `✦ ${providerInfo.provider === 'groq' ? 'Groq · Free' : providerInfo.provider === 'claude' ? 'Claude' : providerInfo.provider === 'gemini' ? 'Gemini' : 'OpenRouter'}`}
-            {providerInfo.model && <span style={{ opacity: 0.7, marginLeft: 4, fontSize: 10 }}>({providerInfo.model})</span>}
+            {providerInfo.model && <span style={{ opacity: 0.7, marginLeft: 6, fontSize: 10 }}>({providerInfo.model})</span>}
           </span>
         )}
       </div>
 
       {aiError && (
-        <div style={{ background: 'var(--red-dim)', border: '1px solid var(--red)', borderRadius: 'var(--radius)', padding: '10px 14px', color: 'var(--red)', fontSize: 13, marginBottom: 16 }}>
+        <div style={{
+          background: 'rgba(255,68,68,0.12)',
+          border: '1px solid #ff4444',
+          borderRadius: 24,
+          padding: '12px 18px',
+          color: '#ff4444',
+          fontSize: 13,
+          marginBottom: 20,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           ⚠ {aiError}
         </div>
       )}
 
       {/* Portfolio Analysis */}
-      <div className="card" style={{ marginBottom: 20, borderLeft: '3px solid var(--accent)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 20,
+        borderLeft: '3px solid #22ff88',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#52525b',
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              marginBottom: 6,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}>
               Portfolio Analysis
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: 13, color: '#71717a', fontFamily: "'Inter', system-ui, sans-serif" }}>
               Reviews your entire trade history — win rate, patterns, strengths, weaknesses and an action plan
             </div>
             {saved?.updated_at && (
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#52525b', marginTop: 6, fontFamily: "'Inter', system-ui, sans-serif" }}>
                 Last generated: {fmtDate(saved.updated_at)}
               </div>
             )}
           </div>
-          <button className="btn-primary" onClick={() => runAnalysis()} disabled={analyzing}>
+          <button
+            onClick={() => runAnalysis()}
+            disabled={analyzing}
+            style={{
+              padding: '10px 20px',
+              background: '#22ff88',
+              border: 'none',
+              borderRadius: 9999,
+              color: '#050505',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', system-ui, sans-serif",
+              transition: 'opacity 0.15s',
+            }}
+          >
             {analyzing ? 'Analysing...' : saved?.insight ? '↻ Refresh Analysis' : '✦ Analyse My Portfolio'}
           </button>
         </div>
@@ -145,35 +188,71 @@ export default function AiInsights() {
         ) : saved?.insight ? (
           <pre style={preStyle}>{saved.insight}</pre>
         ) : (
-          <div className="empty-state">
+          <div style={{ textAlign: 'center', padding: 32, color: '#52525b', fontSize: 13 }}>
             Click "Analyse My Portfolio" to get a full coaching review of all your trades.
           </div>
         )}
       </div>
 
       {/* Pattern Explainer */}
-      <div className="card" style={{ marginBottom: 20, borderLeft: '3px solid var(--yellow)' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 20,
+        borderLeft: '3px solid #ffd60a',
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#52525b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          marginBottom: 6,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           Pattern Deep Dive
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: '#71717a', marginBottom: 20, fontFamily: "'Inter', system-ui, sans-serif" }}>
           AI gives you a practical tip beyond what's in the pattern library — things beginners often miss
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <select
             value={selectedPattern}
             onChange={e => { setSelectedPattern(e.target.value); setPatternExplanation(''); }}
-            style={{ flex: 1, minWidth: 200 }}
+            style={{
+              flex: 1,
+              minWidth: 200,
+              padding: '10px 14px',
+              background: '#0a0a0a',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 24,
+              color: '#ffffff',
+              fontSize: 13,
+              fontFamily: "'Inter', system-ui, sans-serif",
+              outline: 'none',
+              cursor: 'pointer',
+            }}
           >
             <option value="">— Pick a pattern —</option>
             {patterns.map(p => <option key={p.slug} value={p.slug}>{p.name}</option>)}
           </select>
           <button
-            className="btn-primary"
-            style={{ background: 'var(--yellow)', color: '#000' }}
             onClick={() => explainPattern()}
             disabled={!selectedPattern || explaining}
+            style={{
+              padding: '10px 20px',
+              background: '#ffd60a',
+              border: 'none',
+              borderRadius: 9999,
+              color: '#050505',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}
           >
             {explaining ? 'Thinking...' : '✦ Explain It'}
           </button>
@@ -184,52 +263,91 @@ export default function AiInsights() {
         ) : patternExplanation ? (
           <pre style={preStyle}>{patternExplanation}</pre>
         ) : (
-          <div className="empty-state" style={{ padding: '20px 0' }}>
+          <div style={{ textAlign: 'center', padding: 24, color: '#52525b', fontSize: 13 }}>
             Select a pattern above to get a practical tip.
           </div>
         )}
       </div>
 
       {/* AI Portfolio Chat */}
-      <div className="card" style={{ borderLeft: '3px solid var(--accent)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        borderLeft: '3px solid #22ff88',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <div style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#52525b',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            fontFamily: "'Inter', system-ui, sans-serif",
+          }}>
             Chat With AI About Your Portfolio
           </div>
           {chatMessages.length > 0 && (
             <button
               onClick={() => { setChatMessages([]); setChatError(''); }}
-              style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+              style={{
+                fontSize: 11,
+                color: '#52525b',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
             >
               Clear
             </button>
           )}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: '#71717a', marginBottom: 20, fontFamily: "'Inter', system-ui, sans-serif" }}>
           Ask anything about your trades. The AI has full access to your portfolio data.
         </div>
 
         {chatError && (
-          <div style={{ background: 'var(--red-dim)', border: '1px solid var(--red)', borderRadius: 'var(--radius)', padding: '8px 12px', color: 'var(--red)', fontSize: 12, marginBottom: 12 }}>
+          <div style={{
+            background: 'rgba(255,68,68,0.12)',
+            border: '1px solid #ff4444',
+            borderRadius: 24,
+            padding: '10px 14px',
+            color: '#ff4444',
+            fontSize: 12,
+            marginBottom: 16,
+            fontFamily: "'Inter', system-ui, sans-serif",
+          }}>
             ⚠ {chatError}
           </div>
         )}
 
         {/* Message list */}
         {chatMessages.length > 0 && (
-          <div style={{ maxHeight: 400, overflowY: 'auto', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{
+            maxHeight: 400,
+            overflowY: 'auto',
+            marginBottom: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
             {chatMessages.map((m, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
                   maxWidth: '80%',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius)',
+                  padding: '12px 18px',
+                  borderRadius: 24,
                   fontSize: 13,
                   lineHeight: 1.7,
                   whiteSpace: 'pre-wrap',
-                  background: m.role === 'user' ? 'var(--accent)' : 'var(--bg-surface)',
-                  color: m.role === 'user' ? '#fff' : 'var(--text-primary)',
-                  border: m.role === 'user' ? 'none' : '1px solid var(--border)',
+                  background: m.role === 'user' ? '#22ff88' : '#0a0a0a',
+                  color: m.role === 'user' ? '#050505' : '#ffffff',
+                  border: m.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  fontWeight: m.role === 'user' ? 600 : 400,
                 }}>
                   {m.content}
                 </div>
@@ -237,7 +355,16 @@ export default function AiInsights() {
             ))}
             {chatting && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{ padding: '10px 14px', borderRadius: 'var(--radius)', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: 12, fontStyle: 'italic' }}>
+                <div style={{
+                  padding: '12px 18px',
+                  borderRadius: 24,
+                  background: '#0a0a0a',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  color: '#52525b',
+                  fontSize: 12,
+                  fontStyle: 'italic',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                }}>
                   AI is thinking…
                 </div>
               </div>
@@ -247,7 +374,7 @@ export default function AiInsights() {
         )}
 
         {chatMessages.length === 0 && !chatting && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
             {['Which pattern makes me the most money?', 'What is my biggest weakness?', 'Compare my LONG vs SHORT performance'].map(q => (
               <button
                 key={q}
@@ -258,7 +385,17 @@ export default function AiInsights() {
                   setChatInput('');
                   sendChat(updated);
                 }}
-                style={{ fontSize: 11, padding: '5px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                style={{
+                  fontSize: 11,
+                  padding: '8px 14px',
+                  borderRadius: 9999,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: '#0a0a0a',
+                  color: '#71717a',
+                  cursor: 'pointer',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  transition: 'border-color 0.15s, color 0.15s',
+                }}
               >
                 {q}
               </button>
@@ -267,21 +404,45 @@ export default function AiInsights() {
         )}
 
         {/* Input */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           <textarea
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={handleChatKey}
             placeholder="Ask anything about your portfolio… (Enter to send, Shift+Enter for newline)"
             rows={2}
-            style={{ flex: 1, resize: 'none', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.5 }}
+            style={{
+              flex: 1,
+              resize: 'none',
+              fontFamily: "'Inter', system-ui, sans-serif",
+              fontSize: 13,
+              lineHeight: 1.6,
+              padding: '12px 16px',
+              background: '#0a0a0a',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 24,
+              color: '#ffffff',
+              outline: 'none',
+            }}
             disabled={chatting}
           />
           <button
-            className="btn-primary"
             onClick={handleChatSend}
             disabled={!chatInput.trim() || chatting}
-            style={{ alignSelf: 'flex-end', whiteSpace: 'nowrap' }}
+            style={{
+              padding: '12px 20px',
+              background: '#ffffff',
+              border: 'none',
+              borderRadius: 9999,
+              color: '#050505',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', system-ui, sans-serif",
+              alignSelf: 'flex-end',
+              whiteSpace: 'nowrap',
+              transition: 'opacity 0.15s',
+            }}
           >
             {chatting ? '…' : 'Send ↵'}
           </button>

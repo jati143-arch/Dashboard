@@ -60,7 +60,6 @@ function snapTimeKey(tf) {
   return `${h}:${m}`;
 }
 
-// Snapshots keyed by date so they auto-clear each new day
 const SESSION_KEY = `pf_snapshots_${new Date().toISOString().slice(0, 10)}`;
 
 function loadSnapshots() {
@@ -101,10 +100,10 @@ function fmtDate(dateStr, tf) {
 function CustomTooltip({ active, payload, label, sym }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 12 }}>
-      <div style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</div>
+    <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '12px 16px', fontSize: 12 }}>
+      <div style={{ color: '#71717a', marginBottom: 8 }}>{label}</div>
       {payload.map(p => (
-        <div key={p.dataKey} style={{ color: p.color, fontFamily: 'var(--text-mono)', marginBottom: 2 }}>
+        <div key={p.dataKey} style={{ color: p.color, fontFamily: 'JetBrains Mono', monospace, marginBottom: 2 }}>
           {p.name}: {sym}{Number(p.value).toLocaleString('en-IN')}
         </div>
       ))}
@@ -122,11 +121,9 @@ export default function PortfolioChart() {
 
   const refetchMs = isIntraday ? (TF_INTERVAL_MS[tf] || 60_000) : false;
 
-  // Persist snapshots across page navigations via sessionStorage
   const snapshotsRef = useRef(loadSnapshots());
   const [tickCount, setTickCount] = useState(snapshotsRef.current.length);
 
-  // Historical data query (non-intraday)
   const { data: histData = [], isLoading: histLoading } = useQuery({
     queryKey: ['portfolio-series', from, today],
     queryFn: () => statsApi.portfolioSeries(from, today),
@@ -134,7 +131,6 @@ export default function PortfolioChart() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Live queries for intraday mode
   const { data: openTrades = [] } = useQuery({
     queryKey: ['trades', { status: 'open' }],
     queryFn: () => tradesApi.list({ status: 'open' }),
@@ -178,8 +174,6 @@ export default function PortfolioChart() {
     const timeKey = snapTimeKey(tf);
     const point = { time: timeKey, portfolio: Math.round(invested + unrealized + realized), invested: Math.round(invested), realizedPnl: Math.round(realized) };
     const prev = snapshotsRef.current;
-    // Replace last snapshot if same time-bucket (e.g. prices just arrived in same minute),
-    // otherwise append a new point.
     const next = prev.length > 0 && prev[prev.length - 1].time === timeKey
       ? [...prev.slice(0, -1), point]
       : [...prev, point];
@@ -188,14 +182,12 @@ export default function PortfolioChart() {
     setTickCount(c => c + 1);
   }, [openTrades, livePrices, allTimeStats, tf]);
 
-  // Append snapshot each time live prices refresh
   useEffect(() => {
     if (!isIntraday) return;
     appendSnapshot();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUpdatedAt, allTimeStats?.total_pnl, isIntraday]);
 
-  // Immediately show a snapshot when switching to intraday (uses cached data, no 60s wait)
   useEffect(() => {
     if (isIntraday) appendSnapshot();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,23 +198,23 @@ export default function PortfolioChart() {
   const noData = chartData.length === 0;
 
   const selectStyle = {
-    background: 'var(--bg-card)',
-    color: 'var(--text-primary)',
-    border: '1px solid var(--border)',
-    borderRadius: 6,
-    padding: '4px 10px',
+    background: '#111111',
+    color: '#ffffff',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 9999,
+    padding: '6px 14px',
     fontSize: 13,
     cursor: 'pointer',
     outline: 'none',
   };
 
   return (
-    <div className="card" style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Portfolio Equity Curve</div>
+    <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: '20px 24px', marginBottom: 24, background: '#111111' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff' }}>Portfolio Equity Curve</div>
           {isIntraday && (
-            <span style={{ fontSize: 11, background: 'var(--green)', color: '#000', borderRadius: 4, padding: '2px 7px', fontWeight: 600 }}>
+            <span style={{ fontSize: 11, background: '#22ff88', color: '#000', borderRadius: 9999, padding: '3px 10px', fontWeight: 700 }}>
               LIVE
             </span>
           )}
@@ -239,9 +231,9 @@ export default function PortfolioChart() {
       </div>
 
       {isLoading ? (
-        <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>Loading…</div>
+        <div style={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b' }}>Loading…</div>
       ) : noData ? (
-        <div style={{ height: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13, gap: 8 }}>
+        <div style={{ height: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#52525b', fontSize: 13, gap: 8 }}>
           {isIntraday ? (
             <>
               <div>Building live chart…</div>
@@ -254,23 +246,23 @@ export default function PortfolioChart() {
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" opacity={0.4} />
             <XAxis
               dataKey={isIntraday ? 'time' : 'date'}
               tickFormatter={isIntraday ? (t => t) : (d => fmtDate(d, tf))}
-              tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
+              tick={{ fontSize: 11, fill: '#52525b' }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
               tickFormatter={fmtY(sym)}
-              tick={{ fontSize: 11, fill: 'var(--text-dim)' }}
+              tick={{ fontSize: 11, fill: '#52525b' }}
               axisLine={false}
               tickLine={false}
               width={64}
             />
             <Tooltip content={<CustomTooltip sym={sym} />} />
-            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8, color: '#71717a' }} />
             <Area
               type="monotone"
               dataKey="portfolio"

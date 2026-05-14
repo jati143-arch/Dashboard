@@ -59,7 +59,7 @@ function TopNav({ onToggle }) {
           <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px -3px var(--color-accent)' }}>
             <LayoutDashboard className="w-4 h-4 text-black" />
           </div>
-          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>NEXUS</span>
+          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>DASHBOARD</span>
           <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.15)', color: 'var(--color-accent-secondary)', fontFamily: 'var(--font-mono)' }}>LIVE</span>
         </div>
 

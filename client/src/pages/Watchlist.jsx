@@ -38,21 +38,65 @@ export default function Watchlist() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Watchlist</h1>
-        <button onClick={() => setShowCreate(v => !v)}
-          style={{ padding: '7px 14px', background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff' }}>Watchlist</h1>
+        <button
+          onClick={() => setShowCreate(v => !v)}
+          style={{
+            padding: '10px 20px',
+            background: '#ffffff',
+            border: 'none',
+            borderRadius: '9999px',
+            color: '#050505',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Inter', system-ui, sans-serif",
+          }}
+        >
           + New List
         </button>
       </div>
 
       {showCreate && (
-        <div className="card" style={{ padding: '14px 20px' }}>
+        <div style={{
+          padding: '20px 28px',
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 24,
+        }}>
           <form onSubmit={e => { e.preventDefault(); if (newName.trim()) create.mutate(); }}
             style={{ display: 'flex', gap: 8 }}>
-            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="List name"
-              style={{ flex: 1, padding: '6px 10px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 13 }} />
-            <button type="submit" disabled={!newName.trim() || create.isPending}
-              style={{ padding: '6px 14px', background: 'var(--accent)', border: 'none', borderRadius: 'var(--radius)', color: '#fff', cursor: 'pointer' }}>
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              placeholder="List name"
+              style={{
+                flex: 1,
+                padding: '8px 14px',
+                background: '#050505',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 24,
+                color: '#ffffff',
+                fontSize: 13,
+                fontFamily: "'Inter', system-ui, sans-serif",
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!newName.trim() || create.isPending}
+              style={{
+                padding: '8px 20px',
+                background: '#22ff88',
+                border: 'none',
+                borderRadius: '9999px',
+                color: '#050505',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: 13,
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+            >
               Create
             </button>
           </form>
@@ -60,38 +104,79 @@ export default function Watchlist() {
       )}
 
       {isLoading ? (
-        <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading…</div>
+        <div style={{ color: '#52525b', fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>
       ) : lists.length === 0 ? (
-        <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+        <div style={{
+          padding: 40,
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 24,
+          textAlign: 'center',
+          color: '#52525b',
+          fontSize: 13,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           No watchlists yet. Create one to start tracking symbols.
         </div>
       ) : (
         <>
-          {/* Tab bar */}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+          {/* Tab bar - pill style */}
+          <div style={{
+            display: 'flex',
+            gap: 6,
+            flexWrap: 'wrap',
+            padding: 4,
+            background: '#0a0a0a',
+            borderRadius: '9999px',
+            border: '1px solid rgba(255,255,255,0.06)',
+            width: 'fit-content',
+          }}>
             {lists.map(l => (
-              <button key={l.id}
+              <button
+                key={l.id}
                 onClick={() => setActiveId(l.id)}
                 style={{
-                  padding: '8px 14px', border: 'none', borderBottom: l.id === activeList?.id ? '2px solid var(--accent)' : '2px solid transparent',
-                  background: 'transparent', cursor: 'pointer',
-                  color: l.id === activeList?.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontWeight: l.id === activeList?.id ? 600 : 400, fontSize: 13,
-                  borderRadius: 0,
-                }}>
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  background: l.id === activeList?.id ? '#ffffff' : 'transparent',
+                  cursor: 'pointer',
+                  color: l.id === activeList?.id ? '#050505' : '#71717a',
+                  fontWeight: l.id === activeList?.id ? 600 : 400,
+                  fontSize: 13,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
                 {l.name}
-                <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-dim)' }}>({l.symbols?.length || 0})</span>
+                <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.7 }}>({l.symbols?.length || 0})</span>
               </button>
             ))}
           </div>
 
           {/* Active list */}
           {activeList && (
-            <div className="card" style={{ padding: '16px 20px' }}>
+            <div style={{
+              padding: '20px 28px',
+              background: '#111111',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 24,
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{activeList.name}</span>
-                <button onClick={() => remove.mutate(activeList.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', fontSize: 12 }}>
+                <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff' }}>{activeList.name}</span>
+                <button
+                  onClick={() => remove.mutate(activeList.id)}
+                  style={{
+                    background: 'none',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: '9999px',
+                    cursor: 'pointer',
+                    color: '#ff4444',
+                    fontSize: 12,
+                    padding: '6px 14px',
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                  }}
+                >
                   Delete list
                 </button>
               </div>

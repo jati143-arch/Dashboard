@@ -29,12 +29,10 @@ export default function PnlHeatmap() {
   const { cells, weeks, monthLabels, maxAbs } = useMemo(() => {
     const map = new Map(series.map(r => [r.date, { pnl: r.pnl, trades: r.trades }]));
 
-    // Build 52-week grid ending today
     const end = new Date();
     end.setHours(0, 0, 0, 0);
     const start = new Date(end);
     start.setDate(start.getDate() - 52 * 7 + 1);
-    // align start to Sunday
     start.setDate(start.getDate() - start.getDay());
 
     const allDays = [];
@@ -48,13 +46,11 @@ export default function PnlHeatmap() {
 
     const mx = series.reduce((acc, r) => Math.max(acc, Math.abs(r.pnl || 0)), 0);
 
-    // Group into weeks (columns)
     const cols = [];
     for (let i = 0; i < allDays.length; i += 7) {
       cols.push(allDays.slice(i, i + 7));
     }
 
-    // Month labels: find first week where the month changes
     const labels = [];
     let lastMonth = -1;
     cols.forEach((week, wi) => {
@@ -71,7 +67,7 @@ export default function PnlHeatmap() {
 
   if (isLoading) {
     return (
-      <div className="card" style={{ marginBottom: 24, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+      <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, marginBottom: 24, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', background: '#111111', padding: '20px 24px' }}>
         Loading heatmap…
       </div>
     );
@@ -79,33 +75,30 @@ export default function PnlHeatmap() {
 
   if (series.length === 0) {
     return (
-      <div className="card" style={{ marginBottom: 24, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+      <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, marginBottom: 24, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#52525b', fontSize: 13, background: '#111111', padding: '20px 24px' }}>
         No trade data for heatmap
       </div>
     );
   }
 
-  const cellSize = 13;
-  const gap = 2;
+  const cellSize = 14;
+  const gap = 3;
 
   return (
-    <div className="card" style={{ marginBottom: 24, overflowX: 'auto' }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>P&L Calendar</div>
+    <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, marginBottom: 24, padding: '20px 24px', background: '#111111', overflowX: 'auto' }}>
+      <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff', marginBottom: 16 }}>P&L Calendar</div>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        {/* Day labels */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap, paddingTop: 18 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap, paddingTop: 20 }}>
           {DAYS.map((day, i) => (
-            <div key={day} style={{ height: cellSize, fontSize: 9, color: 'var(--text-dim)', lineHeight: `${cellSize}px`, width: 22, textAlign: 'right' }}>
+            <div key={day} style={{ height: cellSize, fontSize: 9, color: '#52525b', lineHeight: `${cellSize}px`, width: 24, textAlign: 'right' }}>
               {i % 2 === 1 ? day.slice(0, 1) : ''}
             </div>
           ))}
         </div>
 
-        {/* Grid */}
         <div>
-          {/* Month labels */}
-          <div style={{ display: 'flex', gap, marginBottom: 4, position: 'relative', height: 16 }}>
+          <div style={{ display: 'flex', gap, marginBottom: 6, position: 'relative', height: 16 }}>
             {monthLabels.map(({ col, label }) => (
               <div
                 key={`${col}-${label}`}
@@ -113,7 +106,7 @@ export default function PnlHeatmap() {
                   position: 'absolute',
                   left: col * (cellSize + gap),
                   fontSize: 10,
-                  color: 'var(--text-dim)',
+                  color: '#52525b',
                 }}
               >
                 {label}
@@ -121,7 +114,6 @@ export default function PnlHeatmap() {
             ))}
           </div>
 
-          {/* Week columns */}
           <div style={{ display: 'flex', gap }}>
             {cells.map((week, wi) => (
               <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap }}>
@@ -136,7 +128,7 @@ export default function PnlHeatmap() {
                       style={{
                         width: cellSize,
                         height: cellSize,
-                        borderRadius: 2,
+                        borderRadius: 3,
                         background: bg,
                         cursor: 'default',
                       }}
@@ -148,13 +140,12 @@ export default function PnlHeatmap() {
           </div>
         </div>
 
-        {/* Legend */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: 18, gap: 4, marginLeft: 12 }}>
-          <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 2 }}>Less</div>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: 20, gap: 5, marginLeft: 14 }}>
+          <div style={{ fontSize: 9, color: '#52525b', marginBottom: 2 }}>Less</div>
           {[0.1, 0.3, 0.6, 1.0].map(i => (
-            <div key={i} style={{ width: cellSize, height: cellSize, borderRadius: 2, background: colorForPnl(i * maxAbs, maxAbs) }} />
+            <div key={i} style={{ width: cellSize, height: cellSize, borderRadius: 3, background: colorForPnl(i * maxAbs, maxAbs) }} />
           ))}
-          <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>More</div>
+          <div style={{ fontSize: 9, color: '#52525b', marginTop: 2 }}>More</div>
         </div>
       </div>
     </div>

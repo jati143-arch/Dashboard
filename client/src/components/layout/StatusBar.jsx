@@ -52,7 +52,7 @@ export default function StatusBar() {
       <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
       <span style={{ letterSpacing: '0.04em' }}>{time}</span>
       <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
-      <span style={{ color: 'var(--color-text-dim)', fontFamily: 'var(--font-sans)', letterSpacing: '0.02em' }}>NEXUS TRADING DASHBOARD</span>
+      <span style={{ color: 'var(--color-text-dim)', fontFamily: 'var(--font-sans)', letterSpacing: '0.02em' }}>DASHBOARD TRADING</span>
     </div>
   );
 }

@@ -52,53 +52,138 @@ export default function Settings() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  const labelStyle = { fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6, display: 'block' };
-  const hintStyle  = { fontSize: 11, color: 'var(--text-dim)', marginTop: 4 };
+  const labelStyle = {
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#52525b',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    marginBottom: 8,
+    display: 'block',
+    fontFamily: "'Inter', system-ui, sans-serif",
+  };
+  const hintStyle = {
+    fontSize: 11,
+    color: '#52525b',
+    marginTop: 6,
+    fontFamily: "'Inter', system-ui, sans-serif",
+  };
 
-  if (isLoading) return <div style={{ color: 'var(--text-dim)', padding: 20, fontSize: 13 }}>Loading…</div>;
+  const inputStyle = {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '10px 14px',
+    background: '#050505',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: 24,
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: "'JetBrains Mono', monospace",
+    outline: 'none',
+  };
+
+  if (isLoading) return <div style={{ color: '#52525b', padding: 24, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>;
 
   return (
-    <div style={{ maxWidth: 640 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 4px', color: 'var(--text-primary)' }}>Settings</h2>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+    <div style={{ maxWidth: 680 }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', color: '#ffffff', fontFamily: "'Inter', system-ui, sans-serif" }}>Settings</h2>
+        <p style={{ fontSize: 13, color: '#71717a', margin: 0, fontFamily: "'Inter', system-ui, sans-serif" }}>
           Your API keys are stored securely in your own Google Drive — only you can access them.
         </p>
       </div>
 
       {toast && (
-        <div style={{ background: toast.type === 'success' ? 'var(--green-dim, #1a2e1a)' : 'var(--red-dim)', border: `1px solid ${toast.type === 'success' ? 'var(--green)' : 'var(--red)'}`, borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 13, color: toast.type === 'success' ? 'var(--green)' : 'var(--red)', marginBottom: 16 }}>
+        <div style={{
+          background: toast.type === 'success' ? 'rgba(34,255,136,0.12)' : 'rgba(255,68,68,0.12)',
+          border: `1px solid ${toast.type === 'success' ? '#22ff88' : '#ff4444'}`,
+          borderRadius: 24,
+          padding: '12px 18px',
+          fontSize: 13,
+          color: toast.type === 'success' ? '#22ff88' : '#ff4444',
+          marginBottom: 20,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           {toast.type === 'success' ? '✓' : '⚠'} {toast.msg}
         </div>
       )}
 
-      {/* AI Provider */}
-      <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--accent)' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+      {/* AI Provider - pill radio buttons */}
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 16,
+        borderLeft: '3px solid #22ff88',
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#52525b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          marginBottom: 16,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           AI Provider
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
           {PROVIDERS.map(p => (
-            <label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius)', border: `1px solid ${form.ai_provider === p.id ? 'var(--accent)' : 'var(--border)'}`, background: form.ai_provider === p.id ? 'var(--bg-card)' : 'transparent', cursor: 'pointer' }}>
-              <input type="radio" name="ai_provider" value={p.id} checked={form.ai_provider === p.id} onChange={e => setForm(f => ({ ...f, ai_provider: e.target.value }))} style={{ marginTop: 2, accentColor: 'var(--accent)' }} />
+            <label
+              key={p.id}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+                padding: '14px 18px',
+                borderRadius: 24,
+                border: `1px solid ${form.ai_provider === p.id ? '#22ff88' : 'rgba(255,255,255,0.06)'}`,
+                background: form.ai_provider === p.id ? 'rgba(34,255,136,0.08)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              <input
+                type="radio"
+                name="ai_provider"
+                value={p.id}
+                checked={form.ai_provider === p.id}
+                onChange={e => setForm(f => ({ ...f, ai_provider: e.target.value }))}
+                style={{ marginTop: 4, accentColor: '#22ff88', width: 16, height: 16 }}
+              />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{p.sub}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#ffffff', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>{p.label}</div>
+                <div style={{ fontSize: 11, color: '#52525b', fontFamily: "'Inter', system-ui, sans-serif" }}>{p.sub}</div>
               </div>
             </label>
           ))}
         </div>
-        <div style={{ ...hintStyle, marginTop: 8 }}>
+        <div style={{ ...hintStyle, marginTop: 12 }}>
           Leave unselected for auto-detection (Groq → Claude → Gemini → OpenRouter).
         </div>
       </div>
 
       {/* API Keys — AI */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 16,
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#52525b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          marginBottom: 16,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           AI API Keys
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {KEY_INPUTS.filter(k => k.provider).map(({ field, label, placeholder, url }) => (
             <div key={field}>
               <label style={labelStyle}>{label}</label>
@@ -107,11 +192,11 @@ export default function Settings() {
                 value={form[field]}
                 onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
                 placeholder={form[field] ? '' : placeholder}
-                style={{ width: '100%', boxSizing: 'border-box' }}
+                style={inputStyle}
                 autoComplete="off"
               />
               <div style={hintStyle}>
-                Get your key at <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
+                Get your key at <a href={url} target="_blank" rel="noreferrer" style={{ color: '#22ff88', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
                 {' · '}Leave blank to keep existing key. Clear and save to remove it.
               </div>
             </div>
@@ -120,11 +205,25 @@ export default function Settings() {
       </div>
 
       {/* API Keys — Data */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 20,
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: '#52525b',
+          textTransform: 'uppercase',
+          letterSpacing: '0.12em',
+          marginBottom: 16,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           Data API Keys
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {KEY_INPUTS.filter(k => !k.provider).map(({ field, label, placeholder, url }) => (
             <div key={field}>
               <label style={labelStyle}>{label}</label>
@@ -133,11 +232,11 @@ export default function Settings() {
                 value={form[field]}
                 onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
                 placeholder={form[field] ? '' : placeholder}
-                style={{ width: '100%', boxSizing: 'border-box' }}
+                style={inputStyle}
                 autoComplete="off"
               />
               <div style={hintStyle}>
-                Get your key at <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
+                Get your key at <a href={url} target="_blank" rel="noreferrer" style={{ color: '#22ff88', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
                 {' · '}Both are free with no payment required.
               </div>
             </div>
@@ -146,30 +245,61 @@ export default function Settings() {
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <button className="btn-primary" onClick={() => save()} disabled={saving}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => save()}
+          disabled={saving}
+          style={{
+            padding: '12px 24px',
+            background: '#ffffff',
+            border: 'none',
+            borderRadius: 9999,
+            color: '#050505',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Inter', system-ui, sans-serif",
+          }}
+        >
           {saving ? 'Saving…' : '✓ Save Settings'}
         </button>
         <button
-          className="btn-secondary"
           onClick={() => { setTestResult(null); testAI(); }}
           disabled={testing}
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', cursor: 'pointer', padding: '8px 14px', borderRadius: 'var(--radius)', fontSize: 13 }}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.06)',
+            color: '#ffffff',
+            cursor: 'pointer',
+            padding: '12px 24px',
+            borderRadius: 9999,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Inter', system-ui, sans-serif",
+          }}
         >
           {testing ? 'Testing…' : '⚡ Test AI Connection'}
         </button>
       </div>
 
       {testResult && (
-        <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 'var(--radius)', border: `1px solid ${testResult.ok ? 'var(--green, #4ade80)' : 'var(--red)'}`, background: testResult.ok ? 'var(--green-dim, #1a2e1a)' : 'var(--red-dim)', fontSize: 13 }}>
+        <div style={{
+          marginTop: 16,
+          padding: '14px 20px',
+          borderRadius: 24,
+          border: `1px solid ${testResult.ok ? '#22ff88' : '#ff4444'}`,
+          background: testResult.ok ? 'rgba(34,255,136,0.08)' : 'rgba(255,68,68,0.08)',
+          fontSize: 13,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}>
           {testResult.ok ? (
             <>
-              <span style={{ color: 'var(--green, #4ade80)', fontWeight: 600 }}>✓ Connected</span>
-              <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>{testResult.provider} · {testResult.model}</span>
-              <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>{testResult.response}</div>
+              <span style={{ color: '#22ff88', fontWeight: 700 }}>✓ Connected</span>
+              <span style={{ color: '#71717a', marginLeft: 10 }}>{testResult.provider} · {testResult.model}</span>
+              <div style={{ color: '#71717a', marginTop: 6, fontStyle: 'italic' }}>{testResult.response}</div>
             </>
           ) : (
-            <span style={{ color: 'var(--red)' }}>⚠ {testResult.error}</span>
+            <span style={{ color: '#ff4444' }}>⚠ {testResult.error}</span>
           )}
         </div>
       )}

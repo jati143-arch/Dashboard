@@ -34,14 +34,13 @@ export default function MarketTicker() {
     return { label, price: p?.price, change: p?.change, changePct: p?.changePercent };
   });
 
-  // Duplicate for seamless loop
   const both = [...items, ...items];
 
   return (
     <div style={{
       height: 32,
-      background: 'var(--bg-card)',
-      borderBottom: '1px solid var(--border)',
+      background: '#0a0a0a',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
       overflow: 'hidden',
       flexShrink: 0,
       display: 'flex',
@@ -63,15 +62,15 @@ export default function MarketTicker() {
       <div className="ticker-inner">
         {both.map(({ label, price, change, changePct }, i) => {
           const up = change == null ? null : change >= 0;
-          const color = up === null ? 'var(--text-dim)' : up ? 'var(--green)' : 'var(--red)';
+          const color = up === null ? '#52525b' : up ? '#22ff88' : '#ff4444';
           return (
-            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 20px', borderRight: '1px solid var(--border)', fontSize: 11 }}>
-              <span style={{ color: 'var(--text-dim)', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
-              <span style={{ fontFamily: 'var(--text-mono)', color: 'var(--text-primary)' }}>
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 20px', borderRight: '1px solid rgba(255,255,255,0.06)', fontSize: 11 }}>
+              <span style={{ color: '#52525b', fontWeight: 600, letterSpacing: '0.05em' }}>{label}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: '#ffffff' }}>
                 {price != null ? fmt(price) : '—'}
               </span>
               {changePct != null && (
-                <span style={{ fontFamily: 'var(--text-mono)', color, fontSize: 10 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', color, fontSize: 10 }}>
                   {changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%
                 </span>
               )}
