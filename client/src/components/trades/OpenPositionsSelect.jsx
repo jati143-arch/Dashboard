@@ -52,7 +52,7 @@ export default function OpenPositionsSelect({ value, onSelect }) {
       {open && filtered.length > 0 && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          background: 'var(--color-bg-card)', border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
           maxHeight: 240, overflowY: 'auto', marginTop: 2,
         }}>
@@ -71,11 +71,11 @@ export default function OpenPositionsSelect({ value, onSelect }) {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--text-primary)' }}>{t.symbol}</span>
+                  <span style={{ fontFamily: 'var(--color-text-mono)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{t.symbol}</span>
                   <span className={`badge badge-${t.instrument_type}`} style={{ fontSize: 9 }}>{t.instrument_type}</span>
                   <span className={`badge badge-${t.direction}`} style={{ fontSize: 9 }}>{t.direction}</span>
                 </div>
-                <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, color: 'var(--yellow)' }}>
+                <span style={{ fontFamily: 'var(--color-text-mono)', fontSize: 12, color: 'var(--color-yellow)' }}>
                   {remaining} shares
                 </span>
               </div>
@@ -86,9 +86,9 @@ export default function OpenPositionsSelect({ value, onSelect }) {
       {open && filtered.length === 0 && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          background: 'var(--color-bg-card)', border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius)', padding: '12px 14px',
-          fontSize: 12, color: 'var(--text-dim)', marginTop: 2,
+          fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2,
         }}>
           {openTrades.length === 0 ? 'No open positions' : 'No match'}
         </div>

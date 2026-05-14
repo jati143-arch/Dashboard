@@ -3,6 +3,7 @@
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --color-text-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 
   --color-bg-base: #050505;
   --color-bg-surface: #0a0a0a;
@@ -21,6 +22,8 @@
   --color-purple: #a78bfa;
   --color-rose: #f472b6;
   --color-orange: #fb923c;
+
+  --radius: 24px;
 
   --color-green: #22ff88;
   --color-red: #ff4444;

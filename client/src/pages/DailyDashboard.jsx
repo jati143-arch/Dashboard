@@ -173,11 +173,11 @@ export default function DailyDashboard() {
             lesson={daily?.lesson_of_day || ''}
           />
           {daily?.ai_insight && (
-            <div className="card" style={{ marginTop: 8, borderLeft: '3px solid var(--accent)' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+            <div className="card" style={{ marginTop: 8, borderLeft: '3px solid var(--color-accent)' }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                 ✦ AI Insight — {selectedDate}
               </div>
-              <pre style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+              <pre style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--color-text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                 {daily.ai_insight}
               </pre>
             </div>

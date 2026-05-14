@@ -184,10 +184,10 @@ function ScoreBar({ score, max = 8 }) {
   const color = score > 2 ? '#00ff88' : score < -2 ? '#ff3355' : '#ffd700';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-      <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 6, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s' }} />
       </div>
-      <span style={{ fontFamily: 'var(--text-mono)', fontSize: 11, color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: 'var(--color-text-mono)', fontSize: 11, color: 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
         {score > 0 ? '+' : ''}{score} / {max}
       </span>
     </div>
@@ -197,8 +197,8 @@ function ScoreBar({ score, max = 8 }) {
 function SectionToggle({ label, open, onToggle }) {
   return (
     <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 0', userSelect: 'none' }}>
-      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
-      <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{open ? '▼' : '▶'}</span>
+      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</span>
+      <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>{open ? '▼' : '▶'}</span>
     </div>
   );
 }
@@ -206,17 +206,17 @@ function SectionToggle({ label, open, onToggle }) {
 // Indicator toggle pill: colored dot + label + optional period input
 function IndToggle({ id, label, active, color, period, onToggle, onPeriod, extraPeriods }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: active ? 'rgba(255,255,255,0.06)' : 'none', border: `1px solid ${active ? color : 'var(--border)'}`, borderRadius: 4, padding: '2px 6px', cursor: 'pointer', userSelect: 'none' }}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: active ? 'rgba(255,255,255,0.06)' : 'none', border: `1px solid ${active ? color : 'var(--color-border)'}`, borderRadius: 4, padding: '2px 6px', cursor: 'pointer', userSelect: 'none' }}
       onClick={onToggle}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: active ? color : 'var(--text-dim)', flexShrink: 0, display: 'inline-block' }} />
-      <span style={{ fontSize: 10, color: active ? color : 'var(--text-dim)', fontWeight: active ? 600 : 400 }}>{label}</span>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: active ? color : 'var(--color-text-dim)', flexShrink: 0, display: 'inline-block' }} />
+      <span style={{ fontSize: 10, color: active ? color : 'var(--color-text-dim)', fontWeight: active ? 600 : 400 }}>{label}</span>
       {active && onPeriod && (
         <input
           type="number" min={2} max={500}
           value={period}
           onChange={e => onPeriod(Math.max(2, Math.min(500, +e.target.value)))}
           onClick={e => e.stopPropagation()}
-          style={{ width: 36, fontSize: 10, padding: '0 3px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text-primary)', textAlign: 'center' }}
+          style={{ width: 36, fontSize: 10, padding: '0 3px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 3, color: 'var(--color-text-primary)', textAlign: 'center' }}
         />
       )}
       {active && extraPeriods && extraPeriods}
@@ -245,24 +245,24 @@ function SignalPanel({ symbol }) {
   const hasLux = data?.lux && (data.lux.sfp || data.lux.bsl || data.lux.ssl || data.lux.bullOB || data.lux.bearOB);
 
   return (
-    <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
+    <div style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-card)', flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', cursor: 'pointer', userSelect: 'none' }}>
         <div onClick={() => setOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>◈ Signal Analysis</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>◈ Signal Analysis</span>
           {data && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
               {data.signal}
             </span>
           )}
-          {isLoading && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Analysing…</span>}
-          {isError && <span style={{ fontSize: 11, color: 'var(--red)' }}>Failed to load</span>}
+          {isLoading && <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Analysing…</span>}
+          {isError && <span style={{ fontSize: 11, color: 'var(--color-red)' }}>Failed to load</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {data && (
             <button onClick={e => { e.stopPropagation(); speakSignal(data, symbol); }} title="Read signal aloud"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--text-dim)', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--color-text-dim)', padding: '2px 4px', lineHeight: 1 }}>🔊</button>
           )}
-          <span onClick={() => setOpen(o => !o)} style={{ fontSize: 12, color: 'var(--text-dim)' }}>{open ? '▼' : '▲'}</span>
+          <span onClick={() => setOpen(o => !o)} style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>{open ? '▼' : '▲'}</span>
         </div>
       </div>
 
@@ -271,8 +271,8 @@ function SignalPanel({ symbol }) {
           {/* LEFT */}
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-              <span style={{ fontFamily: 'var(--text-mono)', fontSize: 20, fontWeight: 700, color: s.color }}>{data.signal}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Confidence: {data.confidence}</span>
+              <span style={{ fontFamily: 'var(--color-text-mono)', fontSize: 20, fontWeight: 700, color: s.color }}>{data.signal}</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Confidence: {data.confidence}</span>
             </div>
             <ScoreBar score={data.score} max={data.maxScore} />
 
@@ -281,16 +281,16 @@ function SignalPanel({ symbol }) {
               {showReasons && (
                 <div style={{ marginTop: 4 }}>
                   {data.reasons.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                    <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, fontSize: 12, color: 'var(--color-text-primary)', lineHeight: 1.4 }}>
                       <span style={{ color: data.isBuy ? '#00ff88' : '#ff3355', flexShrink: 0 }}>{data.isBuy ? '✓' : '✗'}</span>
                       <span>{r}</span>
                     </div>
                   ))}
                   {data.risks.length > 0 && (
                     <div style={{ marginTop: 6 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Risks / Counter</div>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Risks / Counter</div>
                       {data.risks.slice(0, 2).map((r, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
                           <span style={{ color: '#ffd700', flexShrink: 0 }}>⚠</span>
                           <span>{r}</span>
                         </div>
@@ -305,7 +305,7 @@ function SignalPanel({ symbol }) {
               <div style={{ marginTop: 10 }}>
                 <SectionToggle label="◈ Smart Money" open={showSmartMoney} onToggle={() => setShowSmartMoney(o => !o)} />
                 {showSmartMoney && (
-                  <div style={{ marginTop: 4, padding: '6px 8px', background: 'var(--bg-base)', borderRadius: 5, fontSize: 11 }}>
+                  <div style={{ marginTop: 4, padding: '6px 8px', background: 'var(--color-bg-base)', borderRadius: 5, fontSize: 11 }}>
                     {data.lux.sfp && <div style={{ color: data.lux.sfp === 'bullish' ? '#00ff88' : '#ff3355', marginBottom: 3 }}>SFP: {data.lux.sfp} — stop hunt detected</div>}
                     {data.lux.bsl && <div style={{ color: '#ff7850', marginBottom: 3 }}>BSL (equal highs): {data.lux.bsl}</div>}
                     {data.lux.ssl && <div style={{ color: '#00ccff', marginBottom: 3 }}>SSL (equal lows): {data.lux.ssl}</div>}
@@ -324,18 +324,18 @@ function SignalPanel({ symbol }) {
               <>
                 {data.entryType && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8, marginTop: 4 }}>
-                    <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '6px 8px' }}>
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Entry Type</div>
+                    <div style={{ background: 'var(--color-bg-base)', borderRadius: 6, padding: '6px 8px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Entry Type</div>
                       <div style={{ fontSize: 10, fontWeight: 700, color: data.entryType.includes('Breakout') || data.entryType.includes('Breakdown') || data.entryType.includes('Enter Now') ? '#00ff88' : data.entryType.includes('Market') ? '#aaa' : '#ffd700' }}>
                         {data.entryType}
                       </div>
                     </div>
                     <div style={{ background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 6, padding: '6px 8px' }}>
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Suggested Entry</div>
-                      <div style={{ fontFamily: 'var(--text-mono)', fontSize: 13, fontWeight: 700, color: '#ffd700' }}>{data.suggestedEntry}</div>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Suggested Entry</div>
+                      <div style={{ fontFamily: 'var(--color-text-mono)', fontSize: 13, fontWeight: 700, color: '#ffd700' }}>{data.suggestedEntry}</div>
                     </div>
-                    <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '6px 8px' }}>
-                      <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Position Size</div>
+                    <div style={{ background: 'var(--color-bg-base)', borderRadius: 6, padding: '6px 8px' }}>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Position Size</div>
                       <div style={{ fontSize: 10, fontWeight: 700, color: data.positionSize === 'Full' ? '#00ff88' : data.positionSize?.includes('75') ? '#00ccff' : '#ffd700' }}>
                         {data.positionSize}
                       </div>
@@ -343,13 +343,13 @@ function SignalPanel({ symbol }) {
                   </div>
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8, marginTop: 4 }}>
-                  <div style={{ background: 'var(--bg-base)', borderRadius: 6, padding: '8px 10px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Current Price</div>
-                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{data.price}</div>
+                  <div style={{ background: 'var(--color-bg-base)', borderRadius: 6, padding: '8px 10px' }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Current Price</div>
+                    <div style={{ fontFamily: 'var(--color-text-mono)', fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>{data.price}</div>
                   </div>
                   <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 6, padding: '8px 10px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Stop Loss</div>
-                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 14, fontWeight: 700, color: '#ff3355' }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Stop Loss</div>
+                    <div style={{ fontFamily: 'var(--color-text-mono)', fontSize: 14, fontWeight: 700, color: '#ff3355' }}>
                       {data.sl} <span style={{ fontSize: 10, opacity: 0.8 }}>({data.slPct}%)</span>
                     </div>
                   </div>
@@ -357,8 +357,8 @@ function SignalPanel({ symbol }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
                   {data.targets.map((t, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 5, padding: '5px 10px' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.label}</span>
-                      <span style={{ fontFamily: 'var(--text-mono)', fontSize: 12, fontWeight: 600, color: '#00ff88' }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{t.label}</span>
+                      <span style={{ fontFamily: 'var(--color-text-mono)', fontSize: 12, fontWeight: 600, color: '#00ff88' }}>
                         {t.price} <span style={{ fontSize: 10, opacity: 0.8 }}>(+{t.pct}%)</span>
                       </span>
                     </div>
@@ -378,9 +378,9 @@ function SignalPanel({ symbol }) {
                   { label: 'ATR 14', val: data.indicators.atr  },
                   { label: 'Vol ×',  val: data.indicators.volRatio, decimals: 1 },
                 ].map(({ label, val, color, decimals = 2 }) => (
-                  <div key={label} style={{ background: 'var(--bg-base)', borderRadius: 5, padding: '5px 8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-                    <div style={{ fontFamily: 'var(--text-mono)', fontSize: 11, fontWeight: 600, color: color || 'var(--text-primary)', marginTop: 2 }}>
+                  <div key={label} style={{ background: 'var(--color-bg-base)', borderRadius: 5, padding: '5px 8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--color-text-mono)', fontSize: 11, fontWeight: 600, color: color || 'var(--color-text-primary)', marginTop: 2 }}>
                       {val != null ? Number(val).toFixed(decimals) : '—'}
                     </div>
                   </div>
@@ -758,8 +758,8 @@ function LightweightChart({ symbol, entryPrice }) {
     return (
       <button onClick={() => setRange(r)} style={{
         background: active ? 'var(--accent-dim)' : 'none',
-        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+        border: `1px solid ${active ? 'var(--color-accent)' : 'var(--color-border)'}`,
+        color: active ? 'var(--color-accent)' : 'var(--color-text-secondary)',
         padding: '2px 7px', borderRadius: 4, cursor: 'pointer', fontSize: 11,
       }}>{label || r}</button>
     );
@@ -769,7 +769,7 @@ function LightweightChart({ symbol, entryPrice }) {
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Indicator toggle bar ─────────────────────────────────────────────── */}
-      <div style={{ padding: '4px 10px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ padding: '4px 10px', background: 'var(--color-bg-card)', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
         <IndToggle id="ema1" label={`EMA`} active={ind.ema1} color="#00aaff"
           onToggle={() => toggle('ema1')} period={per.ema1} onPeriod={v => period('ema1', v)} />
         <IndToggle id="ema2" label={`EMA`} active={ind.ema2} color="#ff9500"
@@ -779,39 +779,39 @@ function LightweightChart({ symbol, entryPrice }) {
         <IndToggle id="bb" label="BB" active={ind.bb} color="rgba(150,150,255,0.8)"
           onToggle={() => toggle('bb')} period={per.bb} onPeriod={v => period('bb', v)}
           extraPeriods={ind.bb && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 10, color: 'var(--text-dim)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 10, color: 'var(--color-text-dim)' }}>
               ×<input type="number" min={0.5} max={5} step={0.5} value={per.bbStd}
                 onChange={e => period('bbStd', +e.target.value)}
                 onClick={e => e.stopPropagation()}
-                style={{ width: 30, fontSize: 10, padding: '0 2px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text-primary)', textAlign: 'center' }} />
+                style={{ width: 30, fontSize: 10, padding: '0 2px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 3, color: 'var(--color-text-primary)', textAlign: 'center' }} />
             </span>
           )} />
         <IndToggle id="volume" label="Vol" active={ind.volume} color="rgba(150,150,150,0.7)"
           onToggle={() => toggle('volume')} />
-        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
+        <div style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 2px' }} />
         <IndToggle id="rsi" label="RSI" active={ind.rsi} color="#7b68ee"
           onToggle={() => toggle('rsi')} period={per.rsi} onPeriod={v => period('rsi', v)} />
         <IndToggle id="macd" label="MACD" active={ind.macd} color="#00aaff"
           onToggle={() => toggle('macd')}
           extraPeriods={ind.macd && (
-            <span style={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 9, color: 'var(--text-dim)' }} onClick={e => e.stopPropagation()}>
+            <span style={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 9, color: 'var(--color-text-dim)' }} onClick={e => e.stopPropagation()}>
               {[['macdFast', per.macdFast], ['macdSlow', per.macdSlow], ['macdSig', per.macdSig]].map(([k, v]) => (
                 <input key={k} type="number" min={2} max={100} value={v}
                   onChange={e => period(k, Math.max(2, +e.target.value))}
-                  style={{ width: 30, fontSize: 10, padding: '0 2px', background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text-primary)', textAlign: 'center' }} />
+                  style={{ width: 30, fontSize: 10, padding: '0 2px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 3, color: 'var(--color-text-primary)', textAlign: 'center' }} />
               ))}
             </span>
           )} />
-        <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
+        <div style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 2px' }} />
         <IndToggle id="vob" label="VOB" active={ind.vob} color="#089981"
           onToggle={() => toggle('vob')} period={per.vobSwing} onPeriod={v => period('vobSwing', v)} />
       </div>
 
       {/* ── Timeframe selector ───────────────────────────────────────────────── */}
-      <div style={{ padding: '4px 10px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ padding: '4px 10px', background: 'var(--color-bg-card)', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
         {isMobile ? (
           <select value={range} onChange={e => setRange(e.target.value)}
-            style={{ fontSize: 11, background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', padding: '2px 6px' }}>
+            style={{ fontSize: 11, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: 4, color: 'var(--color-text-primary)', padding: '2px 6px' }}>
             <optgroup label="Intraday">
               {INTRADAY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </optgroup>
@@ -821,19 +821,19 @@ function LightweightChart({ symbol, entryPrice }) {
           </select>
         ) : (
           <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 2 }}>Intraday</span>
+            <span style={{ fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 2 }}>Intraday</span>
             {INTRADAY_OPTIONS.map(o => <RangeBtn key={o.value} r={o.value} label={o.label} />)}
-            <span style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 4px' }} />
+            <span style={{ width: 1, height: 14, background: 'var(--color-border)', margin: '0 4px' }} />
             {CANDLE_OPTIONS.map(o => <RangeBtn key={o.value} r={o.value} label={o.label} />)}
-            <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 4 }}>Yahoo Finance</span>
+            <span style={{ fontSize: 9, color: 'var(--color-text-dim)', marginLeft: 4 }}>Yahoo Finance</span>
           </div>
         )}
       </div>
 
       {/* ── Main chart area ───────────────────────────────────────────────────── */}
-      {isLoading && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>Loading chart data…</div>}
-      {isError   && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)',      fontSize: 13 }}>Failed to load chart data</div>}
-      {!isLoading && !isError && candles.length === 0 && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>No chart data available</div>}
+      {isLoading && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>Loading chart data…</div>}
+      {isError   && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-red)',      fontSize: 13 }}>Failed to load chart data</div>}
+      {!isLoading && !isError && candles.length === 0 && <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>No chart data available</div>}
 
       {/* Chart + OHLC tooltip — flex column so chart div can use flex:1 for height */}
       <div style={{ flex: 1, minHeight: 0, display: candles.length > 0 && !isLoading && !isError ? 'flex' : 'none', flexDirection: 'column', position: 'relative' }}>
@@ -860,15 +860,15 @@ function LightweightChart({ symbol, entryPrice }) {
             position: 'absolute', top: 6, left: 6, zIndex: 10,
             background: 'rgba(0,0,0,0.72)', borderRadius: 4,
             padding: '3px 8px', pointerEvents: 'none',
-            fontFamily: 'var(--text-mono)', fontSize: 11,
+            fontFamily: 'var(--color-text-mono)', fontSize: 11,
             display: 'flex', gap: 10, alignItems: 'center',
             border: '1px solid rgba(255,255,255,0.08)',
           }}>
-            <span style={{ color: 'var(--text-dim)' }}>O</span><span style={{ color: 'var(--text-primary)' }}>{fmtNum(displayInfo.open)}</span>
-            <span style={{ color: 'var(--text-dim)' }}>H</span><span style={{ color: '#00ff88' }}>{fmtNum(displayInfo.high)}</span>
-            <span style={{ color: 'var(--text-dim)' }}>L</span><span style={{ color: '#ff3355' }}>{fmtNum(displayInfo.low)}</span>
-            <span style={{ color: 'var(--text-dim)' }}>C</span><span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{fmtNum(displayInfo.close)}</span>
-            <span style={{ color: 'var(--text-dim)' }}>Vol</span><span style={{ color: 'var(--text-secondary)' }}>{fmtVol(displayInfo.volume)}</span>
+            <span style={{ color: 'var(--color-text-dim)' }}>O</span><span style={{ color: 'var(--color-text-primary)' }}>{fmtNum(displayInfo.open)}</span>
+            <span style={{ color: 'var(--color-text-dim)' }}>H</span><span style={{ color: '#00ff88' }}>{fmtNum(displayInfo.high)}</span>
+            <span style={{ color: 'var(--color-text-dim)' }}>L</span><span style={{ color: '#ff3355' }}>{fmtNum(displayInfo.low)}</span>
+            <span style={{ color: 'var(--color-text-dim)' }}>C</span><span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{fmtNum(displayInfo.close)}</span>
+            <span style={{ color: 'var(--color-text-dim)' }}>Vol</span><span style={{ color: 'var(--color-text-secondary)' }}>{fmtVol(displayInfo.volume)}</span>
             {displayInfo.chg != null && (
               <span style={{ color: +displayInfo.chg >= 0 ? '#00ff88' : '#ff3355', fontWeight: 600 }}>
                 {+displayInfo.chg >= 0 ? '+' : ''}{displayInfo.chg}%
@@ -878,17 +878,17 @@ function LightweightChart({ symbol, entryPrice }) {
         )}
         {/* autoSize:true makes LW Charts observe this div's size automatically */}
         {isLoading && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>
             Loading chart data...
           </div>
         )}
         {isError && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-red)' }}>
             Failed: {error?.message || 'Unknown error'}
           </div>
         )}
         {!isLoading && !isError && candles.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)' }}>
             No data available for {symbol}
           </div>
         )}
@@ -899,7 +899,7 @@ function LightweightChart({ symbol, entryPrice }) {
 
       {/* ── RSI sub-pane ─────────────────────────────────────────────────────── */}
       {ind.rsi && candles.length > 0 && (
-        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
+        <div style={{ height: 110, borderTop: '1px solid var(--color-border)', position: 'relative', flexShrink: 0 }}>
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#7b68ee', zIndex: 1, fontWeight: 600 }}>RSI {per.rsi}</span>
           <div ref={rsiContainerRef} style={{ width: '100%', height: '100%' }} />
         </div>
@@ -907,7 +907,7 @@ function LightweightChart({ symbol, entryPrice }) {
 
       {/* ── MACD sub-pane ────────────────────────────────────────────────────── */}
       {ind.macd && candles.length > 0 && (
-        <div style={{ height: 110, borderTop: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
+        <div style={{ height: 110, borderTop: '1px solid var(--color-border)', position: 'relative', flexShrink: 0 }}>
           <span style={{ position: 'absolute', top: 3, left: 6, fontSize: 9, color: '#00aaff', zIndex: 1, fontWeight: 600 }}>
             MACD {per.macdFast}/{per.macdSlow}/{per.macdSig}
           </span>
@@ -1003,9 +1003,9 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
   }, [onClose]);
 
   const modeBadge = {
-    checking:    { bg: 'var(--bg-base)',              color: 'var(--text-dim)',    label: 'Checking…'    },
-    tv:          { bg: 'rgba(0,255,136,0.12)',         color: 'var(--green)',       label: 'TradingView'  },
-    lightweight: { bg: 'rgba(255,215,0,0.12)',         color: 'var(--yellow)',      label: 'Yahoo Charts' },
+    checking:    { bg: 'var(--color-bg-base)',              color: 'var(--color-text-dim)',    label: 'Checking…'    },
+    tv:          { bg: 'rgba(0,255,136,0.12)',         color: 'var(--color-green)',       label: 'TradingView'  },
+    lightweight: { bg: 'rgba(255,215,0,0.12)',         color: 'var(--color-yellow)',      label: 'Yahoo Charts' },
   }[chartMode];
 
   return (
@@ -1014,9 +1014,9 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', flexShrink: 0, gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'var(--color-bg-card)', borderBottom: '1px solid var(--color-border)', flexShrink: 0, gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>{symbol}</span>
+          <span style={{ fontFamily: 'var(--color-text-mono)', fontWeight: 700, fontSize: 16, color: 'var(--color-accent)' }}>{symbol}</span>
           <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 3, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', background: modeBadge.bg, color: modeBadge.color }}>
             {modeBadge.label}
           </span>
@@ -1024,21 +1024,21 @@ export default function ChartModal({ symbol, entryPrice, onClose }) {
             href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ fontSize: 10, color: 'var(--text-dim)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}
+            style={{ fontSize: 10, color: 'var(--color-text-dim)', textDecoration: 'none', border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}
             title="Open in TradingView"
           >↗ TV</a>
           {entryPrice != null && (
-            <span style={{ fontSize: 11, background: 'rgba(0,255,136,0.12)', color: 'var(--green)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--text-mono)', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 11, background: 'rgba(0,255,136,0.12)', color: 'var(--color-green)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--color-text-mono)', whiteSpace: 'nowrap' }}>
               Entry @ {entryPrice}
             </span>
           )}
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13, flexShrink: 0 }}>✕</button>
+        <button onClick={onClose} style={{ background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', cursor: 'pointer', borderRadius: 6, padding: '4px 10px', fontSize: 13, flexShrink: 0 }}>✕</button>
       </div>
 
       {/* Chart area */}
       {chartMode === 'checking' && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>
           Checking chart availability…
         </div>
       )}

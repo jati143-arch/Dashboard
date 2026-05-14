@@ -36,7 +36,7 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
   if (!trades.length) {
     return (
       <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Today's Trades</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Today's Trades</div>
         <div className="empty-state">No trades logged today yet.</div>
       </div>
     );
@@ -44,8 +44,8 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
 
   return (
     <div className="card" style={{ marginBottom: 24, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Today's Trades
         </span>
       </div>
@@ -74,14 +74,14 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
                     onClick={() => toggleBest(t.id)}
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                      fontSize: 16, color: t.is_best_trade ? 'var(--yellow)' : 'var(--text-dim)',
+                      fontSize: 16, color: t.is_best_trade ? 'var(--color-yellow)' : 'var(--color-text-dim)',
                     }}
                     title={t.is_best_trade ? 'Unmark best trade' : 'Mark as best trade'}
                   >★</button>
                 </td>
                 <td>
                   <span
-                    style={{ fontFamily: 'var(--text-mono)', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer' }}
+                    style={{ fontFamily: 'var(--color-text-mono)', fontWeight: 700, color: 'var(--color-accent)', cursor: 'pointer' }}
                     onClick={() => openChart(t.symbol, t.status === 'open' ? t.entry_price : null)}
                     title="View chart"
                   >{t.symbol}</span>
@@ -89,14 +89,14 @@ export default function TodayTradeTable({ trades, date, onEdit }) {
                 </td>
                 <td><span className={`badge badge-${t.direction}`}>{t.direction}</span></td>
                 <td className="mono">{cs}{t.entry_price}</td>
-                <td className="mono">{t.exit_price != null ? `${cs}${t.exit_price}` : <span style={{ color: 'var(--text-dim)' }}>open</span>}</td>
+                <td className="mono">{t.exit_price != null ? `${cs}${t.exit_price}` : <span style={{ color: 'var(--color-text-dim)' }}>open</span>}</td>
                 <td className="mono">{t.size}</td>
                 <td><PnlBadge value={t.pnl_dollar} showPercent percent={t.pnl_percent} cs={cs} /></td>
-                <td style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{t.pattern_tag || '—'}</td>
+                <td style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>{t.pattern_tag || '—'}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn-ghost" style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => onEdit(t)}>Edit</button>
-                    <button className="btn-danger" style={{ padding: '3px 8px', fontSize: 11, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)' }}
+                    <button className="btn-danger" style={{ padding: '3px 8px', fontSize: 11, background: 'transparent', color: 'var(--color-red)', border: '1px solid var(--color-red)' }}
                       onClick={() => { if (window.confirm('Delete this trade?')) remove(t.id); }}>✕</button>
                   </div>
                 </td>

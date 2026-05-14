@@ -9,7 +9,7 @@ export default function SparklineCell({ symbol }) {
     staleTime: 5 * 60_000,
   });
 
-  if (!data?.candles?.length) return <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>;
+  if (!data?.candles?.length) return <span style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>—</span>;
 
   const candles = data.candles.slice(-30);
   const first = candles[0].close;
