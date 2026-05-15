@@ -1,9 +1,11 @@
 require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
+const helmet   = require('helmet');
 const path     = require('path');
 const session  = require('express-session');
 const passport = require('passport');
+const rateLimit = require('express-rate-limit');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 
 // ── Passport / Google OAuth ───────────────────────────────────────────────────
@@ -54,6 +56,24 @@ const migrateRouter  = require('./routes/migrate');
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
+if (!process.env.SESSION_SECRET) {
+  console.error('[FATAL] SESSION_SECRET environment variable is not set. Set it before starting the server.');
+  process.exit(1);
+}
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
 // Trust Render/proxy so secure cookies work over HTTPS
 app.set('trust proxy', 1);
 
@@ -66,16 +86,47 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(null, true); // allow all in dev; tighten in prod if needed
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
 
-app.use(express.json());
+const ai = process.env.GROQ_API_KEY ? 'Groq (free)' : process.env.ANTHROPIC_API_KEY ? 'Claude' : 'NONE';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts.' },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'AI rate limit exceeded.' },
+});
+
+app.use('/api', apiLimiter);
+app.use('/auth', authLimiter);
+app.use('/api/ai', aiLimiter);
+
+app.use(express.json({ limit: '100kb' }));
 
 app.use(session({
-  secret:            process.env.SESSION_SECRET || 'trading-dashboard-secret',
+  secret:            process.env.SESSION_SECRET,
   resave:            false,
   saveUninitialized: false,
   cookie: {
@@ -118,7 +169,7 @@ app.use('/api/risk',       requireAuth, riskRouter);
 app.use('/api/settings',      requireAuth, settingsRouter);
 app.use('/api/fundamentals',  requireAuth, fundamentalsRouter);
 app.use('/api/screener',      requireAuth, screenerRouter);
-app.use('/api/python-data', pythonDataRouter);
+app.use('/api/python-data', requireAuth, pythonDataRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../client/dist');

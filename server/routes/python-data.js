@@ -15,7 +15,6 @@ function runPythonScript(args, timeoutMs = 25000) {
     let completed = false;
     const proc = spawn(PYTHON_PATH, [SCRIPT_PATH, ...args], {
       timeout: timeoutMs,
-      shell: true,
     });
 
     let stdout = '';

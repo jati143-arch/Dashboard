@@ -25,11 +25,10 @@ router.get('/callback',
 router.get('/me', (req, res) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   res.json({
-    id:          req.user.id,
-    name:        req.user.displayName,
-    email:       req.user.emails?.[0]?.value,
-    photo:       req.user.photos?.[0]?.value,
-    accessToken: req.user.accessToken,
+    id:       req.user.id,
+    name:     req.user.displayName,
+    email:    req.user.emails?.[0]?.value,
+    photo:    req.user.photos?.[0]?.value,
   });
 });
 
