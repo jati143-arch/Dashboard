@@ -868,7 +868,72 @@ The design overhaul used static color values in `global.css` with `--color-*` pr
 
 ---
 
-## Phase 32 — Frontend Fallback UI & Python News Integration (2026-05-14)
+## Phase 33 — Design Overhaul: Bloomberg Terminal UI
+
+### What Was Built
+
+Transformed the dashboard with a premium Bloomberg-style design overhaul:
+
+### `client/src/styles/global.css`
+- **New color palette**: `--color-bg-base: #030308` (deep navy-black), glass-effect backgrounds, subtle borders
+- **Ambient background blobs**: `body::after` with radial gradients (cyan + purple + violet glow orbs)
+- **Grid dot overlay**: 60px grid pattern via `body::before`
+- **New `.card-glass` class**: `backdrop-filter: blur(24px)` glassmorphism with hover state
+- **Scrolling ticker tape CSS**: `.ticker-tape`, `.ticker-item`, `.ticker-symbol`, `.ticker-price`, `.ticker-change` + `@keyframes ticker-scroll`
+- **Hover glow on table rows**: `box-shadow: inset 3px 0 0 rgba(0,180,216,0.3)`
+- **Sticky table headers** with background
+- **New animations**: `slide-in-sidebar`, `fade-in`, `slide-up`
+
+### `client/src/App.jsx` — TopNav redesign
+- Glass background `rgba(3,3,8,0.85)` + `backdrop-filter: blur(24px)`
+- Glowing logo icon with `box-shadow: 0 0 24px rgba(34,255,136,0.3)`
+- "LIVE" badge with `var(--color-accent-secondary)`
+- Tab pills with spring-physics transitions (`cubic-bezier(0.34,1.56,0.64,1)`)
+- Market status + IST clock
+- Increased padding: `32px 36px 48px` main content area
+
+### `client/src/components/layout/Sidebar.jsx`
+- Glass background + `backdrop-filter: blur(24px)`
+- Spring-physics width transition
+- Icon-only mode when collapsed (60px), labels when open (220px)
+- Active nav items: accent color + `rgba(34,255,136,0.08)` background + border
+- 12 rounded `12px` nav items (not pill-shaped)
+- Glowing logo icon
+
+### `client/src/components/layout/StatusBar.jsx` — Ticker Tape
+- 36px tall scrolling ticker tape (scrolling market prices)
+- Live prices fetched via `pricesApi.get()` every 30s
+- Symbols: NIFTY 50, SENSEX, BANK NIFTY, S&P 500, NASDAQ, DOW, GOLD, CRUDE, USD/INR
+- Color-coded changes: green for positive, red for negative
+- NSE market status dot + IST time on left side
+- Pause-on-hover animation
+
+### `client/src/components/dashboard/PnlSummary.jsx`
+- All `.card` replaced with `.card-glass`
+- Yellow accent border on Today's Gain card
+- Cyan accent border on Overall P&L card
+
+### `client/src/components/dashboard/NewsWidget.jsx`
+- Replaced inline styles with `.card-glass` class
+
+### `client/src/pages/TradeLog.jsx`
+- CARD constant updated to use CSS variables
+- Text colors use CSS variables
+- PILL_BTN constants use CSS variables
+- Active button uses `var(--color-accent)`
+- Table container uses `.card-glass` with padding: 0
+
+### Files Changed
+| File | Change |
+|------|--------|
+| `client/src/styles/global.css` | Full design system upgrade |
+| `client/src/App.jsx` | TopNav glass redesign + bouncy transitions |
+| `client/src/components/layout/Sidebar.jsx` | Glass sidebar + spring physics + icon-only mode |
+| `client/src/components/layout/StatusBar.jsx` | Scrolling ticker tape + market status |
+| `client/src/components/dashboard/PnlSummary.jsx` | card → card-glass |
+| `client/src/components/dashboard/NewsWidget.jsx` | card-glass class |
+| `client/src/pages/TradeLog.jsx` | CSS variable constants + card-glass |
+---
 
 ### What Was Built
 
