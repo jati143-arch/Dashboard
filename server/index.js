@@ -174,17 +174,22 @@ app.use('/api/screener',      requireAuth, screenerRouter);
 app.use('/api/python-data', requireAuth, pythonDataRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
-const distPath = path.resolve(__dirname, '..', 'client', 'dist');
+const distPath = path.isAbsolute(__dirname)
+  ? path.join(__dirname, '..', 'client', 'dist')
+  : path.join(process.cwd(), 'client', 'dist');
 const fs = require('fs');
+console.log('[Static] Serving from:', distPath, '| exists:', fs.existsSync(distPath));
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath, {
+  const assetsPath = path.join(distPath, 'assets');
+  app.use('/assets', express.static(assetsPath, {
     maxAge: 0,
-    setHeaders: (res, reqPath) => {
-      if (reqPath.includes('/assets/')) {
+    setHeaders: (res, filePath) => {
+      if (filePath.includes('/assets/')) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
   }));
+  app.use(express.static(distPath, { maxAge: 0 }));
   app.get('*', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(distPath, 'index.html'));
