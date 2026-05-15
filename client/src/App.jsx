@@ -40,12 +40,12 @@ function TopNav({ onToggle }) {
   return (
     <header style={{
       height: 64,
-      background: 'rgba(10,10,10,0.95)',
-      backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      background: 'rgba(3,3,8,0.85)',
+      backdropFilter: 'blur(24px)',
+      borderBottom: '1px solid var(--color-border)',
       display: 'flex',
       alignItems: 'center',
-      padding: '0 24px',
+      padding: '0 28px',
       justifyContent: 'space-between',
       flexShrink: 0,
       position: 'sticky',
@@ -53,23 +53,45 @@ function TopNav({ onToggle }) {
       zIndex: 50,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <button onClick={onToggle} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 16, cursor: 'pointer', padding: '4px' }}>☰</button>
+        <button onClick={onToggle} style={{
+          background: 'transparent', border: 'none', color: 'var(--color-text-secondary)',
+          fontSize: 20, cursor: 'pointer', padding: '4px', lineHeight: 1,
+        }}>
+          <span style={{ display: 'inline-block', fontSize: 22 }}>&#9776;</span>
+        </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px -3px var(--color-accent)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 0 24px rgba(34,255,136,0.3)',
+          }}>
             <LayoutDashboard className="w-4 h-4 text-black" />
           </div>
-          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>DASHBOARD</span>
-          <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.15)', color: 'var(--color-accent-secondary)', fontFamily: 'var(--font-mono)' }}>LIVE</span>
+          <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.03em' }}>DASHBOARD</span>
+          <span style={{
+            fontSize: 9, fontFamily: 'var(--font-mono)', padding: '3px 8px',
+            borderRadius: 9999, border: '1px solid rgba(255,255,255,0.2)',
+            color: 'var(--color-accent-secondary)',
+          }}>LIVE</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 24, background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9999, padding: '3px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 9999, padding: '4px',
+        }}>
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 9999,
-              fontSize: 13, fontWeight: 500, color: isActive ? '#000' : 'var(--color-text-secondary)',
-              background: isActive ? '#fff' : 'transparent', textDecoration: 'none', transition: 'all 0.2s',
-              boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12)' : 'none',
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 20px', borderRadius: 9999,
+              fontSize: 13, fontWeight: 500,
+              color: isActive ? '#000' : 'var(--color-text-secondary)',
+              background: isActive ? '#fff' : 'transparent',
+              textDecoration: 'none', transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+              boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.15)' : 'none',
             })}>
               <Icon className="w-4 h-4" />
               {label}
@@ -78,8 +100,8 @@ function TopNav({ onToggle }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-green)', display: 'inline-block', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
           <span style={{ color: 'var(--color-green)', letterSpacing: '0.08em' }}>MARKET OPEN</span>
         </div>
@@ -89,11 +111,17 @@ function TopNav({ onToggle }) {
           <div style={{ position: 'relative' }}>
             <button onClick={() => setMenuOpen(o => !o)} style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 9999, padding: '4px 12px 4px 4px', cursor: 'pointer', color: 'var(--color-text-primary)',
+              background: 'transparent', border: '1px solid var(--color-border-bright)',
+              borderRadius: 9999, padding: '4px 12px 4px 4px', cursor: 'pointer',
+              color: 'var(--color-text-primary)',
             }}>
               {user.photo ? <img src={user.photo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} /> : (
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#000' }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700, color: '#000',
+                }}>
                   {(user.name || user.email || '?')[0].toUpperCase()}
                 </div>
               )}
@@ -103,12 +131,22 @@ function TopNav({ onToggle }) {
             {menuOpen && (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
-                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#111', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 8, minWidth: 200, zIndex: 100, boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
-                  <div style={{ padding: '8px 12px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 6 }}>
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+                  background: 'rgba(15,15,20,0.98)', backdropFilter: 'blur(16px)',
+                  border: '1px solid var(--color-border-bright)',
+                  borderRadius: 16, padding: 8, minWidth: 200, zIndex: 100,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                }}>
+                  <div style={{ padding: '8px 12px 12px', borderBottom: '1px solid var(--color-border)', marginBottom: 6 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{user.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{user.email}</div>
                   </div>
-                  <button onClick={() => { setMenuOpen(false); logout(); }} style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', color: 'var(--color-red)', fontSize: 13, cursor: 'pointer', borderRadius: 8 }}>Sign out</button>
+                  <button onClick={() => { setMenuOpen(false); logout(); }} style={{
+                    width: '100%', textAlign: 'left', padding: '8px 12px',
+                    background: 'transparent', border: 'none', color: 'var(--color-red)',
+                    fontSize: 13, cursor: 'pointer', borderRadius: 8,
+                  }}>Sign out</button>
                 </div>
               </>
             )}
@@ -129,7 +167,7 @@ function AppShell() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <TopNav onToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg-base)' }}>
-          <div style={{ maxWidth: 1480, margin: '0 auto', padding: '24px 40px' }}>
+          <div style={{ maxWidth: 1480, margin: '0 auto', padding: '32px 36px 48px' }}>
             <Routes>
               <Route path="/"            element={<DailyDashboard />} />
               <Route path="/market"      element={<MarketHub />} />

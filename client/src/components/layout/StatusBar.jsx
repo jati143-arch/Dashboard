@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { pricesApi } from '../../api/client.js';
 
 function getNSEStatus() {
   const now = new Date();
@@ -14,45 +16,69 @@ function getNSEStatus() {
   return { open: false, label: 'NSE CLOSED' };
 }
 
+const TICKER_SYMBOLS = ['NIFTY 50', 'SENSEX', 'BANK NIFTY', 'S&P 500', 'NASDAQ', 'DOW', 'GOLD', 'CRUDE', 'USD/INR'];
+
+function TickerTape({ prices }) {
+  const items = TICKER_SYMBOLS.map(sym => {
+    const p = prices[sym];
+    return p ? { sym, price: p.price, change: p.change, changePercent: p.changePercent } : null;
+  }).filter(Boolean);
+
+  const row = items.map((item, i) => (
+    <span key={i} className="ticker-item">
+      <span className="ticker-symbol">{item.sym}</span>
+      <span className="ticker-price">{typeof item.price === 'number' ? item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</span>
+      <span className={`ticker-change ${(item.change ?? 0) >= 0 ? 'pos' : 'neg'}`}>
+        {(item.change ?? 0) >= 0 ? '+' : ''}{(item.changePercent ?? 0).toFixed(2)}%
+      </span>
+    </span>
+  ));
+
+  return (
+    <div className="ticker-tape">
+      {[...row, ...row]}
+    </div>
+  );
+}
+
 export default function StatusBar() {
   const [time, setTime]     = useState(() => new Date().toLocaleTimeString('en-US', { hour12: false }));
   const [status, setStatus] = useState(getNSEStatus);
-  const [date, setDate]     = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
 
   useEffect(() => {
     const id = setInterval(() => {
       const now = new Date();
       setTime(now.toLocaleTimeString('en-US', { hour12: false }));
       setStatus(getNSEStatus());
-      setDate(now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
     }, 1000);
     return () => clearInterval(id);
   }, []);
 
+  const { data: prices = {} } = useQuery({
+    queryKey: ['ticker-prices', TICKER_SYMBOLS.join(',')],
+    queryFn: () => pricesApi.get(TICKER_SYMBOLS),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+
   return (
-    <div style={{
-      height: 40,
-      background: 'rgba(5,5,5,0.8)',
-      backdropFilter: 'blur(12px)',
-      borderTop: '1px solid rgba(255,255,255,0.04)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 32px',
-      gap: 20,
-      fontSize: 11,
-      fontFamily: 'var(--font-mono)',
-      flexShrink: 0,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: status.open ? 'var(--color-green)' : 'var(--color-text-dim)', display: 'inline-block', animation: status.open ? 'pulse-dot 2.5s ease-in-out infinite' : 'none' }} />
-        <span style={{ color: status.open ? 'var(--color-green)' : 'var(--color-text-secondary)' }}>{status.label}</span>
+    <div className="status-bar">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', borderRight: '1px solid var(--color-border)', flexShrink: 0 }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: status.open ? 'var(--color-green)' : 'var(--color-text-dim)',
+          display: 'inline-block',
+          animation: status.open ? 'pulse-dot 2.5s ease-in-out infinite' : 'none',
+        }} />
+        <span style={{ color: status.open ? 'var(--color-green)' : 'var(--color-text-secondary)', letterSpacing: '0.06em', fontSize: 10, fontWeight: 600 }}>{status.label}</span>
       </div>
-      <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
-      <span style={{ color: 'var(--color-text-secondary)' }}>{date}</span>
-      <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
-      <span style={{ letterSpacing: '0.04em' }}>{time}</span>
-      <span style={{ color: 'rgba(255,255,255,0.08)' }}>|</span>
-      <span style={{ color: 'var(--color-text-dim)', fontFamily: 'var(--font-sans)', letterSpacing: '0.02em' }}>DASHBOARD TRADING</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, padding: '0 12px', borderRight: '1px solid var(--color-border)', color: 'var(--color-text-dim)', flexShrink: 0 }}>
+        <span>{time}</span>
+        <span>IST</span>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <TickerTape prices={prices} />
+      </div>
     </div>
   );
 }

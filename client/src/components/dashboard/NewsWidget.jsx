@@ -28,13 +28,7 @@ export default function NewsWidget({ symbols }) {
   const allNews = pythonNews.length > 0 ? pythonNews : yahooNews;
 
   return (
-    <div style={{
-      marginTop: 16,
-      background: 'rgba(20,20,25,0.6)',
-      border: '1px solid rgba(255,255,255,0.06)',
-      borderRadius: 24,
-      padding: 28,
-    }}>
+    <div className="card-glass" style={{ marginTop: 16 }}>
       <div
         style={{
           display: 'flex',

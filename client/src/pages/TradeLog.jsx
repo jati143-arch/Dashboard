@@ -15,23 +15,25 @@ import { nativeOf } from '../utils/currency.js';
 const EMPTY_FILTERS = { from: '', to: '', symbol: '', direction: '', pattern_tag: '' };
 
 const CARD = {
-  background: '#111111',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--color-bg-card)',
+  backdropFilter: 'blur(24px)',
+  border: '1px solid var(--color-border)',
   borderRadius: 24,
+  padding: 28,
 };
 
-const TEXT_DIM = '#52525b';
-const TEXT_SECONDARY = '#71717a';
-const TEXT_PRIMARY = '#ffffff';
-const GREEN = '#22ff88';
-const RED = '#ff4444';
+const TEXT_DIM = 'var(--color-text-dim)';
+const TEXT_SECONDARY = 'var(--color-text-secondary)';
+const TEXT_PRIMARY = 'var(--color-text-primary)';
+const GREEN = 'var(--color-green)';
+const RED = 'var(--color-red)';
 
 const PILL_BTN = {
   padding: '8px 20px',
   borderRadius: 9999,
-  border: '1px solid rgba(255,255,255,0.06)',
-  background: '#111111',
-  color: TEXT_SECONDARY,
+  border: '1px solid var(--color-border-bright)',
+  background: 'var(--color-bg-card)',
+  color: 'var(--color-text-secondary)',
   cursor: 'pointer',
   fontSize: 13,
   fontFamily: 'Inter, system-ui, sans-serif',
@@ -40,9 +42,9 @@ const PILL_BTN = {
 
 const PILL_BTN_ACTIVE = {
   ...PILL_BTN,
-  background: '#ffffff',
-  color: '#000000',
-  border: '1px solid #ffffff',
+  background: 'var(--color-accent)',
+  color: '#000',
+  border: '1px solid var(--color-accent)',
 };
 
 export default function TradeLog() {
@@ -90,7 +92,7 @@ export default function TradeLog() {
 
       <TradeFilters filters={filters} onChange={setFilters} />
 
-      <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
+      <div className="card-glass" style={{ padding: 0, overflow: 'hidden' }}>
         {isLoading ? (
           <LoadingSpinner text="Loading trades..." />
         ) : (
