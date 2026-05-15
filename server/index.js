@@ -174,17 +174,17 @@ app.use('/api/screener',      requireAuth, screenerRouter);
 app.use('/api/python-data', requireAuth, pythonDataRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
-const distPath = path.join(__dirname, '../client/dist');
+const distPath = path.resolve(__dirname, '..', 'client', 'dist');
 const fs = require('fs');
 if (fs.existsSync(distPath)) {
-  // Content-hashed Vite bundles — safe to cache for 1 year
-  app.use('/assets', express.static(path.join(distPath, 'assets'), {
-    maxAge: '1y',
-    immutable: true,
+  app.use(express.static(distPath, {
+    maxAge: 0,
+    setHeaders: (res, reqPath) => {
+      if (reqPath.includes('/assets/')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
   }));
-  // Everything else (index.html, sw.js, manifest.json, favicon) — never cache
-  app.use(express.static(distPath, { maxAge: 0 }));
-  // SPA fallback
   app.get('*', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(distPath, 'index.html'));
