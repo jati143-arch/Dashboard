@@ -174,25 +174,20 @@ app.use('/api/screener',      requireAuth, screenerRouter);
 app.use('/api/python-data', requireAuth, pythonDataRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
-const distPath = path.isAbsolute(__dirname)
-  ? path.join(__dirname, '..', 'client', 'dist')
-  : path.join(process.cwd(), 'client', 'dist');
+const distPath = path.join(process.cwd(), 'client', 'dist');
 const fs = require('fs');
-console.log('[Static] Serving from:', distPath, '| exists:', fs.existsSync(distPath));
+console.log('[Static] dist path:', distPath, '| exists:', fs.existsSync(distPath));
 if (fs.existsSync(distPath)) {
-  const assetsPath = path.join(distPath, 'assets');
-  app.use('/assets', express.static(assetsPath, {
-    maxAge: 0,
-    setHeaders: (res, filePath) => {
-      if (filePath.includes('/assets/')) {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  }));
+  // Single static mount for everything — no separate /assets route
   app.use(express.static(distPath, { maxAge: 0 }));
   app.get('*', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.sendFile(path.join(distPath, 'index.html'));
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.sendFile(indexPath);
+    } else {
+      res.status(503).send('index.html not found — build may have failed');
+    }
   });
 }
 
