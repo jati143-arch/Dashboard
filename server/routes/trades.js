@@ -6,6 +6,14 @@ const { parseCSV } = require('../services/csvImport');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+const SYMBOL_RE = /^[A-Z0-9.:-]{1,20}$/;
+
+function sanitizeSymbol(raw) {
+  if (!raw) return null;
+  const s = String(raw).toUpperCase();
+  return SYMBOL_RE.test(s) ? s : null;
+}
+
 // GET /api/trades
 router.get('/', (req, res) => {
   const { date, symbol, pattern_tag, direction, from, to, status, result, sort, realized_on } = req.query;
@@ -13,7 +21,11 @@ router.get('/', (req, res) => {
   const params = [];
 
   if (date)        { sql += ' AND date = ?';                    params.push(date); }
-  if (symbol)      { sql += ' AND UPPER(symbol) = UPPER(?)';   params.push(symbol); }
+  if (symbol)      {
+    const sym = sanitizeSymbol(symbol);
+    if (!sym) return res.status(400).json({ error: 'Invalid symbol format' });
+    sql += ' AND UPPER(symbol) = ?'; params.push(sym);
+  }
   if (pattern_tag) { sql += ' AND pattern_tag = ?';            params.push(pattern_tag); }
   if (direction)   { sql += ' AND direction = ?';              params.push(direction); }
   if (from)        { sql += ' AND date >= ?';                  params.push(from); }
@@ -31,7 +43,6 @@ router.get('/', (req, res) => {
 });
 
 // GET /api/trades/export?market=all&status=all
-// Must be before /:id to avoid route collision
 router.get('/export', (req, res) => {
   const { market = 'all', status = 'all' } = req.query;
 
@@ -51,7 +62,6 @@ router.get('/export', (req, res) => {
   } else if (market === 'mf') {
     sql += " AND instrument_type='mutual_fund'";
   } else {
-    // 'all' — exclude MF (matches Investments "All" tab behaviour)
     sql += " AND instrument_type != 'mutual_fund'";
   }
 
@@ -83,6 +93,29 @@ router.get('/export', (req, res) => {
   res.send(lines.join('\r\n'));
 });
 
+// GET /api/trades/symbol-stats  — must come before /:id
+router.get('/symbol-stats', (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.json(null);
+
+  const sym = sanitizeSymbol(symbol);
+  if (!sym) return res.status(400).json({ error: 'Invalid symbol format' });
+
+  const stats = db.prepare(`
+    SELECT AVG(entry_price) as avg_buy_price, COUNT(*) as trade_count
+    FROM trades WHERE UPPER(symbol) = ? AND parent_trade_id IS NULL AND entry_price IS NOT NULL
+  `).get(sym);
+
+  const last = db.prepare(`
+    SELECT entry_price as last_buy_price
+    FROM trades WHERE UPPER(symbol) = ? AND parent_trade_id IS NULL
+    ORDER BY created_at DESC LIMIT 1
+  `).get(sym);
+
+  if (!stats || stats.trade_count === 0) return res.json(null);
+  res.json({ avg_buy_price: stats.avg_buy_price, last_buy_price: last?.last_buy_price ?? stats.avg_buy_price, trade_count: stats.trade_count });
+});
+
 // GET /api/trades/:id
 router.get('/:id', (req, res) => {
   const trade = db.prepare('SELECT * FROM trades WHERE id = ?').get(req.params.id);
@@ -98,17 +131,15 @@ router.post('/', (req, res) => {
     pattern_tag, notes, is_best_trade, status = 'closed',
   } = req.body;
 
-  const isOpen = status === 'open';
-  const sym = symbol.toUpperCase();
+  const sym = sanitizeSymbol(symbol);
+  if (!sym) return res.status(400).json({ error: 'Invalid symbol format' });
 
-  // ── DCA / Averaging logic ─────────────────────────────────────────────────
-  // If adding an open position, check for an existing open position in the
-  // same symbol + direction. If found, merge via weighted average entry price
-  // instead of creating a duplicate row.
+  const isOpen = status === 'open';
+
   if (isOpen) {
     const existing = db.prepare(`
       SELECT * FROM trades
-      WHERE UPPER(symbol) = UPPER(?) AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
+      WHERE UPPER(symbol) = ? AND direction = ? AND status = 'open' AND parent_trade_id IS NULL
       ORDER BY date ASC LIMIT 1
     `).get(sym, direction);
 
@@ -116,26 +147,18 @@ router.post('/', (req, res) => {
       const prevSize  = existing.remaining_size ?? existing.size;
       const newSize   = Number(size);
       const totalSize = prevSize + newSize;
-      // Weighted average: (old_price × old_qty + new_price × new_qty) / total_qty
       const avgEntry  = (existing.entry_price * prevSize + Number(entry_price) * newSize) / totalSize;
-
-      // Append a DCA note so history is preserved
-      const dcaNote = `DCA +${newSize} @ ${Number(entry_price).toFixed(2)} on ${date}`;
+      const dcaNote   = `DCA +${newSize} @ ${Number(entry_price).toFixed(2)} on ${date}`;
       const mergedNotes = [existing.notes, dcaNote].filter(Boolean).join('\n');
 
       db.prepare(`
-        UPDATE trades
-        SET entry_price    = ?,
-            size           = size + ?,
-            remaining_size = COALESCE(remaining_size, size) + ?,
-            notes          = ?
-        WHERE id = ?
+        UPDATE trades SET entry_price=?, size=size+?, remaining_size=COALESCE(remaining_size,size)+?, notes=?
+        WHERE id=?
       `).run(+avgEntry.toFixed(4), newSize, newSize, mergedNotes, existing.id);
 
       return res.status(200).json(db.prepare('SELECT * FROM trades WHERE id = ?').get(existing.id));
     }
   }
-  // ─────────────────────────────────────────────────────────────────────────
 
   const result = db.prepare(`
     INSERT INTO trades (date, entry_time, exit_time, exit_date, symbol, instrument_type,
@@ -143,23 +166,12 @@ router.post('/', (req, res) => {
       pattern_tag, notes, status, is_best_trade, remaining_size)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    date,
-    entry_time || null,
-    exit_time || null,
-    exit_date || null,
-    sym,
-    instrument_type,
-    direction,
-    entry_price,
-    isOpen ? null : (exit_price ?? null),
-    size,
-    isOpen ? null : (pnl_dollar ?? null),
-    isOpen ? null : (pnl_percent ?? null),
-    pattern_tag || null,
-    notes || null,
-    status,
-    is_best_trade ? 1 : 0,
-    isOpen ? size : null,
+    date, entry_time || null, exit_time || null, exit_date || null,
+    sym, instrument_type, direction, entry_price,
+    isOpen ? null : (exit_price ?? null), size,
+    isOpen ? null : (pnl_dollar ?? null), isOpen ? null : (pnl_percent ?? null),
+    pattern_tag || null, notes || null, status,
+    is_best_trade ? 1 : 0, isOpen ? size : null,
   );
 
   res.status(201).json(db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid));
@@ -176,11 +188,10 @@ router.put('/:id', (req, res) => {
     pattern_tag, notes, is_best_trade, status = existing.status,
   } = req.body;
 
-  const isOpen = status === 'open';
+  const sym = symbol ? sanitizeSymbol(symbol) : existing.symbol;
+  if (symbol && !sym) return res.status(400).json({ error: 'Invalid symbol format' });
 
-  const newRemainingSize = isOpen
-    ? (existing.remaining_size ?? existing.size)  // preserve existing or use size
-    : null;
+  const isOpen = status === 'open';
 
   db.prepare(`
     UPDATE trades SET date=?, entry_time=?, exit_time=?, exit_date=?, symbol=?,
@@ -189,23 +200,12 @@ router.put('/:id', (req, res) => {
       remaining_size=?
     WHERE id=?
   `).run(
-    date,
-    entry_time || null,
-    exit_time || null,
-    exit_date || null,
-    symbol.toUpperCase(),
-    instrument_type,
-    direction,
-    entry_price,
-    isOpen ? null : (exit_price ?? null),
-    size,
-    isOpen ? null : (pnl_dollar ?? null),
-    isOpen ? null : (pnl_percent ?? null),
-    pattern_tag || null,
-    notes || null,
-    status,
-    is_best_trade ? 1 : 0,
-    newRemainingSize,
+    date, entry_time || null, exit_time || null, exit_date || null, sym,
+    instrument_type, direction, entry_price,
+    isOpen ? null : (exit_price ?? null), size,
+    isOpen ? null : (pnl_dollar ?? null), isOpen ? null : (pnl_percent ?? null),
+    pattern_tag || null, notes || null, status, is_best_trade ? 1 : 0,
+    isOpen ? (existing.remaining_size ?? existing.size) : null,
     req.params.id,
   );
 
@@ -269,35 +269,6 @@ router.post('/:id/partial-close', (req, res) => {
   res.json(closeOp());
 });
 
-// GET /api/trades/symbol-stats?symbol=AAPL
-router.get('/symbol-stats', (req, res) => {
-  const { symbol } = req.query;
-  if (!symbol) return res.json(null);
-
-  const stats = db.prepare(`
-    SELECT
-      AVG(entry_price) as avg_buy_price,
-      COUNT(*) as trade_count
-    FROM trades
-    WHERE UPPER(symbol) = UPPER(?) AND parent_trade_id IS NULL AND entry_price IS NOT NULL
-  `).get(symbol);
-
-  const last = db.prepare(`
-    SELECT entry_price as last_buy_price
-    FROM trades
-    WHERE UPPER(symbol) = UPPER(?) AND parent_trade_id IS NULL
-    ORDER BY created_at DESC LIMIT 1
-  `).get(symbol);
-
-  if (!stats || stats.trade_count === 0) return res.json(null);
-
-  res.json({
-    avg_buy_price: stats.avg_buy_price,
-    last_buy_price: last?.last_buy_price ?? stats.avg_buy_price,
-    trade_count: stats.trade_count,
-  });
-});
-
 // POST /api/trades/import-csv
 router.post('/import-csv', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -305,7 +276,9 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
   const { confirmed, rows } = req.body;
 
   if (confirmed === 'true' && rows) {
-    const parsed = JSON.parse(rows);
+    let parsed;
+    try { parsed = JSON.parse(rows); } catch { return res.status(400).json({ error: 'Invalid JSON in rows' }); }
+
     const insert = db.prepare(`
       INSERT INTO trades (date, entry_time, exit_time, symbol, instrument_type, direction,
         entry_price, exit_price, size, pnl_dollar, pnl_percent, pattern_tag, notes, status, is_best_trade, remaining_size)
@@ -313,15 +286,14 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
     `);
     const insertMany = db.transaction((trades) => {
       for (const t of trades) {
+        const sym = sanitizeSymbol(t.symbol);
+        if (!sym) continue;
         const tradeStatus = t.status || 'closed';
-        // Use explicit remaining_size from row (Google Sheets may have partial qty)
-        const remSize = tradeStatus === 'open'
-          ? (t.remaining_size != null ? t.remaining_size : t.size)
-          : null;
-        insert.run(t.date, t.entry_time || null, t.exit_time || null, t.symbol,
-                   t.instrument_type, t.direction, t.entry_price, t.exit_price,
-                   t.size, t.pnl_dollar, t.pnl_percent, t.pattern_tag || null, t.notes || null,
-                   tradeStatus, remSize);
+        const remSize = tradeStatus === 'open' ? (t.remaining_size != null ? t.remaining_size : t.size) : null;
+        insert.run(t.date, t.entry_time || null, t.exit_time || null, sym,
+          t.instrument_type, t.direction, t.entry_price, t.exit_price,
+          t.size, t.pnl_dollar, t.pnl_percent, t.pattern_tag || null, t.notes || null,
+          tradeStatus, remSize);
       }
     });
     insertMany(parsed);
@@ -329,8 +301,7 @@ router.post('/import-csv', upload.single('file'), (req, res) => {
   }
 
   try {
-    const result = parseCSV(req.file.buffer);
-    res.json(result);
+    res.json(parseCSV(req.file.buffer));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
