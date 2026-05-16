@@ -21,10 +21,12 @@ import EconomicCalendar from './pages/EconomicCalendar.jsx';
 import Screener from './pages/Screener.jsx';
 import Settings from './pages/Settings.jsx';
 import Research from './pages/Research.jsx';
-import { Activity, BarChart3, PieChart, Star, LayoutDashboard, TrendingUp } from 'lucide-react';
+import { Activity, BarChart3, PieChart, Star, LayoutDashboard, TrendingUp, Sun, Moon } from 'lucide-react';
+import { ThemeProvider, useTheme } from './context/ThemeContext.jsx';
 
 function TopNav({ onToggle }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -41,7 +43,7 @@ function TopNav({ onToggle }) {
   return (
     <header style={{
       height: 64,
-      background: 'rgba(3,3,8,0.85)',
+      background: 'var(--surface-topnav)',
       backdropFilter: 'blur(24px)',
       borderBottom: '1px solid var(--color-border)',
       display: 'flex',
@@ -101,12 +103,30 @@ function TopNav({ onToggle }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-green)', display: 'inline-block', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
           <span style={{ color: 'var(--color-green)', letterSpacing: '0.08em' }}>MARKET OPEN</span>
         </div>
         <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>{dateStr} · {timeStr}</span>
+
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--color-border-bright)',
+            borderRadius: 9999,
+            padding: '6px 10px',
+            color: 'var(--color-text-secondary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            transition: 'all 0.2s',
+          }}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
 
         {user && (
           <div style={{ position: 'relative' }}>
@@ -134,7 +154,7 @@ function TopNav({ onToggle }) {
                 <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
                 <div style={{
                   position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                  background: 'rgba(15,15,20,0.98)', backdropFilter: 'blur(16px)',
+                  background: 'var(--surface-dropdown)', backdropFilter: 'blur(16px)',
                   border: '1px solid var(--color-border-bright)',
                   borderRadius: 16, padding: 8, minWidth: 200, zIndex: 100,
                   boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
@@ -207,5 +227,5 @@ function AuthGate() {
 }
 
 export default function App() {
-  return <AuthProvider><AuthGate /></AuthProvider>;
+  return <ThemeProvider><AuthProvider><AuthGate /></AuthProvider></ThemeProvider>;
 }

@@ -30,8 +30,8 @@ export default function Modal({ title, onClose, children, width = 520 }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'rgba(20,20,25,0.95)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--surface-modal)',
+          border: '1px solid var(--color-border-bright)',
           borderRadius: 24,
           width, maxHeight: '90vh',
           display: 'flex', flexDirection: 'column',

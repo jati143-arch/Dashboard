@@ -28,7 +28,7 @@ export default function Sidebar({ open, onClose }) {
         className={`sidebar ${open ? 'sidebar-open' : ''}`}
         style={{
           width: open ? 220 : 60,
-          background: 'rgba(3,3,8,0.7)',
+          background: 'var(--surface-sidebar)',
           backdropFilter: 'blur(24px)',
           borderRight: '1px solid var(--color-border)',
           display: 'flex',
