@@ -83,6 +83,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
   process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
+  process.env.RENDER_EXTERNAL_URL || null,
   process.env.FRONTEND_URL || null,
 ].filter(Boolean);
 
