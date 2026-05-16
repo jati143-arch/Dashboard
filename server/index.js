@@ -174,10 +174,12 @@ app.use('/api/screener',      requireAuth, screenerRouter);
 app.use('/api/python-data', requireAuth, pythonDataRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
-const distPath = path.join(process.cwd(), 'client', 'dist');
 const fs = require('fs');
-console.log('[Static] dist path:', distPath, '| exists:', fs.existsSync(distPath));
-if (fs.existsSync(distPath)) {
+const distPath = path.join(process.cwd(), 'client', 'dist');
+const distExists = fs.existsSync(distPath);
+console.log('[Static] dist path:', distPath, '| exists:', distExists);
+
+if (distExists) {
   // Single static mount for everything — no separate /assets route
   app.use(express.static(distPath, { maxAge: 0 }));
   app.get('*', (req, res) => {
@@ -188,6 +190,31 @@ if (fs.existsSync(distPath)) {
     } else {
       res.status(503).send('index.html not found — build may have failed');
     }
+  });
+} else {
+  console.error('========================================================');
+  console.error('[FATAL-UI] client/dist NOT FOUND at: ' + distPath);
+  console.error('[FATAL-UI] React app was never built for this deploy.');
+  console.error('[FATAL-UI] Build Command must be: npm install && npm run build');
+  console.error('========================================================');
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) return next();
+    res.status(503).type('html').send(`<!doctype html>
+<html><head><meta charset="utf-8"><title>Deployment Error — Build Missing</title>
+<style>body{font-family:system-ui,sans-serif;background:#0a0a12;color:#e4e4e7;
+display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{max-width:560px;padding:40px;border:1px solid #27272a;border-radius:16px;
+background:#12151c}h1{color:#f87171;font-size:20px;margin:0 0 12px}
+code{background:#1e1e28;padding:2px 6px;border-radius:4px}p{line-height:1.6;
+color:#a1a1aa;font-size:14px}</style></head><body><div class="box">
+<h1>Frontend build is missing</h1>
+<p>The server started, but the React app (<code>client/dist</code>) was not built
+during deployment, so there is no UI to serve.</p>
+<p><b>Fix:</b> set the deploy Build Command to
+<code>npm install &amp;&amp; npm run build</code> and Start Command to
+<code>npm start</code> (render.yaml Blueprint, or Render → Settings → Build &amp;
+Deploy).</p><p>API and auth endpoints are still responding.</p>
+</div></body></html>`);
   });
 }
 
