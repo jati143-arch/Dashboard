@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   BarChart3, LayoutDashboard, Activity, Star, PieChart, Database,
-  Clock, Calculator, BookOpen, Sparkles, Settings2,
+  Clock, Calculator, BookOpen, Sparkles, Settings2, FlaskConical,
 } from 'lucide-react';
 
 const links = [
@@ -15,6 +15,7 @@ const links = [
   { to: '/backtest', label: 'Backtest', icon: Calculator },
   { to: '/screener', label: 'Screener', icon: BookOpen },
   { to: '/ai', label: 'AI', icon: Sparkles },
+  { to: '/research', label: 'Research', icon: FlaskConical },
   { to: '/settings', label: 'Settings', icon: Settings2 },
 ];
 

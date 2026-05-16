@@ -20,6 +20,7 @@ import Watchlist from './pages/Watchlist.jsx';
 import EconomicCalendar from './pages/EconomicCalendar.jsx';
 import Screener from './pages/Screener.jsx';
 import Settings from './pages/Settings.jsx';
+import Research from './pages/Research.jsx';
 import { Activity, BarChart3, PieChart, Star, LayoutDashboard, TrendingUp } from 'lucide-react';
 
 function TopNav({ onToggle }) {
@@ -179,6 +180,7 @@ function AppShell() {
               <Route path="/backtest"    element={<Backtest />} />
               <Route path="/screener"    element={<Screener />} />
               <Route path="/ai"          element={<AiInsights />} />
+              <Route path="/research"    element={<Research />} />
               <Route path="/settings"    element={<Settings />} />
               <Route path="*"            element={<Navigate to="/" replace />} />
             </Routes>
