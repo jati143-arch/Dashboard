@@ -93,7 +93,7 @@ export default function AiInsights() {
   };
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, margin: 0, lineHeight: 1.6, flex: 1 }}>

@@ -178,7 +178,7 @@ export default function Investments() {
   const currencyOpts = CURRENCY_OPTIONS[activeTab];
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>Investments</div>

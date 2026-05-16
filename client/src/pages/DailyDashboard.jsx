@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { stagger } from '../utils/anim.js';
 import { tradesApi, dailyApi, statsApi, pricesApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
@@ -120,7 +121,7 @@ export default function DailyDashboard() {
   const isLoading = dailyLoading || (selectedDate !== todayStr() && tradesLoading);
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       {/* 1. P&L Summary tiles */}
       <PnlSummary
         trades={closedTodayTrades}

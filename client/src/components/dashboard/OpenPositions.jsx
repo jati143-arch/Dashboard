@@ -232,8 +232,8 @@ export default function OpenPositions({ onAddPosition }) {
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {region === 'indian' && (
-                          <button onClick={() => setExpandedFund(fundOpen ? null : t.id)} style={{ padding: '4px 12px', fontSize: 11, marginRight: 6, background: fundOpen ? 'rgba(0,212,255,0.1)' : 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: fundOpen ? 'var(--color-accent-secondary)' : 'var(--color-text-dim)', borderRadius: 9999, cursor: 'pointer' }}>
-                            {fundOpen ? '▲ Fund' : '▼ Fund'}
+                          <button onClick={() => setExpandedFund(fundOpen ? null : t.id)} style={{ padding: '4px 12px', fontSize: 11, marginRight: 6, background: fundOpen ? 'rgba(0,212,255,0.1)' : 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: fundOpen ? 'var(--color-accent-secondary)' : 'var(--color-text-dim)', borderRadius: 9999, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ display: 'inline-block', transition: 'transform 0.3s ease', transform: fundOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span> Fund
                           </button>
                         )}
                         <button onClick={() => setClosingTrade({ trade: t, currentPrice: liveData?.price })} style={{ padding: '6px 16px', fontSize: 12, fontWeight: 700, borderRadius: 9999, border: 'none', background: '#fff', color: '#000', cursor: 'pointer' }}>
@@ -244,6 +244,7 @@ export default function OpenPositions({ onAddPosition }) {
 {/* Expandable row: Fundamentals + Signals sub-panels */}
                      {fundOpen && (
                        <tr><td colSpan={12} style={{ padding: 0 }}>
+                         <div style={{ animation: 'fadeSlideUp 0.3s ease both' }}>
                          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                            <button
                              onClick={() => setShowFundTab('fundamentals')}
@@ -275,6 +276,7 @@ export default function OpenPositions({ onAddPosition }) {
                          </div>
                          <div style={{ display: showFundTab === 'signals' ? 'block' : 'none' }}>
                            <SignalsPanel symbol={t.symbol} />
+                         </div>
                          </div>
                        </td></tr>
                      )}

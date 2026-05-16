@@ -88,7 +88,7 @@ export default function Backtest() {
   const curve  = result?.equityCurve ?? [];
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, marginBottom: 6, fontFamily: 'Inter, system-ui, sans-serif' }}>Strategy Backtester</div>
         <div style={{ fontSize: 13, color: TEXT_SECONDARY, fontFamily: 'Inter, system-ui, sans-serif' }}>Test strategies against historical data · Results are historical, not a guarantee</div>

@@ -39,7 +39,7 @@ export default function MarketHub() {
   const { data: events  }                          = useQuery({ queryKey: ['market-events'],   queryFn: marketApi.events });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontFamily: 'Inter, system-ui, sans-serif' }}>Market Hub</h1>
         <Dot />

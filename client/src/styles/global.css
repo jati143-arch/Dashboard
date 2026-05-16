@@ -98,6 +98,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border: 1px solid var(--color-border-bright);
 }
 .btn-ghost:hover { color: var(--color-text-primary); background: var(--color-bg-card-hover); }
+.btn-primary:active, .btn-ghost:active { transform: scale(0.96); }
 
 input, select, textarea {
   font-family: var(--font-sans);
@@ -146,6 +147,7 @@ label {
 .card-glass:hover {
   background: var(--color-bg-card-hover);
   border-color: var(--color-border-bright);
+  box-shadow: 0 0 32px rgba(34,255,136,0.12);
 }
 
 .mono { font-family: var(--font-mono); }
@@ -256,7 +258,7 @@ tr:last-child td { border-bottom: none; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.sidebar-backdrop { display: none; position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.65); }
+.sidebar-backdrop { display: none; position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.65); animation: backdropFade 0.2s ease; }
 
 @keyframes slide-in-sidebar { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 @keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -273,3 +275,10 @@ tr:last-child td { border-bottom: none; }
 @media (min-width: 769px) {
   .sidebar { position: relative; height: 100vh; flex-shrink: 0; }
 }
+@keyframes fadeSlideUp  { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+@keyframes scalePop     { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
+@keyframes scaleOut     { from{opacity:1;transform:scale(1)} to{opacity:0;transform:scale(0.93)} }
+@keyframes glowPulse    { 0%,100%{box-shadow:0 0 0 rgba(34,255,136,0)} 50%{box-shadow:0 0 28px rgba(34,255,136,0.22)} }
+@keyframes numberGlow   { 0%,100%{text-shadow:none} 50%{text-shadow:0 0 20px rgba(34,255,136,0.55)} }
+@keyframes copySuccess  { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
+@keyframes backdropFade { from{opacity:0} to{opacity:1} }

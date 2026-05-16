@@ -138,6 +138,7 @@ function TopNav({ onToggle }) {
                   border: '1px solid var(--color-border-bright)',
                   borderRadius: 16, padding: 8, minWidth: 200, zIndex: 100,
                   boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                  animation: 'scalePop 0.18s ease',
                 }}>
                   <div style={{ padding: '8px 12px 12px', borderBottom: '1px solid var(--color-border)', marginBottom: 6 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{user.name}</div>

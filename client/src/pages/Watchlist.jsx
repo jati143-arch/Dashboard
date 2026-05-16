@@ -36,7 +36,7 @@ export default function Watchlist() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff' }}>Watchlist</h1>
         <button

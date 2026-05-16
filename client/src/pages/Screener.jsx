@@ -29,7 +29,7 @@ export default function Screener() {
   ];
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: '#ffffff', fontFamily: "'Inter', system-ui, sans-serif" }}>🔍 AI Stock Screener</div>
         <div style={{ fontSize: 12, color: '#52525b', fontFamily: "'Inter', system-ui, sans-serif" }}>

@@ -1,15 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Modal({ title, onClose, children, width = 520 }) {
+  const [closing, setClosing] = useState(false);
+
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => { if (e.key === 'Escape') handleClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, []);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(onClose, 200);
+  }
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.75)',
@@ -17,6 +24,7 @@ export default function Modal({ title, onClose, children, width = 520 }) {
         WebkitBackdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 1000,
+        animation: 'backdropFade 0.25s ease',
       }}
     >
       <div
@@ -29,6 +37,7 @@ export default function Modal({ title, onClose, children, width = 520 }) {
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
           padding: 28,
+          animation: `${closing ? 'scaleOut' : 'scalePop'} 0.22s ease`,
         }}
       >
         <div style={{
@@ -40,7 +49,7 @@ export default function Modal({ title, onClose, children, width = 520 }) {
         }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#ffffff' }}>{title}</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'rgba(255,255,255,0.06)',
               border: 'none',

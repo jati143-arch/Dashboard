@@ -117,7 +117,7 @@ export default function Performance() {
   const chartData = series.map(d => ({ ...d, pnl: Math.round(d.pnl * 100) / 100 }));
 
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       {/* Pill tab bar */}
       <div style={{
         display: 'flex',

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { tradesApi } from '../api/client.js';
+import { useCountUp } from '../hooks/useCountUp.js';
 import TradeFilters from '../components/trades/TradeFilters.jsx';
 import TradeTable from '../components/trades/TradeTable.jsx';
 import Modal from '../components/shared/Modal.jsx';
@@ -49,6 +50,7 @@ const PILL_BTN_ACTIVE = {
 
 export default function TradeLog() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+
   const [showForm, setShowForm] = useState(false);
   const [editingTrade, setEditingTrade] = useState(null);
   const [showImport, setShowImport] = useState(false);
@@ -64,13 +66,16 @@ export default function TradeLog() {
   const wins = trades.filter(t => t.pnl_dollar > 0).length;
   const winRate = trades.length ? Math.round((wins / trades.length) * 100) : 0;
 
+  const countedLen = useCountUp(trades.length, 800, 0);
+  const countedWinRate = useCountUp(winRate, 1000, 0);
+
   return (
-    <div>
+    <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ ...CARD, padding: '20px 24px', minWidth: 120 }}>
             <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Trades Shown</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: TEXT_PRIMARY }}>{trades.length}</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: TEXT_PRIMARY }}>{countedLen}</div>
           </div>
           <div style={{ ...CARD, padding: '20px 24px', minWidth: 140 }}>
             <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Total P&L</div>
@@ -79,7 +84,7 @@ export default function TradeLog() {
           <div style={{ ...CARD, padding: '20px 24px', minWidth: 120 }}>
             <div style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Win Rate</div>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: winRate >= 50 ? GREEN : RED }}>
-              {trades.length ? `${winRate}%` : '—'}
+              {trades.length ? `${countedWinRate}%` : '—'}
             </div>
           </div>
           <CurrencyToggle />

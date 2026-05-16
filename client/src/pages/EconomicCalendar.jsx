@@ -81,7 +81,7 @@ export default function EconomicCalendar() {
   const days = Object.keys(grouped).sort();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeSlideUp 0.45s ease both' }}>
       <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontFamily: 'Inter, system-ui, sans-serif' }}>Economic Calendar</h1>
 
       <div style={{ ...CARD, padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
