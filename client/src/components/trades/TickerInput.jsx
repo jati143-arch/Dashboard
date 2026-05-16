@@ -107,7 +107,7 @@ export default function TickerInput({ value, onChange, onSelect }) {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{ minWidth: 120 }}>
-                  <div style={{ fontFamily: 'JetBrains Mono', monospace, fontWeight: 700, fontSize: 14, color: '#00d4ff' }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14, color: '#00d4ff' }}>
                     {displaySym}
                   </div>
                   <div style={{ fontSize: 10, color: '#52525b', marginTop: 2 }}>

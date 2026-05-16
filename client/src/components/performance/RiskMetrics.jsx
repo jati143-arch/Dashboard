@@ -2,7 +2,7 @@ function MetricCard({ label, value, sub, color, tooltip }) {
   return (
     <div title={tooltip} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: '18px 20px', textAlign: 'center', cursor: tooltip ? 'help' : 'default', background: '#111111' }}>
       <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'JetBrains Mono', monospace, color: color || '#ffffff' }}>
+      <div style={{ fontSize: 26, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: color || '#ffffff' }}>
         {value ?? '—'}
       </div>
       {sub && <div style={{ fontSize: 11, color: '#71717a', marginTop: 6 }}>{sub}</div>}

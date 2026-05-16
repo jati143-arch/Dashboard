@@ -26,7 +26,7 @@ export default function EventStrip({ events = [], missing }) {
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < 19 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
             <span style={{ color: IMPACT_COLOR[imp], fontSize: 12, flexShrink: 0 }}>{IMPACT_DOT[imp]}</span>
-            <span style={{ fontSize: 11, color: '#52525b', flexShrink: 0, fontFamily: 'JetBrains Mono', monospace, width: 76 }}>
+            <span style={{ fontSize: 11, color: '#52525b', flexShrink: 0, fontFamily: "'JetBrains Mono', monospace", width: 76 }}>
               {e.time ? e.time.slice(0, 10) : e.date}
             </span>
             <span style={{ fontSize: 11, color: '#52525b', flexShrink: 0, width: 32, fontWeight: 700 }}>{e.country}</span>

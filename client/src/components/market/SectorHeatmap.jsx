@@ -24,7 +24,7 @@ export default function SectorHeatmap({ sectors = [] }) {
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, color: '#ffffff', marginBottom: 6 }}>{s.name}</div>
-          <div style={{ fontFamily: 'JetBrains Mono', monospace, fontSize: 14, fontWeight: 700, color: s.changePct >= 0 ? '#86efac' : '#fca5a5' }}>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: s.changePct >= 0 ? '#86efac' : '#fca5a5' }}>
             {s.changePct == null ? '—' : `${s.changePct >= 0 ? '+' : ''}${s.changePct.toFixed(2)}%`}
           </div>
         </div>

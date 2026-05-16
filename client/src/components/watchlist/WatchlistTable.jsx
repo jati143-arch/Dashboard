@@ -84,16 +84,16 @@ export default function WatchlistTable({ list }) {
                   <tr key={sym} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td style={{ padding: '12px 16px' }}>
                       <span
-                        style={{ fontFamily: 'JetBrains Mono', monospace, fontWeight: 700, color: '#00d4ff', cursor: 'pointer' }}
+                        style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#00d4ff', cursor: 'pointer' }}
                         onClick={() => openChart(sym)}
                         title="View chart"
                       >{sym}</span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', monospace, fontSize: 14 }}>{fmt(q.price)}</td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', monospace, fontWeight: 600, fontSize: 14, color: q.change_pct == null ? '#52525b' : up ? '#22ff88' : '#ff4444' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", fontSize: 14 }}>{fmt(q.price)}</td>
+                    <td style={{ padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, fontSize: 14, color: q.change_pct == null ? '#52525b' : up ? '#22ff88' : '#ff4444' }}>
                       {q.change_pct == null ? '—' : `${up ? '+' : ''}${fmt(q.change_pct)}%`}
                     </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', monospace, color: '#71717a' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: "'JetBrains Mono', monospace", color: '#71717a' }}>
                       {q.volume ? (q.volume / 1_000_000).toFixed(1) + 'M' : '—'}
                     </td>
                     <td style={{ padding: '8px 16px' }}>

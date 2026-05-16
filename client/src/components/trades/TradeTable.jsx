@@ -111,7 +111,7 @@ export default function TradeTable({ trades, onEdit }) {
                 onMouseDown={() => { setFilterText(sym); setDdOpen(false); }}
                 style={{
                   padding: '8px 14px', cursor: 'pointer', fontSize: 13,
-                  fontFamily: 'JetBrains Mono', monospace, fontWeight: 600, color: '#00d4ff',
+                  fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: '#00d4ff',
                   borderBottom: '1px solid rgba(255,255,255,0.04)',
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = '#1a1a1a'}
@@ -142,23 +142,23 @@ export default function TradeTable({ trades, onEdit }) {
               const nativeSym = native === 'INR' ? '₹' : '$';
               return (
                 <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '10px 14px', fontFamily: 'JetBrains Mono', monospace, fontSize: 12, color: '#71717a' }}>{t.date}</td>
+                  <td style={{ padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#71717a' }}>{t.date}</td>
                   <td style={{ padding: '10px 14px' }}>
                     {t.is_best_trade ? <span style={{ color: '#ffd60a', marginRight: 4 }}>★</span> : null}
                     <span
-                      style={{ fontFamily: 'JetBrains Mono', monospace, fontWeight: 700, color: '#00d4ff', cursor: 'pointer' }}
+                      style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#00d4ff', cursor: 'pointer' }}
                       onClick={() => openChart(t.symbol, t.status === 'open' ? t.entry_price : null)}
                       title="View chart"
                     >{t.symbol}</span>
                   </td>
                   <td style={{ padding: '10px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', background: 'rgba(255,255,255,0.06)', color: '#71717a' }}>{t.instrument_type}</span></td>
                   <td style={{ padding: '10px 14px' }}><span style={{ padding: '2px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 600, background: t.direction === 'long' ? 'rgba(34,255,136,0.12)' : 'rgba(255,68,68,0.12)', color: t.direction === 'long' ? '#22ff88' : '#ff4444', textTransform: 'uppercase' }}>{t.direction}</span></td>
-                  <td style={{ padding: '10px 14px', fontFamily: 'JetBrains Mono', monospace }}>{nativeSym}{t.entry_price}</td>
-                  <td style={{ padding: '10px 14px', fontFamily: 'JetBrains Mono', monospace }}>{t.exit_price != null ? `${nativeSym}${t.exit_price}` : '—'}</td>
-                  <td style={{ padding: '10px 14px', fontFamily: 'JetBrains Mono', monospace }}>{t.size}</td>
+                  <td style={{ padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace" }}>{nativeSym}{t.entry_price}</td>
+                  <td style={{ padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace" }}>{t.exit_price != null ? `${nativeSym}${t.exit_price}` : '—'}</td>
+                  <td style={{ padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace" }}>{t.size}</td>
                   <td style={{ padding: '10px 14px' }}><PnlBadge value={t.pnl_dollar} native={native} /></td>
                   <td style={{ padding: '10px 14px' }}>
-                    <span style={{ fontFamily: 'JetBrains Mono', monospace, fontSize: 13, color: t.pnl_percent > 0 ? '#22ff88' : t.pnl_percent < 0 ? '#ff4444' : '#71717a' }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: t.pnl_percent > 0 ? '#22ff88' : t.pnl_percent < 0 ? '#ff4444' : '#71717a' }}>
                       {t.pnl_percent > 0 ? '+' : ''}{t.pnl_percent?.toFixed(1)}%
                     </span>
                   </td>

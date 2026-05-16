@@ -103,7 +103,7 @@ function CustomTooltip({ active, payload, label, sym }) {
     <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '12px 16px', fontSize: 12 }}>
       <div style={{ color: '#71717a', marginBottom: 8 }}>{label}</div>
       {payload.map(p => (
-        <div key={p.dataKey} style={{ color: p.color, fontFamily: 'JetBrains Mono', monospace, marginBottom: 2 }}>
+        <div key={p.dataKey} style={{ color: p.color, fontFamily: "'JetBrains Mono', monospace", marginBottom: 2 }}>
           {p.name}: {sym}{Number(p.value).toLocaleString('en-IN')}
         </div>
       ))}
