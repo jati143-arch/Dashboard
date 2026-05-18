@@ -46,10 +46,12 @@ export const patternsApi = {
 };
 
 export const aiApi = {
-  portfolioAnalysis: () => api.post('/ai/portfolio-analysis').then(r => r.data),
+  portfolioAnalysis:    () => api.post('/ai/portfolio-analysis').then(r => r.data),
   getPortfolioAnalysis: () => api.get('/ai/portfolio-analysis').then(r => r.data),
   explainPattern: (slug) => api.post('/ai/explain-pattern', { slug }).then(r => r.data),
-  chat: (messages) => api.post('/ai/chat', { messages }).then(r => r.data),
+  chat:           (messages) => api.post('/ai/chat', { messages }).then(r => r.data),
+  getMarketBrief: () => api.get('/ai/market-brief').then(r => r.data),
+  genMarketBrief: () => api.post('/ai/market-brief').then(r => r.data),
 };
 
 export const settingsApi = {
@@ -72,7 +74,16 @@ export const newsApi = {
 };
 
 export const mfApi = {
-  nav: (schemeCode) => api.get(`/mf/${schemeCode}`).then(r => r.data),
+  nav:     (schemeCode) => api.get(`/mf/${schemeCode}`).then(r => r.data),
+  history: (schemeCode) => api.get(`/mf/${schemeCode}/history`).then(r => r.data),
+  search:  (q)          => api.get('/mf/search', { params: { q } }).then(r => r.data),
+};
+
+export const mfHoldingsApi = {
+  list:   ()          => api.get('/mf/holdings').then(r => r.data),
+  create: (data)      => api.post('/mf/holdings', data).then(r => r.data),
+  update: (id, data)  => api.put(`/mf/holdings/${id}`, data).then(r => r.data),
+  remove: (id)        => api.delete(`/mf/holdings/${id}`).then(r => r.data),
 };
 
 export const chartApi = {
@@ -113,9 +124,10 @@ export const watchlistApi = {
 };
 
 export const calendarApi = {
-  events:   (params) => api.get('/calendar/events', { params }).then(r => r.data),
-  earnings: (symbols) => api.get('/calendar/earnings', { params: { symbols: symbols?.join(',') } }).then(r => r.data),
-  fred:     (series) => api.get(`/calendar/fred/${series}`).then(r => r.data),
+  events:     (params)  => api.get('/calendar/events', { params }).then(r => r.data),
+  earnings:   (symbols) => api.get('/calendar/earnings', { params: { symbols: symbols?.join(',') } }).then(r => r.data),
+  yfEarnings: (symbols) => api.get('/calendar/yf-earnings', { params: { symbols: symbols?.join(',') } }).then(r => r.data),
+  fred:       (series)  => api.get(`/calendar/fred/${series}`).then(r => r.data),
 };
 
 export const riskApi = {
@@ -162,6 +174,11 @@ export const pythonDataApi = {
 
 export const newsFeedApi = {
   get: (category, symbol) => api.get('/news-feed', { params: { category, symbol } }).then(r => r.data),
+};
+
+export const cryptoLiveApi = {
+  prices: ()       => api.get('/crypto/prices').then(r => r.data),
+  price:  (symbol) => api.get(`/crypto/price/${encodeURIComponent(symbol)}`).then(r => r.data),
 };
 
 export const alertsApi = {

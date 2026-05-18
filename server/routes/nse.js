@@ -110,4 +110,76 @@ router.get('/fii-dii', async (req, res) => {
   }
 });
 
+// ── IPO Tracker ───────────────────────────────────────────────────────────────
+let ipoCache = { data: null, fetchedAt: 0 };
+const IPO_TTL = 6 * 60 * 60 * 1000;
+
+async function fetchIpos() {
+  if (ipoCache.data && Date.now() - ipoCache.fetchedAt < IPO_TTL) return ipoCache.data;
+
+  const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  // Step 1: get NSE session cookies
+  let cookies = '';
+  try {
+    const home = await fetch('https://www.nseindia.com', {
+      headers: { 'User-Agent': ua, 'Accept': 'text/html', 'Accept-Language': 'en-US,en;q=0.9' },
+      signal: AbortSignal.timeout(10000),
+    });
+    const rawCookies = home.headers.getSetCookie?.() || [];
+    cookies = rawCookies.map(c => c.split(';')[0]).join('; ');
+  } catch { /* proceed without cookies */ }
+
+  // Step 2: fetch IPO data
+  try {
+    const resp = await fetch('https://www.nseindia.com/api/allIpo', {
+      headers: {
+        'User-Agent': ua,
+        'Accept': 'application/json',
+        'Referer': 'https://www.nseindia.com/market-data/all-upcoming-issues-ipo',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(cookies ? { 'Cookie': cookies } : {}),
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!resp.ok) throw new Error(`NSE IPO: ${resp.status}`);
+    const json = await resp.json();
+
+    const mapIpo = (item, status) => ({
+      name: item.companyName || item.symbol || '',
+      type: item.subIssueType || item.issueType || 'Mainboard',
+      exchange: item.listingAt || item.exchange || 'NSE,BSE',
+      priceBand: item.minPrice && item.maxPrice
+        ? `₹${item.minPrice}–₹${item.maxPrice}`
+        : item.issuePrice ? `₹${item.issuePrice}` : item.priceBand || '—',
+      openDate: item.bidOpenDate || item.openDate || '',
+      closeDate: item.bidCloseDate || item.closeDate || '',
+      lotSize: parseInt(item.marketLot || item.lotSize || 0) || null,
+      gmp: null,
+      status,
+    });
+
+    const all = [
+      ...(json.upcoming || []).map(i => mapIpo(i, 'upcoming')),
+      ...(json.open     || []).map(i => mapIpo(i, 'open')),
+    ].filter(i => i.name);
+
+    ipoCache = { data: all, fetchedAt: Date.now() };
+    return all;
+  } catch (e) {
+    console.error('[nse] IPO error:', e.message);
+    return ipoCache.data || [];
+  }
+}
+
+// GET /api/nse/ipos
+router.get('/ipos', async (req, res) => {
+  try {
+    const data = await fetchIpos();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

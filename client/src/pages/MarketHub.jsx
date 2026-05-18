@@ -5,6 +5,8 @@ import SectorHeatmap from '../components/market/SectorHeatmap.jsx';
 import TopMovers from '../components/market/TopMovers.jsx';
 import EventStrip from '../components/market/EventStrip.jsx';
 import FiiDiiFlows from '../components/market/FiiDiiFlows.jsx';
+import IpoTracker from '../components/market/IpoTracker.jsx';
+import CryptoPrices from '../components/market/CryptoPrices.jsx';
 
 const CARD = {
   background: '#111111',
@@ -67,11 +69,8 @@ export default function MarketHub() {
           </div>
         </Section>
 
-        <Section title="Crypto">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            {ovLoading ? <span style={{ color: TEXT_DIM, fontSize: 13, fontFamily: 'Inter, system-ui, sans-serif' }}>Loading…</span>
-              : overview?.crypto?.map(c => <IndexCard key={c.symbol} {...c} />)}
-          </div>
+        <Section title="Crypto — Binance + Hyperliquid">
+          <CryptoPrices />
         </Section>
       </div>
 
@@ -91,9 +90,15 @@ export default function MarketHub() {
         <EventStrip events={events?.events} missing={events?.missing} />
       </Section>
 
-      <Section title="FII / DII Daily Flows (India)">
-        <FiiDiiFlows />
-      </Section>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+        <Section title="FII / DII Daily Flows (India)">
+          <FiiDiiFlows />
+        </Section>
+
+        <Section title="IPO Tracker (India)">
+          <IpoTracker />
+        </Section>
+      </div>
     </div>
   );
 }

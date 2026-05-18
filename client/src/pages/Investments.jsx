@@ -1,6 +1,7 @@
 import { useState, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tradesApi, pricesApi, statsApi, mfApi } from '../api/client.js';
+import MutualFundTracker from '../components/mf/MutualFundTracker.jsx';
 import Modal from '../components/shared/Modal.jsx';
 import ClosePositionForm from '../components/trades/ClosePositionForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
@@ -32,21 +33,23 @@ function fromUSD(usdPrice, target, usdInr, eurUsd) {
 const CUR_SYMBOL = { USD: '$', INR: '₹', EUR: '€' };
 
 const SUB_TABS = [
-  ['all',    'All'],
-  ['us',     'US Market'],
-  ['indian', 'Indian Markets'],
-  ['crypto', 'Crypto'],
-  ['etf',    'US ETF/Funds'],
-  ['mf',     'Indian MF'],
+  ['all',        'All'],
+  ['us',         'US Market'],
+  ['indian',     'Indian Markets'],
+  ['crypto',     'Crypto'],
+  ['etf',        'US ETF/Funds'],
+  ['mf',         'Indian MF'],
+  ['mf-tracker', 'MF Tracker'],
 ];
 
 const CURRENCY_OPTIONS = {
-  all:    ['USD', 'INR', 'EUR'],
-  us:     ['USD', 'EUR'],
-  indian: ['INR', 'EUR'],
-  crypto: ['USD', 'EUR'],
-  etf:    ['USD', 'EUR'],
-  mf:     ['INR'],
+  all:        ['USD', 'INR', 'EUR'],
+  us:         ['USD', 'EUR'],
+  indian:     ['INR', 'EUR'],
+  crypto:     ['USD', 'EUR'],
+  etf:        ['USD', 'EUR'],
+  mf:         ['INR'],
+  'mf-tracker': ['INR'],
 };
 
 function getInitCurrency(tab) {
@@ -250,11 +253,19 @@ export default function Investments() {
               transition: 'background 0.15s, color 0.15s',
             }}
           >
-            {label} ({counts[key]})
+            {label}{key !== 'mf-tracker' ? ` (${counts[key]})` : ''}
           </button>
         ))}
       </div>
 
+      {/* Dedicated MF Tracker tab */}
+      {activeTab === 'mf-tracker' && (
+        <div style={{ marginTop: 8 }}>
+          <MutualFundTracker />
+        </div>
+      )}
+
+      {activeTab !== 'mf-tracker' && (<>
       {/* Search bar */}
       <div style={{ marginBottom: 20, display: 'flex', gap: 8 }}>
         <input
@@ -702,6 +713,7 @@ export default function Investments() {
           }} />
         </Modal>
       )}
+      </>)}
     </div>
   );
 }

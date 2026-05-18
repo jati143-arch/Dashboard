@@ -1,6 +1,8 @@
 const express = require('express');
 const https = require('https');
+const path = require('path');
 const { getSettings } = require('../lib/userSettings');
+const { runPythonScript } = require('./python-data');
 
 const router = express.Router();
 
@@ -59,6 +61,42 @@ router.get('/earnings', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// GET /api/calendar/yf-earnings?symbols=AAPL,MSFT,...  — no API key needed
+const earningsCache = {};
+const EARNINGS_TTL = 12 * 60 * 60 * 1000;
+
+router.get('/yf-earnings', async (req, res) => {
+  const symbols = (req.query.symbols || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+  if (symbols.length === 0) return res.json([]);
+
+  const cacheKey = symbols.sort().join(',');
+  if (earningsCache[cacheKey] && Date.now() - earningsCache[cacheKey].at < EARNINGS_TTL) {
+    return res.json(earningsCache[cacheKey].data);
+  }
+
+  const results = await Promise.all(
+    symbols.map(async (sym) => {
+      try {
+        const cal = await runPythonScript(['yf-calendar', sym], 20000);
+        if (!cal || cal.error) return null;
+        return {
+          symbol: sym,
+          earningsDate: cal.earnings_date || cal.earningsDate || null,
+          epsEstimate:  cal.eps_estimate  || cal.epsEstimate  || null,
+          exDivDate:    cal.ex_dividend_date || null,
+          dividendDate: cal.dividend_date   || null,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const data = results.filter(Boolean).filter(r => r.earningsDate);
+  earningsCache[cacheKey] = { data, at: Date.now() };
+  res.json(data);
 });
 
 // GET /api/calendar/fred/:series

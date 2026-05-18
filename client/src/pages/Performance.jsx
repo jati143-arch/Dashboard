@@ -14,11 +14,12 @@ import RiskMetrics from '../components/performance/RiskMetrics.jsx';
 import ReturnDistribution from '../components/performance/ReturnDistribution.jsx';
 import SectorExposure from '../components/performance/SectorExposure.jsx';
 import TaxReport from '../components/performance/TaxReport.jsx';
+import DividendTracker from '../components/dividends/DividendTracker.jsx';
 import { useCurrency } from '../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../utils/currency.js';
 
 const PERIODS = ['daily', 'weekly', 'monthly', 'all'];
-const TABS = ['overview', 'sectors', 'risk', 'tax'];
+const TABS = ['overview', 'sectors', 'risk', 'tax', 'dividends'];
 
 function StatCard({ label, value, sub, color }) {
   return (
@@ -177,6 +178,13 @@ export default function Performance() {
       )}
 
       {tab === 'tax' && <TaxReport />}
+
+      {tab === 'dividends' && (
+        <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: 28 }}>
+          <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, fontWeight: 600 }}>Dividend Tracker</div>
+          <DividendTracker />
+        </div>
+      )}
 
       {tab === 'risk' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

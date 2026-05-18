@@ -982,3 +982,70 @@ Transformed the dashboard with a premium Bloomberg-style design overhaul:
 | `server/.env.example` | Added GROQ_API_KEY placeholder with provider docs |
 
 ---
+
+---
+
+## Phase 34 — Major Feature Expansion (16 Blocks)
+
+### Overview
+Comprehensive feature upgrade covering: yfinance Python price feed, candlestick charts, market sentiment, alerts + Telegram, tax report, position sizer, FII/DII flows, IPO tracker, mutual fund tracker, dividend tracker, crypto via Binance/Hyperliquid, earnings calendar, and AI market brief.
+
+### Block 1 — yfinance Python Price Feed
+**`python/yf_fetcher.py`** (new): quote, history, intraday, info, dividends, calendar, multi-price, sentiment, portfolio-intraday functions.
+**`python/requirements.txt`**: Added yfinance>=0.2.28 and pandas>=2.0.0.
+**`server/routes/python-data.js`**: 10 new yfinance endpoints under /api/python-data/yf-*.
+
+### Block 2 — News & Sentiment
+- SmartNewsFeed: 3-tab news (India Market / Global / My Portfolio) with NewsAPI + RSS fallback
+- MarketPulse: NIFTY/BANKNIFTY/S&P/VIX/DXY/Brent/Gold gauges
+- FiiDiiFlows: 7-day FII/DII flow bars from NSE CSV archive
+
+### Block 3 — Candlestick Charts
+CandlestickChart.jsx: lightweight-charts, 6 timeframes, client-side EMA/RSI, volume histogram.
+
+### Block 4b — AI Market Brief
+- AiMarketBrief.jsx (new): collapsible 5-bullet daily brief, cached in Drive (dashboard-daily.json)
+- Server: GET/POST /api/ai/market-brief routes
+
+### Block 5 — Price Alerts + Telegram
+- alerts.js: Drive-backed alerts CRUD, price checking, Telegram Bot API delivery
+- AlertsPanel.jsx: create/toggle/delete alerts, Telegram test
+- Bell icon in TopNav with badge
+
+### Block 8 — India Tax Report
+- TaxReport.jsx: STCG/LTCG per India law (Apr-Mar FY, 15%/10%), CSV export
+- Performance page: new 'Tax Report' tab
+
+### Block 9 — Mutual Fund Tracker (new)
+- mf.js: AMFI fund search, holdings CRUD, NAV history
+- MutualFundTracker.jsx: search funds, add with units/avgNAV, show returns + XIRR, SIP support
+- Investments page: new 'MF Tracker' sub-tab
+
+### Block 10 — IPO Tracker (new)
+- nse.js: GET /api/nse/ipos with NSE 2-step cookie auth + 6h cache
+- IpoTracker.jsx: upcoming + open IPOs, days-left badge
+- MarketHub: IPO Tracker section added
+
+### Block 11 — Telegram Alerts
+- sendTelegram() helper in alerts.js
+- Settings extended: telegram_bot_token, telegram_chat_id, newsapi_key, twelvedata_key, binance_api_key
+
+### Block 12 — Risk Metrics (pre-existing, fully working)
+risk.js + RiskMetrics.jsx: Sharpe, Sortino, Max Drawdown, VaR95, Profit Factor, Expectancy, Calmar.
+
+### Block 14 — Position Sizer
+PositionSizer.jsx: entry/stop/target, Kelly criterion, R:R bar.
+
+### Block 15 — Crypto via Binance + Hyperliquid (new)
+- crypto.js: Binance public API (8 spot) + Hyperliquid perps, 1-min cache, no key needed
+- CryptoPrices.jsx: coin cards + perps with basis spread
+- MarketHub: Crypto section now uses Binance/Hyperliquid instead of Yahoo Finance
+
+### Block 16 — Dividend Tracker (new)
+- DividendTracker.jsx: yfinance dividends for open positions, YOC (yield-on-cost), upcoming ex-div
+- Performance page: new 'Dividends' tab
+
+### Block 2d — Earnings Calendar (new)
+- calendar.js: GET /api/calendar/yf-earnings (yfinance multi-symbol batch, no API key)
+- EconomicCalendar: redesigned with 3 tabs — Economic Events / Earnings / FRED Macro
+- Earnings tab shows upcoming dates for watchlist + open positions symbols

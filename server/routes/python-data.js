@@ -187,3 +187,4 @@ router.post('/yf-portfolio-intraday', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.runPythonScript = runPythonScript;

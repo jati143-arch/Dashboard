@@ -4,6 +4,7 @@ import { stagger } from '../utils/anim.js';
 import { tradesApi, dailyApi, statsApi, pricesApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import MarketPulse from '../components/dashboard/MarketPulse.jsx';
+import AiMarketBrief from '../components/dashboard/AiMarketBrief.jsx';
 import SmartNewsFeed from '../components/dashboard/SmartNewsFeed.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
@@ -139,7 +140,10 @@ export default function DailyDashboard() {
         overallTotal={winlossStats?.total ?? 0}
       />
 
-      {/* 2. Market Pulse */}
+      {/* 2. AI Market Brief */}
+      <AiMarketBrief />
+
+      {/* 3. Market Pulse */}
       <MarketPulse />
 
       {/* 3. Smart News Feed */}
