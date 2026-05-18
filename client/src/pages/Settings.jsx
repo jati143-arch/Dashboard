@@ -60,7 +60,7 @@ export default function Settings() {
   const labelStyle = {
     fontSize: 11,
     fontWeight: 600,
-    color: '#52525b',
+    color: 'var(--color-text-dim)',
     textTransform: 'uppercase',
     letterSpacing: '0.1em',
     marginBottom: 8,
@@ -69,7 +69,7 @@ export default function Settings() {
   };
   const hintStyle = {
     fontSize: 11,
-    color: '#52525b',
+    color: 'var(--color-text-dim)',
     marginTop: 6,
     fontFamily: "'Inter', system-ui, sans-serif",
   };
@@ -78,22 +78,22 @@ export default function Settings() {
     width: '100%',
     boxSizing: 'border-box',
     padding: '10px 14px',
-    background: '#050505',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--color-bg-base)',
+    border: '1px solid var(--color-border)',
     borderRadius: 24,
-    color: '#ffffff',
+    color: 'var(--color-text-primary)',
     fontSize: 13,
     fontFamily: "'JetBrains Mono', monospace",
     outline: 'none',
   };
 
-  if (isLoading) return <div style={{ color: '#52525b', padding: 24, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>;
+  if (isLoading) return <div style={{ color: 'var(--color-text-dim)', padding: 24, fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>;
 
   return (
     <div style={{ maxWidth: 680 }}>
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', color: '#ffffff', fontFamily: "'Inter', system-ui, sans-serif" }}>Settings</h2>
-        <p style={{ fontSize: 13, color: '#71717a', margin: 0, fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>Settings</h2>
+        <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: 0, fontFamily: "'Inter', system-ui, sans-serif" }}>
           Your API keys are stored securely in your own Google Drive — only you can access them.
         </p>
       </div>
@@ -116,16 +116,16 @@ export default function Settings() {
       {/* AI Provider - pill radio buttons */}
       <div style={{
         padding: 28,
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         marginBottom: 16,
-        borderLeft: '3px solid #22ff88',
+        borderLeft: '3px solid var(--color-green)',
       }}>
         <div style={{
           fontSize: 11,
           fontWeight: 600,
-          color: '#52525b',
+          color: 'var(--color-text-dim)',
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           marginBottom: 16,
@@ -143,7 +143,7 @@ export default function Settings() {
                 gap: 12,
                 padding: '14px 18px',
                 borderRadius: 24,
-                border: `1px solid ${form.ai_provider === p.id ? '#22ff88' : 'rgba(255,255,255,0.06)'}`,
+                border: `1px solid ${form.ai_provider === p.id ? '#22ff88' : 'var(--color-border)'}`,
                 background: form.ai_provider === p.id ? 'rgba(34,255,136,0.08)' : 'transparent',
                 cursor: 'pointer',
                 transition: 'border-color 0.15s, background 0.15s',
@@ -158,8 +158,8 @@ export default function Settings() {
                 style={{ marginTop: 4, accentColor: '#22ff88', width: 16, height: 16 }}
               />
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#ffffff', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>{p.label}</div>
-                <div style={{ fontSize: 11, color: '#52525b', fontFamily: "'Inter', system-ui, sans-serif" }}>{p.sub}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>{p.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-dim)', fontFamily: "'Inter', system-ui, sans-serif" }}>{p.sub}</div>
               </div>
             </label>
           ))}
@@ -172,15 +172,15 @@ export default function Settings() {
       {/* API Keys — AI */}
       <div style={{
         padding: 28,
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         marginBottom: 16,
       }}>
         <div style={{
           fontSize: 11,
           fontWeight: 600,
-          color: '#52525b',
+          color: 'var(--color-text-dim)',
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           marginBottom: 16,
@@ -212,15 +212,15 @@ export default function Settings() {
       {/* API Keys — Data */}
       <div style={{
         padding: 28,
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         marginBottom: 20,
       }}>
         <div style={{
           fontSize: 11,
           fontWeight: 600,
-          color: '#52525b',
+          color: 'var(--color-text-dim)',
           textTransform: 'uppercase',
           letterSpacing: '0.12em',
           marginBottom: 16,
@@ -252,18 +252,18 @@ export default function Settings() {
       {/* Alerts & Notifications */}
       <div style={{
         padding: 28,
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         marginBottom: 20,
         borderLeft: '3px solid #0088cc',
       }}>
         <div style={{
-          fontSize: 11, fontWeight: 600, color: '#52525b',
+          fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)',
           textTransform: 'uppercase', letterSpacing: '0.12em',
           marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif",
         }}>Alerts &amp; Notifications</div>
-        <div style={{ fontSize: 12, color: '#71717a', marginBottom: 16, fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 16, fontFamily: "'Inter', system-ui, sans-serif" }}>
           Set up Telegram to receive price alerts on your phone — works even when the browser is closed.
           Create a bot via @BotFather, then get your Chat ID from @userinfobot.
         </div>
@@ -311,8 +311,8 @@ export default function Settings() {
           disabled={testing}
           style={{
             background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.06)',
-            color: '#ffffff',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-primary)',
             cursor: 'pointer',
             padding: '12px 24px',
             borderRadius: 9999,
@@ -338,8 +338,8 @@ export default function Settings() {
           {testResult.ok ? (
             <>
               <span style={{ color: '#22ff88', fontWeight: 700 }}>✓ Connected</span>
-              <span style={{ color: '#71717a', marginLeft: 10 }}>{testResult.provider} · {testResult.model}</span>
-              <div style={{ color: '#71717a', marginTop: 6, fontStyle: 'italic' }}>{testResult.response}</div>
+              <span style={{ color: 'var(--color-text-secondary)', marginLeft: 10 }}>{testResult.provider} · {testResult.model}</span>
+              <div style={{ color: 'var(--color-text-secondary)', marginTop: 6, fontStyle: 'italic' }}>{testResult.response}</div>
             </>
           ) : (
             <span style={{ color: '#ff4444' }}>⚠ {testResult.error}</span>

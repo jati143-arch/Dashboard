@@ -38,7 +38,7 @@ export default function Watchlist() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff' }}>Watchlist</h1>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, fontFamily: "'Inter', system-ui, sans-serif", color: 'var(--color-text-primary)' }}>Watchlist</h1>
         <button
           onClick={() => setShowCreate(v => !v)}
           style={{
@@ -60,8 +60,8 @@ export default function Watchlist() {
       {showCreate && (
         <div style={{
           padding: '20px 28px',
-          background: '#111111',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: 24,
         }}>
           <form onSubmit={e => { e.preventDefault(); if (newName.trim()) create.mutate(); }}
@@ -73,10 +73,10 @@ export default function Watchlist() {
               style={{
                 flex: 1,
                 padding: '8px 14px',
-                background: '#050505',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--color-bg-base)',
+                border: '1px solid var(--color-border)',
                 borderRadius: 24,
-                color: '#ffffff',
+                color: 'var(--color-text-primary)',
                 fontSize: 13,
                 fontFamily: "'Inter', system-ui, sans-serif",
                 outline: 'none',
@@ -104,15 +104,15 @@ export default function Watchlist() {
       )}
 
       {isLoading ? (
-        <div style={{ color: '#52525b', fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>
+        <div style={{ color: 'var(--color-text-dim)', fontSize: 13, fontFamily: "'Inter', system-ui, sans-serif" }}>Loading…</div>
       ) : lists.length === 0 ? (
         <div style={{
           padding: 40,
-          background: '#111111',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: 24,
           textAlign: 'center',
-          color: '#52525b',
+          color: 'var(--color-text-dim)',
           fontSize: 13,
           fontFamily: "'Inter', system-ui, sans-serif",
         }}>
@@ -126,9 +126,9 @@ export default function Watchlist() {
             gap: 6,
             flexWrap: 'wrap',
             padding: 4,
-            background: '#0a0a0a',
+            background: 'var(--color-bg-base)',
             borderRadius: '9999px',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid var(--color-border)',
             width: 'fit-content',
           }}>
             {lists.map(l => (
@@ -141,7 +141,7 @@ export default function Watchlist() {
                   borderRadius: '9999px',
                   background: l.id === activeList?.id ? '#ffffff' : 'transparent',
                   cursor: 'pointer',
-                  color: l.id === activeList?.id ? '#050505' : '#71717a',
+                  color: l.id === activeList?.id ? '#050505' : 'var(--color-text-secondary)',
                   fontWeight: l.id === activeList?.id ? 600 : 400,
                   fontSize: 13,
                   fontFamily: "'Inter', system-ui, sans-serif",
@@ -158,17 +158,17 @@ export default function Watchlist() {
           {activeList && (
             <div style={{
               padding: '20px 28px',
-              background: '#111111',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
               borderRadius: 24,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff' }}>{activeList.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif", color: 'var(--color-text-primary)' }}>{activeList.name}</span>
                 <button
                   onClick={() => remove.mutate(activeList.id)}
                   style={{
                     background: 'none',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '9999px',
                     cursor: 'pointer',
                     color: '#ff4444',

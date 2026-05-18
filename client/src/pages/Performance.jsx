@@ -20,19 +20,20 @@ import { CUR_SYMBOL } from '../utils/currency.js';
 
 const PERIODS = ['daily', 'weekly', 'monthly', 'all'];
 const TABS = ['overview', 'sectors', 'risk', 'tax', 'dividends'];
+const TAB_LABELS = { overview: 'Overview', sectors: 'Sectors', risk: 'Risk Metrics', tax: 'Tax Report', dividends: 'Dividends' };
 
 function StatCard({ label, value, sub, color }) {
   return (
     <div style={{
       padding: '20px 16px',
-      background: '#111111',
-      border: '1px solid rgba(255,255,255,0.06)',
+      background: 'var(--color-bg-card)',
+      border: '1px solid var(--color-border)',
       borderRadius: 24,
       textAlign: 'center',
     }}>
       <div style={{
         fontSize: 10,
-        color: '#52525b',
+        color: 'var(--color-text-dim)',
         textTransform: 'uppercase',
         letterSpacing: '0.12em',
         marginBottom: 10,
@@ -43,12 +44,12 @@ function StatCard({ label, value, sub, color }) {
         fontSize: 28,
         fontWeight: 700,
         fontFamily: "'JetBrains Mono', monospace",
-        color: color || '#ffffff',
+        color: color || 'var(--color-text-primary)',
       }}>{value}</div>
       {sub && (
         <div style={{
           fontSize: 11,
-          color: '#71717a',
+          color: 'var(--color-text-secondary)',
           marginTop: 6,
           fontFamily: "'Inter', system-ui, sans-serif",
         }}>{sub}</div>
@@ -62,12 +63,12 @@ function CustomTooltip({ active, payload, label, sym }) {
   const val = payload[0].value;
   return (
     <div style={{
-      background: '#111111',
-      border: '1px solid rgba(255,255,255,0.06)',
+      background: 'var(--color-bg-card)',
+      border: '1px solid var(--color-border)',
       borderRadius: 16,
       padding: '10px 14px',
     }}>
-      <div style={{ fontSize: 11, color: '#71717a', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif" }}>{label}</div>
       <div style={{
         fontFamily: "'JetBrains Mono', monospace",
         fontWeight: 700,
@@ -127,9 +128,9 @@ export default function Performance() {
         gap: 4,
         marginBottom: 28,
         padding: 4,
-        background: '#0a0a0a',
+        background: 'var(--color-bg-base)',
         borderRadius: '9999px',
-        border: '1px solid rgba(255,255,255,0.06)',
+        border: '1px solid var(--color-border)',
         width: 'fit-content',
       }}>
         {TABS.map(t => (
@@ -142,7 +143,7 @@ export default function Performance() {
               borderRadius: '9999px',
               background: tab === t ? '#ffffff' : 'transparent',
               cursor: 'pointer',
-              color: tab === t ? '#050505' : '#71717a',
+              color: tab === t ? '#050505' : 'var(--color-text-secondary)',
               fontWeight: tab === t ? 700 : 400,
               fontSize: 13,
               textTransform: 'capitalize',
@@ -150,7 +151,7 @@ export default function Performance() {
               transition: 'background 0.15s, color 0.15s',
             }}
           >
-            {t === 'overview' ? 'Overview' : t === 'sectors' ? 'Sectors' : t === 'risk' ? 'Risk Metrics' : 'Tax Report'}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -158,14 +159,14 @@ export default function Performance() {
       {tab === 'sectors' && (
         <div style={{
           padding: 28,
-          background: '#111111',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: 24,
         }}>
           <div style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#52525b',
+            color: 'var(--color-text-dim)',
             textTransform: 'uppercase',
             letterSpacing: '0.12em',
             marginBottom: 16,
@@ -180,8 +181,8 @@ export default function Performance() {
       {tab === 'tax' && <TaxReport />}
 
       {tab === 'dividends' && (
-        <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, padding: 28 }}>
-          <div style={{ fontSize: 10, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, fontWeight: 600 }}>Dividend Tracker</div>
+        <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 24, padding: 28 }}>
+          <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, fontWeight: 600 }}>Dividend Tracker</div>
           <DividendTracker />
         </div>
       )}
@@ -213,9 +214,9 @@ export default function Performance() {
           display: 'flex',
           gap: 4,
           padding: 4,
-          background: '#0a0a0a',
+          background: 'var(--color-bg-base)',
           borderRadius: '9999px',
-          border: '1px solid rgba(255,255,255,0.06)',
+          border: '1px solid var(--color-border)',
         }}>
           {PERIODS.map(p => (
             <button
@@ -223,7 +224,7 @@ export default function Performance() {
               onClick={() => setPeriod(p)}
               style={{
                 background: period === p ? '#22ff88' : 'transparent',
-                color: period === p ? '#050505' : '#71717a',
+                color: period === p ? '#050505' : 'var(--color-text-secondary)',
                 border: 'none',
                 fontWeight: period === p ? 700 : 400,
                 borderRadius: '9999px',
@@ -285,8 +286,8 @@ export default function Performance() {
       {/* P&L Chart */}
       <div style={{
         padding: 28,
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         marginBottom: 24,
       }}>
@@ -294,7 +295,7 @@ export default function Performance() {
           <span style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#52525b',
+            color: 'var(--color-text-dim)',
             textTransform: 'uppercase',
             letterSpacing: '0.12em',
             fontFamily: "'Inter', system-ui, sans-serif",
@@ -311,7 +312,7 @@ export default function Performance() {
                   border: 'none',
                   borderRadius: '9999px',
                   background: chartType === t ? '#ffffff' : 'transparent',
-                  color: chartType === t ? '#050505' : '#71717a',
+                  color: chartType === t ? '#050505' : 'var(--color-text-secondary)',
                   cursor: 'pointer',
                   fontSize: 11,
                   fontWeight: chartType === t ? 600 : 400,
@@ -325,16 +326,16 @@ export default function Performance() {
           </div>
         </div>
         {chartData.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#52525b', fontSize: 13 }}>No trade data to chart yet.</div>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)', fontSize: 13 }}>No trade data to chart yet.</div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             {chartType === 'bar' ? (
               <BarChart data={chartData} margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
+                <XAxis dataKey="date" tick={{ fill: 'var(--color-text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--color-text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
                 <Tooltip content={<CustomTooltip sym={sym} />} />
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" />
+                <ReferenceLine y={0} stroke="var(--color-border)" />
                 <Bar dataKey="pnl" fill="#22ff88" radius={[3,3,0,0]}
                   label={false}
                   isAnimationActive={false}
@@ -343,10 +344,10 @@ export default function Performance() {
             ) : (
               <LineChart data={chartData} margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#52525b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
+                <XAxis dataKey="date" tick={{ fill: 'var(--color-text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'var(--color-text-dim)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `${sym}${v}`} />
                 <Tooltip content={<CustomTooltip sym={sym} />} />
-                <ReferenceLine y={0} stroke="rgba(255,255,255,0.06)" />
+                <ReferenceLine y={0} stroke="var(--color-border)" />
                 <Line dataKey="pnl" stroke="#22ff88" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             )}
@@ -356,16 +357,16 @@ export default function Performance() {
 
       {/* Pattern stats table */}
       <div style={{
-        background: '#111111',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         borderRadius: 24,
         overflow: 'hidden',
       }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--color-border)' }}>
           <span style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#52525b',
+            color: 'var(--color-text-dim)',
             textTransform: 'uppercase',
             letterSpacing: '0.12em',
             fontFamily: "'Inter', system-ui, sans-serif",
@@ -374,26 +375,26 @@ export default function Performance() {
           </span>
         </div>
         {byPattern.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 32, color: '#52525b', fontSize: 13 }}>Tag trades with patterns to see stats here.</div>
+          <div style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-dim)', fontSize: 13 }}>Tag trades with patterns to see stats here.</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Pattern</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Trades</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Win Rate</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Total P&L</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Avg P&L</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Avg Winner</th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Avg Loser</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Pattern</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Trades</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Win Rate</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Total P&L</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Avg P&L</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Avg Winner</th>
+                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Avg Loser</th>
               </tr>
             </thead>
             <tbody>
               {byPattern.map(p => (
                 <tr key={p.pattern_tag}>
-                  <td style={{ padding: '12px 24px', fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif", color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.pattern_tag}</td>
-                  <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{p.total_trades}</td>
-                  <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '12px 24px', fontWeight: 600, fontFamily: "'Inter', system-ui, sans-serif", color: 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border)' }}>{p.pattern_tag}</td>
+                  <td style={{ padding: '12px 24px', fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border)' }}>{p.total_trades}</td>
+                  <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}>
                     <span style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontWeight: 700,
@@ -402,10 +403,10 @@ export default function Performance() {
                       {p.win_rate}%
                     </span>
                   </td>
-                  <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><PnlBadge value={p.total_pnl} /></td>
-                  <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><PnlBadge value={p.avg_pnl} /></td>
-                  <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><PnlBadge value={p.avg_winner} /></td>
-                  <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><PnlBadge value={p.avg_loser} /></td>
+                  <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}><PnlBadge value={p.total_pnl} /></td>
+                  <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}><PnlBadge value={p.avg_pnl} /></td>
+                  <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}><PnlBadge value={p.avg_winner} /></td>
+                  <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}><PnlBadge value={p.avg_loser} /></td>
                 </tr>
               ))}
             </tbody>

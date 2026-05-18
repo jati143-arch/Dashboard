@@ -41,6 +41,10 @@ export default function IpoTracker() {
         <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', textAlign: 'center', padding: '16px 0' }}>
           No upcoming IPOs data available.
         </div>
+      ) : ipos[0]?.isFallback ? (
+        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', textAlign: 'center', padding: '16px 0' }}>
+          NSE IPO data temporarily unavailable. Check <a href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo" target="_blank" rel="noreferrer" style={{ color: 'var(--color-green)' }}>NSE website</a>.
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {ipos.map((ipo, i) => {

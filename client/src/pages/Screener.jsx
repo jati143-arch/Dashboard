@@ -31,8 +31,8 @@ export default function Screener() {
   return (
     <div style={{ animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: '#ffffff', fontFamily: "'Inter', system-ui, sans-serif" }}>🔍 AI Stock Screener</div>
-        <div style={{ fontSize: 12, color: '#52525b', fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, color: 'var(--color-text-primary)', fontFamily: "'Inter', system-ui, sans-serif" }}>🔍 AI Stock Screener</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-dim)', fontFamily: "'Inter', system-ui, sans-serif" }}>
           Search stocks using natural language
         </div>
       </div>
@@ -48,10 +48,10 @@ export default function Screener() {
               flex: 1,
               padding: '12px 18px',
               fontSize: 14,
-              background: '#111111',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
               borderRadius: 24,
-              color: '#ffffff',
+              color: 'var(--color-text-primary)',
               fontFamily: "'Inter', system-ui, sans-serif",
               outline: 'none',
             }}
@@ -77,7 +77,7 @@ export default function Screener() {
 
       {/* Pill suggestion buttons */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: '#52525b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>Try:</div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", fontWeight: 600 }}>Try:</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {suggestions.map(s => (
             <button
@@ -86,10 +86,10 @@ export default function Screener() {
               style={{
                 padding: '8px 16px',
                 fontSize: 12,
-                background: '#111111',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--color-bg-card)',
+                border: '1px solid var(--color-border)',
                 borderRadius: 9999,
-                color: '#71717a',
+                color: 'var(--color-text-secondary)',
                 cursor: 'pointer',
                 fontFamily: "'Inter', system-ui, sans-serif",
                 fontWeight: 500,

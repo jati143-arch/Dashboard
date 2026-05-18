@@ -28,11 +28,13 @@ function EarningsPanel() {
     ])
   ].slice(0, 20);
 
-  const { data: earnings = [], isLoading } = useQuery({
+  const { data: earnings = [], isLoading, isError } = useQuery({
     queryKey: ['yf-earnings', symbols.join(',')],
     queryFn: () => calendarApi.yfEarnings(symbols),
     staleTime: 12 * 60 * 60 * 1000,
     enabled: symbols.length > 0,
+    retry: false,
+    timeout: 30000,
   });
 
   if (symbols.length === 0) return (
@@ -42,6 +44,11 @@ function EarningsPanel() {
   );
 
   if (isLoading) return <div style={{ color: TEXT_DIM, padding: '40px 0', textAlign: 'center' }}>Loading earnings…</div>;
+  if (isError) return (
+    <div style={{ textAlign: 'center', color: TEXT_DIM, padding: '40px 0', fontSize: 13 }}>
+      Could not load earnings data. Make sure yfinance is installed on the server.
+    </div>
+  );
 
   const sorted = [...earnings].sort((a, b) => new Date(a.earningsDate) - new Date(b.earningsDate));
 
@@ -61,7 +68,7 @@ function EarningsPanel() {
             const urgent = due === 'Today' || due === 'Tomorrow';
             return (
               <div key={e.symbol} style={{
-                background: '#111111', border: `1px solid ${urgent ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                background: 'var(--color-bg-card)', border: `1px solid ${urgent ? 'rgba(239,68,68,0.3)' : 'var(--color-border)'}`,
                 borderRadius: 12, padding: '12px 16px',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
               }}>
@@ -91,16 +98,16 @@ function EarningsPanel() {
 }
 
 const CARD = {
-  background: '#111111',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
   borderRadius: 24,
   padding: 28,
 };
 
-const TEXT_DIM = '#52525b';
-const TEXT_SECONDARY = '#71717a';
-const TEXT_PRIMARY = '#ffffff';
-const GREEN = '#22ff88';
+const TEXT_DIM = 'var(--color-text-dim)';
+const TEXT_SECONDARY = 'var(--color-text-secondary)';
+const TEXT_PRIMARY = 'var(--color-text-primary)';
+const GREEN = 'var(--color-green)';
 
 function addDays(d, n) {
   const dt = new Date(d);
@@ -111,7 +118,7 @@ function addDays(d, n) {
 const PILL_BTN = (active) => ({
   padding: '6px 14px',
   borderRadius: 9999,
-  border: '1px solid rgba(255,255,255,0.06)',
+  border: '1px solid var(--color-border)',
   background: active ? GREEN : 'transparent',
   color: active ? '#000000' : TEXT_SECONDARY,
   cursor: 'pointer',
@@ -123,7 +130,7 @@ const PILL_BTN = (active) => ({
 const NAV_BTN = {
   padding: '6px 14px',
   borderRadius: 9999,
-  border: '1px solid rgba(255,255,255,0.06)',
+  border: '1px solid var(--color-border)',
   background: 'transparent',
   color: TEXT_SECONDARY,
   cursor: 'pointer',
@@ -168,7 +175,7 @@ export default function EconomicCalendar() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeSlideUp 0.45s ease both' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontFamily: 'Inter, system-ui, sans-serif' }}>Calendar</h1>
-        <div style={{ display: 'flex', gap: 6, background: '#0a0a0a', borderRadius: 9999, border: '1px solid rgba(255,255,255,0.06)', padding: 4 }}>
+        <div style={{ display: 'flex', gap: 6, background: 'var(--color-bg-base)', borderRadius: 9999, border: '1px solid var(--color-border)', padding: 4 }}>
           {CAL_TABS.map(t => (
             <button key={t} onClick={() => setCalTab(t)} style={{ padding: '6px 16px', borderRadius: 9999, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: calTab === t ? '#ffffff' : 'transparent', color: calTab === t ? '#050505' : TEXT_SECONDARY, fontFamily: 'Inter, system-ui, sans-serif', textTransform: 'capitalize' }}>
               {t === 'events' ? 'Economic Events' : t === 'earnings' ? 'Earnings' : 'FRED Macro'}
@@ -196,7 +203,7 @@ export default function EconomicCalendar() {
       <div style={{ ...CARD, padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={NAV_BTN}>◀</button>
-          <span style={{ padding: '6px 14px', fontSize: 12, color: TEXT_SECONDARY, fontFamily: "'JetBrains Mono', monospace", background: '#0a0a0a', borderRadius: 12 }}>{from} → {to}</span>
+          <span style={{ padding: '6px 14px', fontSize: 12, color: TEXT_SECONDARY, fontFamily: "'JetBrains Mono', monospace", background: 'var(--color-bg-base)', borderRadius: 12 }}>{from} → {to}</span>
           <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={NAV_BTN}>▶</button>
         </div>
 
@@ -218,7 +225,7 @@ export default function EconomicCalendar() {
       </div>
 
       <div style={CARD}>
-        <div style={{ display: 'grid', gridTemplateColumns: '8px 70px 36px 1fr 80px 80px 80px', gap: 12, padding: '0 4px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '8px 70px 36px 1fr 80px 80px 80px', gap: 12, padding: '0 4px 12px', borderBottom: '1px solid var(--color-border)', marginBottom: 8 }}>
           {['', 'Date', '', 'Event', 'Prev', 'Est', 'Actual'].map(h => (
             <span key={h} style={{ fontSize: 10, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, textAlign: h === 'Prev' || h === 'Est' || h === 'Actual' ? 'right' : 'left', fontFamily: 'Inter, system-ui, sans-serif' }}>{h}</span>
           ))}

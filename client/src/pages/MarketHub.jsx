@@ -9,16 +9,16 @@ import IpoTracker from '../components/market/IpoTracker.jsx';
 import CryptoPrices from '../components/market/CryptoPrices.jsx';
 
 const CARD = {
-  background: '#111111',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
   borderRadius: 24,
   padding: 28,
 };
 
-const TEXT_DIM = '#52525b';
-const TEXT_SECONDARY = '#71717a';
-const TEXT_PRIMARY = '#ffffff';
-const GREEN = '#22ff88';
+const TEXT_DIM = 'var(--color-text-dim)';
+const TEXT_SECONDARY = 'var(--color-text-secondary)';
+const TEXT_PRIMARY = 'var(--color-text-primary)';
+const GREEN = 'var(--color-green)';
 
 function Section({ title, children, style }) {
   return (
