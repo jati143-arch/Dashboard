@@ -30,24 +30,24 @@ const TIMEFRAMES = [
 const INTRADAY = ['5m', '15m', '30m', '1h'];
 
 const CARD = {
-  background: '#111111',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
   borderRadius: 24,
   padding: 28,
 };
 
-const TEXT_DIM = '#52525b';
-const TEXT_SECONDARY = '#71717a';
-const TEXT_PRIMARY = '#ffffff';
-const GREEN = '#22ff88';
+const TEXT_DIM = 'var(--color-text-dim)';
+const TEXT_SECONDARY = 'var(--color-text-secondary)';
+const TEXT_PRIMARY = 'var(--color-text-primary)';
+const GREEN = 'var(--color-green)';
 const RED = '#ff4444';
 const CYAN = '#00d4ff';
 
 const PILL_BTN = {
   padding: '10px 24px',
   borderRadius: 9999,
-  border: '1px solid rgba(255,255,255,0.06)',
-  background: '#111111',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-bg-card)',
   color: TEXT_SECONDARY,
   cursor: 'pointer',
   fontSize: 13,
@@ -106,13 +106,13 @@ export default function Backtest() {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Strategy</label>
-            <select value={form.strategy} onChange={e => set('strategy', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
+            <select value={form.strategy} onChange={e => set('strategy', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
               {STRATEGIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>Timeframe</label>
-            <select value={form.timeframe} onChange={e => { set('timeframe', e.target.value); setResult(null); }} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
+            <select value={form.timeframe} onChange={e => { set('timeframe', e.target.value); setResult(null); }} style={{ width: '100%', padding: '10px 14px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }}>
               {TIMEFRAMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
@@ -120,11 +120,11 @@ export default function Backtest() {
             <>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>From</label>
-                <input type="date" value={form.from} onChange={e => set('from', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
+                <input type="date" value={form.from} onChange={e => set('from', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, fontWeight: 600 }}>To</label>
-                <input type="date" value={form.to} onChange={e => set('to', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
+                <input type="date" value={form.to} onChange={e => set('to', e.target.value)} style={{ width: '100%', padding: '10px 14px', background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', borderRadius: 12, color: TEXT_PRIMARY, fontSize: 13 }} />
               </div>
             </>
           )}
@@ -186,7 +186,7 @@ export default function Backtest() {
                   <XAxis dataKey="date" tick={{ fill: '#666', fontSize: 10 }} tickFormatter={d => d.slice(0, 10).slice(5)} />
                   <YAxis tick={{ fill: '#666', fontSize: 10 }} domain={['auto', 'auto']} />
                   <Tooltip
-                    contentStyle={{ background: '#111111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }}
+                    contentStyle={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-bright)', borderRadius: 12 }}
                     labelStyle={{ color: '#666' }}
                     formatter={v => [`${v.toFixed(1)}`, 'Equity']}
                   />
@@ -199,7 +199,7 @@ export default function Backtest() {
 
           {trades.length > 0 && (
             <div style={{ ...CARD, padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, system-ui, sans-serif' }}>
                   Trade List ({trades.length} trades)
                 </span>

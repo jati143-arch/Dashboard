@@ -209,7 +209,7 @@ export default function Investments() {
 
   const pnlColor = totalUnrealized >= 0 ? '#22ff88' : '#ff4444';
   const allTimePnl = tabStats?.total_pnl;
-  const allTimePnlColor = allTimePnl == null ? '#52525b' : allTimePnl >= 0 ? '#22ff88' : '#ff4444';
+  const allTimePnlColor = allTimePnl == null ? 'var(--color-text-dim)' : allTimePnl >= 0 ? '#22ff88' : '#ff4444';
   const currencyOpts = CURRENCY_OPTIONS[activeTab];
 
   return (
@@ -521,7 +521,7 @@ export default function Investments() {
                     calc = { pnlD, pnlP: cost !== 0 ? (pnlD / cost) * 100 : 0 };
                   }
 
-                  const rowPnlColor = !calc ? '#52525b' : calc.pnlD >= 0 ? '#22ff88' : '#ff4444';
+                  const rowPnlColor = !calc ? 'var(--color-text-dim)' : calc.pnlD >= 0 ? '#22ff88' : '#ff4444';
                   const nativeSymbol = native === 'INR' ? '₹' : '$';
 
                   const isIndian = region === 'indian';

@@ -5,22 +5,22 @@ import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 import PnlBadge from '../components/shared/PnlBadge.jsx';
 
 const CARD = {
-  background: '#111111',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--color-bg-card)',
+  border: '1px solid var(--color-border)',
   borderRadius: 24,
   padding: 28,
 };
 
-const TEXT_DIM = '#52525b';
-const TEXT_SECONDARY = '#71717a';
-const TEXT_PRIMARY = '#ffffff';
-const GREEN = '#22ff88';
+const TEXT_DIM = 'var(--color-text-dim)';
+const TEXT_SECONDARY = 'var(--color-text-secondary)';
+const TEXT_PRIMARY = 'var(--color-text-primary)';
+const GREEN = 'var(--color-green)';
 const RED = '#ff4444';
 
 const PILL_BTN = {
   padding: '6px 14px',
   borderRadius: 9999,
-  border: '1px solid rgba(255,255,255,0.06)',
+  border: '1px solid var(--color-border)',
   background: 'transparent',
   color: TEXT_SECONDARY,
   cursor: 'pointer',
@@ -34,9 +34,9 @@ function PatternCard({ pattern, stats, onExpand }) {
 
   return (
     <div
-      style={{ ...CARD, cursor: 'pointer', transition: 'all 0.2s', borderColor: 'rgba(255,255,255,0.06)' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(34,255,136,0.3)'; e.currentTarget.style.background = '#141414'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = '#111111'; }}
+      style={{ ...CARD, cursor: 'pointer', transition: 'all 0.2s', borderColor: 'var(--color-border)' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(34,255,136,0.3)'; e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.filter = 'brightness(1.1)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'var(--color-bg-card)'; e.currentTarget.style.filter = ''; }}
       onClick={() => onExpand(pattern)}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -49,7 +49,7 @@ function PatternCard({ pattern, stats, onExpand }) {
       </p>
 
       {s ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
           <div>
             <div style={{ fontSize: 9, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, fontWeight: 600, fontFamily: 'Inter, system-ui, sans-serif' }}>Trades</div>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 20, color: TEXT_PRIMARY }}>{s.total_trades}</div>
@@ -68,7 +68,7 @@ function PatternCard({ pattern, stats, onExpand }) {
           </div>
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: TEXT_DIM, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div style={{ fontSize: 12, color: TEXT_DIM, borderTop: '1px solid var(--color-border)', paddingTop: 14, fontFamily: 'Inter, system-ui, sans-serif' }}>
           No personal stats yet — tag a trade with this pattern
         </div>
       )}
@@ -80,9 +80,9 @@ function PatternDetail({ pattern, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
       onClick={onClose}>
-      <div style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 24, width: 560, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.8)' }}
+      <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: 24, width: 560, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.8)' }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--color-border)' }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, fontFamily: 'Inter, system-ui, sans-serif' }}>{pattern.name}</h2>
           <button onClick={onClose} style={PILL_BTN}>✕</button>
         </div>

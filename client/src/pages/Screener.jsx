@@ -186,15 +186,15 @@ export default function Screener() {
                           fontFamily: "'Inter', system-ui, sans-serif",
                         }}>{s.sector}</span>
                       </td>
-                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}>
                         <button
                           onClick={() => openChart(s.symbol, null)}
                           style={{
                             padding: '6px 14px',
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            border: '1px solid var(--color-border)',
                             borderRadius: 9999,
-                            color: '#71717a',
+                            color: 'var(--color-text-secondary)',
                             cursor: 'pointer',
                             fontSize: 11,
                             fontWeight: 600,
