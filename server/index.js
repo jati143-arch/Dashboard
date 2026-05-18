@@ -45,6 +45,7 @@ const settingsRouter      = require('./routes/settings');
 const fundamentalsRouter  = require('./routes/fundamentals');
 const screenerRouter      = require('./routes/screener');
 const pythonDataRouter = require('./routes/python-data');
+const alertsRouter     = require('./routes/alerts');
 
 // ── Drive-backed data routes ─────────────────────────────────────────────────
 const tradesRouter   = require('./routes/trades-drive');
@@ -173,6 +174,7 @@ app.use('/api/settings',      requireAuth, settingsRouter);
 app.use('/api/fundamentals',  requireAuth, fundamentalsRouter);
 app.use('/api/screener',      requireAuth, screenerRouter);
 app.use('/api/python-data', requireAuth, pythonDataRouter);
+app.use('/api/alerts',     requireAuth, alertsRouter);
 
 // ── Serve built React app ───────────────────────────────────────────────────
 const fs = require('fs');

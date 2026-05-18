@@ -9,6 +9,7 @@ import TradeForm from '../components/trades/TradeForm.jsx';
 import CsvImport from '../components/trades/CsvImport.jsx';
 import LoadingSpinner from '../components/shared/LoadingSpinner.jsx';
 import PnlBadge from '../components/shared/PnlBadge.jsx';
+import PositionSizer from '../components/tools/PositionSizer.jsx';
 import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
 import { useCurrency } from '../context/CurrencyContext.jsx';
 import { nativeOf } from '../utils/currency.js';
@@ -96,6 +97,11 @@ export default function TradeLog() {
       </div>
 
       <TradeFilters filters={filters} onChange={setFilters} />
+
+      {/* Position Sizer */}
+      <div className="card-glass" style={{ marginBottom: 16, padding: 24 }}>
+        <PositionSizer />
+      </div>
 
       <div className="card-glass" style={{ padding: 0, overflow: 'hidden' }}>
         {isLoading ? (

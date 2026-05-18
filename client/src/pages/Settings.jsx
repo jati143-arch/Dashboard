@@ -16,18 +16,23 @@ const KEY_INPUTS = [
   { field: 'openrouter_key', label: 'OpenRouter API Key', placeholder: 'sk-or-…',  provider: 'openrouter', url: 'https://openrouter.ai/keys' },
   { field: 'finnhub_key',    label: 'Finnhub API Key',    placeholder: 'For Market Hub & Economic Calendar events', url: 'https://finnhub.io' },
   { field: 'fred_key',       label: 'FRED API Key',       placeholder: 'For macroeconomic charts in Calendar',     url: 'https://fred.stlouisfed.org/docs/api/fred/' },
+  { field: 'newsapi_key',    label: 'NewsAPI Key',         placeholder: 'Free · 1,000 req/day · newsapi.org',      url: 'https://newsapi.org/register', section: 'data' },
+  { field: 'twelvedata_key', label: 'Twelve Data Key',     placeholder: 'Free · 800 req/day · better price quality', url: 'https://twelvedata.com/apikey', section: 'data' },
+  { field: 'telegram_bot_token', label: 'Telegram Bot Token', placeholder: 'From @BotFather — for price alert notifications', url: 'https://t.me/BotFather', section: 'alerts' },
+  { field: 'telegram_chat_id',   label: 'Telegram Chat ID',   placeholder: 'Your Telegram user/chat ID', url: 'https://t.me/userinfobot', section: 'alerts' },
+  { field: 'binance_api_key',    label: 'Binance API Key',     placeholder: 'Optional — for crypto portfolio sync', url: 'https://www.binance.com/en/my/settings/api-management', section: 'data' },
 ];
 
 export default function Settings() {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ ai_provider: '', groq_key: '', anthropic_key: '', gemini_key: '', openrouter_key: '', finnhub_key: '', fred_key: '' });
+  const [form, setForm] = useState({ ai_provider: '', groq_key: '', anthropic_key: '', gemini_key: '', openrouter_key: '', finnhub_key: '', fred_key: '', newsapi_key: '', twelvedata_key: '', telegram_bot_token: '', telegram_chat_id: '', binance_api_key: '' });
   const [toast, setToast] = useState(null);
   const [testResult, setTestResult] = useState(null);
 
   const { data: saved, isLoading } = useQuery({ queryKey: ['settings'], queryFn: settingsApi.get });
 
   useEffect(() => {
-    if (saved) setForm(f => ({ ...f, ai_provider: saved.ai_provider || '', groq_key: saved.groq_key || '', anthropic_key: saved.anthropic_key || '', gemini_key: saved.gemini_key || '', openrouter_key: saved.openrouter_key || '', finnhub_key: saved.finnhub_key || '', fred_key: saved.fred_key || '' }));
+    if (saved) setForm(f => ({ ...f, ai_provider: saved.ai_provider || '', groq_key: saved.groq_key || '', anthropic_key: saved.anthropic_key || '', gemini_key: saved.gemini_key || '', openrouter_key: saved.openrouter_key || '', finnhub_key: saved.finnhub_key || '', fred_key: saved.fred_key || '', newsapi_key: saved.newsapi_key || '', twelvedata_key: saved.twelvedata_key || '', telegram_bot_token: saved.telegram_bot_token || '', telegram_chat_id: saved.telegram_chat_id || '', binance_api_key: saved.binance_api_key || '' }));
   }, [saved]);
 
   const { mutate: save, isPending: saving } = useMutation({
@@ -35,7 +40,7 @@ export default function Settings() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['settings'] });
       qc.invalidateQueries({ queryKey: ['ai-provider'] });
-      setForm(f => ({ ...f, groq_key: data.groq_key || '', anthropic_key: data.anthropic_key || '', gemini_key: data.gemini_key || '', openrouter_key: data.openrouter_key || '', finnhub_key: data.finnhub_key || '', fred_key: data.fred_key || '' }));
+      setForm(f => ({ ...f, groq_key: data.groq_key || '', anthropic_key: data.anthropic_key || '', gemini_key: data.gemini_key || '', openrouter_key: data.openrouter_key || '', finnhub_key: data.finnhub_key || '', fred_key: data.fred_key || '', newsapi_key: data.newsapi_key || '', twelvedata_key: data.twelvedata_key || '', telegram_bot_token: data.telegram_bot_token || '', telegram_chat_id: data.telegram_chat_id || '', binance_api_key: data.binance_api_key || '' }));
       showToast('Settings saved', 'success');
     },
     onError: (e) => showToast(e.response?.data?.error || 'Failed to save', 'error'),
@@ -224,7 +229,7 @@ export default function Settings() {
           Data API Keys
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {KEY_INPUTS.filter(k => !k.provider).map(({ field, label, placeholder, url }) => (
+          {KEY_INPUTS.filter(k => !k.provider && k.section !== 'alerts').map(({ field, label, placeholder, url }) => (
             <div key={field}>
               <label style={labelStyle}>{label}</label>
               <input
@@ -237,7 +242,45 @@ export default function Settings() {
               />
               <div style={hintStyle}>
                 Get your key at <a href={url} target="_blank" rel="noreferrer" style={{ color: '#22ff88', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
-                {' · '}Both are free with no payment required.
+                {' · '}Free tier available — no payment required.
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Alerts & Notifications */}
+      <div style={{
+        padding: 28,
+        background: '#111111',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 24,
+        marginBottom: 20,
+        borderLeft: '3px solid #0088cc',
+      }}>
+        <div style={{
+          fontSize: 11, fontWeight: 600, color: '#52525b',
+          textTransform: 'uppercase', letterSpacing: '0.12em',
+          marginBottom: 4, fontFamily: "'Inter', system-ui, sans-serif",
+        }}>Alerts &amp; Notifications</div>
+        <div style={{ fontSize: 12, color: '#71717a', marginBottom: 16, fontFamily: "'Inter', system-ui, sans-serif" }}>
+          Set up Telegram to receive price alerts on your phone — works even when the browser is closed.
+          Create a bot via @BotFather, then get your Chat ID from @userinfobot.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {KEY_INPUTS.filter(k => k.section === 'alerts').map(({ field, label, placeholder, url }) => (
+            <div key={field}>
+              <label style={labelStyle}>{label}</label>
+              <input
+                type="password"
+                value={form[field]}
+                onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+                placeholder={form[field] ? '' : placeholder}
+                style={inputStyle}
+                autoComplete="off"
+              />
+              <div style={hintStyle}>
+                <a href={url} target="_blank" rel="noreferrer" style={{ color: '#0088cc', textDecoration: 'none' }}>{url.replace('https://', '')}</a>
               </div>
             </div>
           ))}

@@ -21,13 +21,26 @@ import EconomicCalendar from './pages/EconomicCalendar.jsx';
 import Screener from './pages/Screener.jsx';
 import Settings from './pages/Settings.jsx';
 import Research from './pages/Research.jsx';
-import { Activity, BarChart3, PieChart, Star, LayoutDashboard, TrendingUp, Sun, Moon } from 'lucide-react';
+import { Activity, BarChart3, PieChart, Star, LayoutDashboard, TrendingUp, Sun, Moon, Bell } from 'lucide-react';
 import { ThemeProvider, useTheme } from './context/ThemeContext.jsx';
+import AlertsPanel from './components/alerts/AlertsPanel.jsx';
+import Modal from './components/shared/Modal.jsx';
+import { useQuery } from '@tanstack/react-query';
+import { alertsApi } from './api/client.js';
 
 function TopNav({ onToggle }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+
+  const { data: alerts = [] } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: alertsApi.list,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+  const activeAlertsCount = alerts.filter(a => a.active).length;
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -41,6 +54,7 @@ function TopNav({ onToggle }) {
   ];
 
   return (
+    <>
     <header style={{
       height: 64,
       background: 'var(--surface-topnav)',
@@ -110,6 +124,37 @@ function TopNav({ onToggle }) {
         </div>
         <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>{dateStr} · {timeStr}</span>
 
+        {/* Alerts bell */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => setAlertsOpen(true)}
+            title="Price Alerts"
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--color-border-bright)',
+              borderRadius: 9999,
+              padding: '6px 10px',
+              color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'all 0.2s',
+            }}
+          >
+            <Bell className="w-4 h-4" />
+          </button>
+          {activeAlertsCount > 0 && (
+            <span style={{
+              position: 'absolute', top: -4, right: -4,
+              background: 'var(--color-accent)',
+              color: '#000', fontSize: 9, fontWeight: 700,
+              borderRadius: 9999, minWidth: 16, height: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 3px',
+            }}>{activeAlertsCount}</span>
+          )}
+        </div>
+
         <button
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -176,6 +221,12 @@ function TopNav({ onToggle }) {
         )}
       </div>
     </header>
+    {alertsOpen && (
+      <Modal title="Price Alerts" onClose={() => setAlertsOpen(false)} width={560}>
+        <AlertsPanel onClose={() => setAlertsOpen(false)} />
+      </Modal>
+    )}
+  </>
   );
 }
 

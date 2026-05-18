@@ -13,10 +13,12 @@ import CurrencyToggle from '../components/shared/CurrencyToggle.jsx';
 import RiskMetrics from '../components/performance/RiskMetrics.jsx';
 import ReturnDistribution from '../components/performance/ReturnDistribution.jsx';
 import SectorExposure from '../components/performance/SectorExposure.jsx';
+import TaxReport from '../components/performance/TaxReport.jsx';
 import { useCurrency } from '../context/CurrencyContext.jsx';
 import { CUR_SYMBOL } from '../utils/currency.js';
 
 const PERIODS = ['daily', 'weekly', 'monthly', 'all'];
+const TABS = ['overview', 'sectors', 'risk', 'tax'];
 
 function StatCard({ label, value, sub, color }) {
   return (
@@ -129,7 +131,7 @@ export default function Performance() {
         border: '1px solid rgba(255,255,255,0.06)',
         width: 'fit-content',
       }}>
-        {['overview', 'sectors', 'risk'].map(t => (
+        {TABS.map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -147,7 +149,7 @@ export default function Performance() {
               transition: 'background 0.15s, color 0.15s',
             }}
           >
-            {t === 'overview' ? 'Overview' : t === 'sectors' ? 'Sectors' : 'Risk Metrics'}
+            {t === 'overview' ? 'Overview' : t === 'sectors' ? 'Sectors' : t === 'risk' ? 'Risk Metrics' : 'Tax Report'}
           </button>
         ))}
       </div>
@@ -173,6 +175,8 @@ export default function Performance() {
           {sectorLoading ? <LoadingSpinner text="Loading sector data…" /> : <SectorExposure data={sectorData} />}
         </div>
       )}
+
+      {tab === 'tax' && <TaxReport />}
 
       {tab === 'risk' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

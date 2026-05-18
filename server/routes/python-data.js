@@ -87,4 +87,103 @@ router.get('/news', async (req, res) => {
   }
 });
 
+// ── yfinance endpoints ────────────────────────────────────────────────────────
+
+// GET /api/python-data/yf-quote/RELIANCE.NS
+router.get('/yf-quote/:symbol', async (req, res) => {
+  try {
+    const result = await runPythonScript(['yf-quote', req.params.symbol], 20000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-history/RELIANCE.NS?period=1y&interval=1d
+router.get('/yf-history/:symbol', async (req, res) => {
+  try {
+    const { period = '1y', interval = '1d' } = req.query;
+    const result = await runPythonScript(['yf-history', req.params.symbol, period, interval], 30000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-intraday/RELIANCE.NS?interval=5m
+router.get('/yf-intraday/:symbol', async (req, res) => {
+  try {
+    const { interval = '5m' } = req.query;
+    const result = await runPythonScript(['yf-intraday', req.params.symbol, interval], 20000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-info/RELIANCE.NS
+router.get('/yf-info/:symbol', async (req, res) => {
+  try {
+    const result = await runPythonScript(['yf-info', req.params.symbol], 30000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-dividends/RELIANCE.NS
+router.get('/yf-dividends/:symbol', async (req, res) => {
+  try {
+    const result = await runPythonScript(['yf-dividends', req.params.symbol], 20000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-calendar/RELIANCE.NS
+router.get('/yf-calendar/:symbol', async (req, res) => {
+  try {
+    const result = await runPythonScript(['yf-calendar', req.params.symbol], 20000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-multi-price?symbols=RELIANCE.NS,INFY.NS,AAPL
+router.get('/yf-multi-price', async (req, res) => {
+  try {
+    const { symbols } = req.query;
+    if (!symbols) return res.json({ success: false, error: 'symbols query param required' });
+    const result = await runPythonScript(['yf-multi-price', symbols], 30000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/python-data/yf-sentiment
+router.get('/yf-sentiment', async (req, res) => {
+  try {
+    const result = await runPythonScript(['yf-sentiment'], 25000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/python-data/yf-portfolio-intraday
+// body: { positions: [{symbol, quantity, avgCost}] }
+router.post('/yf-portfolio-intraday', async (req, res) => {
+  try {
+    const { positions } = req.body;
+    if (!positions || !positions.length) return res.json({ success: false, error: 'No positions' });
+    const result = await runPythonScript(['yf-portfolio-intraday', JSON.stringify(positions)], 60000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

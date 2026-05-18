@@ -114,6 +114,28 @@ if __name__ == "__main__":
     action = sys.argv[1] if len(sys.argv) > 1 else None
     symbol = sys.argv[2] if len(sys.argv) > 2 else None
 
+    # yfinance actions — delegate to yf_fetcher
+    if action and action.startswith('yf-'):
+        try:
+            import yf_fetcher
+            dispatch = {
+                'yf-quote':              lambda: yf_fetcher.yf_quote(sys.argv[2]),
+                'yf-history':            lambda: yf_fetcher.yf_history(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else '1y', sys.argv[4] if len(sys.argv) > 4 else '1d'),
+                'yf-intraday':           lambda: yf_fetcher.yf_intraday(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else '5m'),
+                'yf-info':               lambda: yf_fetcher.yf_info(sys.argv[2]),
+                'yf-dividends':          lambda: yf_fetcher.yf_dividends(sys.argv[2]),
+                'yf-calendar':           lambda: yf_fetcher.yf_calendar(sys.argv[2]),
+                'yf-multi-price':        lambda: yf_fetcher.yf_multi_price(sys.argv[2]),
+                'yf-sentiment':          lambda: yf_fetcher.yf_sentiment(),
+                'yf-portfolio-intraday': lambda: yf_fetcher.yf_portfolio_intraday(sys.argv[2]),
+            }
+            fn = dispatch.get(action)
+            result = fn() if fn else {'success': False, 'error': f'Unknown yf action: {action}'}
+        except Exception as e:
+            result = {'success': False, 'error': f'yf_fetcher error: {str(e)}'}
+        print(json.dumps(result))
+        sys.exit(0)
+
     result = {'success': False, 'error': 'Unknown action'}
 
     if action == "quote" and symbol:
@@ -126,6 +148,6 @@ if __name__ == "__main__":
     elif action == "news":
         result = mc_news()
     elif action == "help":
-        result = {'success': True, 'help': 'Usage: python runner.py [quote|intraday|news] [symbol] [resolution]'}
+        result = {'success': True, 'help': 'Usage: python runner.py [quote|intraday|news|yf-*] [symbol]'}
 
     print(json.dumps(result))

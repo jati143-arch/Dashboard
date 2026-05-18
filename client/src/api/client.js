@@ -144,7 +144,26 @@ export const screenerApi = {
 
 // Python-backed data endpoints (MoneyControl/NSE via child_process)
 export const pythonDataApi = {
-   quote:     (symbol) => api.get(`/python-data/quote/${encodeURIComponent(symbol)}`).then(r => r.data),
-   intraday:  (symbol, resolution = '5') => api.get(`/python-data/intraday/${encodeURIComponent(symbol)}`, { params: { resolution } }).then(r => r.data),
-   news:       () => api.get('/python-data/news').then(r => r.data),
+   quote:          (symbol) => api.get(`/python-data/quote/${encodeURIComponent(symbol)}`).then(r => r.data),
+   intraday:       (symbol, resolution = '5') => api.get(`/python-data/intraday/${encodeURIComponent(symbol)}`, { params: { resolution } }).then(r => r.data),
+   news:           () => api.get('/python-data/news').then(r => r.data),
+   // yfinance endpoints
+   yfQuote:        (symbol) => api.get(`/python-data/yf-quote/${encodeURIComponent(symbol)}`).then(r => r.data),
+   yfHistory:      (symbol, period = '1y', interval = '1d') => api.get(`/python-data/yf-history/${encodeURIComponent(symbol)}`, { params: { period, interval } }).then(r => r.data),
+   yfIntraday:     (symbol, interval = '5m') => api.get(`/python-data/yf-intraday/${encodeURIComponent(symbol)}`, { params: { interval } }).then(r => r.data),
+   yfInfo:         (symbol) => api.get(`/python-data/yf-info/${encodeURIComponent(symbol)}`).then(r => r.data),
+   yfDividends:    (symbol) => api.get(`/python-data/yf-dividends/${encodeURIComponent(symbol)}`).then(r => r.data),
+   yfCalendar:     (symbol) => api.get(`/python-data/yf-calendar/${encodeURIComponent(symbol)}`).then(r => r.data),
+   yfMultiPrice:   (symbols) => api.get('/python-data/yf-multi-price', { params: { symbols: Array.isArray(symbols) ? symbols.join(',') : symbols } }).then(r => r.data),
+   yfSentiment:    () => api.get('/python-data/yf-sentiment').then(r => r.data),
+   yfPortfolioIntraday: (positions) => api.post('/python-data/yf-portfolio-intraday', { positions }).then(r => r.data),
+};
+
+export const alertsApi = {
+  list:       ()              => api.get('/alerts').then(r => r.data),
+  create:     (data)         => api.post('/alerts', data).then(r => r.data),
+  remove:     (id)           => api.delete(`/alerts/${id}`).then(r => r.data),
+  toggle:     (id)           => api.patch(`/alerts/${id}/toggle`).then(r => r.data),
+  check:      (prices)       => api.post('/alerts/check', { prices }).then(r => r.data),
+  telegramTest: ()           => api.post('/alerts/telegram-test').then(r => r.data),
 };

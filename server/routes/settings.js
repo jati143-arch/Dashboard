@@ -4,7 +4,13 @@ const { activeProvider, singleChat } = require('../services/aiProvider');
 
 const router = express.Router();
 
-const KEY_FIELDS = ['groq_key', 'anthropic_key', 'gemini_key', 'openrouter_key', 'finnhub_key', 'fred_key'];
+const KEY_FIELDS = [
+  'groq_key', 'anthropic_key', 'gemini_key', 'openrouter_key',
+  'finnhub_key', 'fred_key',
+  'newsapi_key', 'twelvedata_key',
+  'telegram_bot_token', 'telegram_chat_id',
+  'binance_api_key',
+];
 
 function maskKey(val) {
   if (!val) return '';

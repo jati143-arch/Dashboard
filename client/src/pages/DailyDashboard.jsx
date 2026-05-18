@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { stagger } from '../utils/anim.js';
 import { tradesApi, dailyApi, statsApi, pricesApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
+import MarketPulse from '../components/dashboard/MarketPulse.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
 import BestSetups from '../components/dashboard/BestSetups.jsx';
@@ -137,7 +138,10 @@ export default function DailyDashboard() {
         overallTotal={winlossStats?.total ?? 0}
       />
 
-      {/* 2. Portfolio News */}
+      {/* 2. Market Pulse */}
+      <MarketPulse />
+
+      {/* 3. Portfolio News */}
       <NewsWidget symbols={openSymbols} />
 
       {/* 3. Open Positions */}
