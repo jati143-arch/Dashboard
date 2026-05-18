@@ -106,10 +106,10 @@ export default function Screener() {
         <div style={{
           textAlign: 'center',
           padding: 48,
-          color: '#52525b',
+          color: 'var(--color-text-dim)',
           fontSize: 13,
-          background: '#111111',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: 24,
           fontFamily: "'Inter', system-ui, sans-serif",
         }}>
@@ -117,7 +117,7 @@ export default function Screener() {
             width: 28,
             height: 28,
             margin: '0 auto 14px',
-            border: '2px solid rgba(255,255,255,0.06)',
+            border: '2px solid var(--color-border)',
             borderTopColor: '#22ff88',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
@@ -131,10 +131,10 @@ export default function Screener() {
           <div style={{
             marginBottom: 16,
             fontSize: 13,
-            color: '#71717a',
+            color: 'var(--color-text-secondary)',
             padding: '12px 18px',
-            background: '#111111',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--color-bg-card)',
+            border: '1px solid var(--color-border)',
             borderRadius: 24,
             fontFamily: "'Inter', system-ui, sans-serif",
           }}>
@@ -143,30 +143,30 @@ export default function Screener() {
 
           {data.results && data.results.length > 0 && (
             <div style={{
-              background: '#111111',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'var(--color-bg-card)',
+              border: '1px solid var(--color-border)',
               borderRadius: 24,
               overflow: 'hidden',
-              borderLeft: '3px solid #22ff88',
+              borderLeft: '3px solid var(--color-green)',
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Symbol</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Name</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}>Sector</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#52525b', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid rgba(255,255,255,0.06)' }}></th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Symbol</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Name</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}>Sector</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Inter', system-ui, sans-serif", borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.results.map(s => (
                     <tr key={s.symbol}>
-                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}>
                         <span
                           style={{
                             fontFamily: "'JetBrains Mono', monospace",
                             fontWeight: 700,
-                            color: '#22ff88',
+                            color: 'var(--color-green)',
                             cursor: 'pointer',
                           }}
                           onClick={() => openChart(s.symbol, null)}
@@ -174,13 +174,13 @@ export default function Screener() {
                           {s.symbol.replace('.NS', '')}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 24px', color: '#71717a', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{s.name}</td>
-                      <td style={{ padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '12px 24px', color: 'var(--color-text-secondary)', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 13, borderBottom: '1px solid var(--color-border)' }}>{s.name}</td>
+                      <td style={{ padding: '12px 24px', borderBottom: '1px solid var(--color-border)' }}>
                         <span style={{
                           fontSize: 10,
                           padding: '4px 10px',
-                          background: '#1a1a1a',
-                          color: '#71717a',
+                          background: 'var(--color-bg-base)',
+                          color: 'var(--color-text-secondary)',
                           borderRadius: 9999,
                           fontWeight: 600,
                           fontFamily: "'Inter', system-ui, sans-serif",
