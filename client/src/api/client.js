@@ -81,7 +81,8 @@ export const chartApi = {
 };
 
 export const nseApi = {
-  deals: (symbol) => api.get('/nse/deals', { params: { symbol } }).then(r => r.data),
+  deals:  (symbol) => api.get('/nse/deals', { params: { symbol } }).then(r => r.data),
+  fiiDii: ()       => api.get('/nse/fii-dii').then(r => r.data),
 };
 
 export const backtestApi = {
@@ -157,6 +158,10 @@ export const pythonDataApi = {
    yfMultiPrice:   (symbols) => api.get('/python-data/yf-multi-price', { params: { symbols: Array.isArray(symbols) ? symbols.join(',') : symbols } }).then(r => r.data),
    yfSentiment:    () => api.get('/python-data/yf-sentiment').then(r => r.data),
    yfPortfolioIntraday: (positions) => api.post('/python-data/yf-portfolio-intraday', { positions }).then(r => r.data),
+};
+
+export const newsFeedApi = {
+  get: (category, symbol) => api.get('/news-feed', { params: { category, symbol } }).then(r => r.data),
 };
 
 export const alertsApi = {

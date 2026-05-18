@@ -4,6 +4,8 @@ import { pricesApi, watchlistApi } from '../../api/client.js';
 import SparklineCell from './SparklineCell.jsx';
 import AlertForm from './AlertForm.jsx';
 import { useChart } from '../../context/ChartContext.jsx';
+import Modal from '../shared/Modal.jsx';
+import SymbolResearch from '../research/SymbolResearch.jsx';
 
 function fmt(v, d = 2) {
   if (v == null) return '—';
@@ -14,6 +16,7 @@ export default function WatchlistTable({ list }) {
   const qc = useQueryClient();
   const { openChart } = useChart();
   const [alertFor, setAlertFor] = useState(null);
+  const [researchSym, setResearchSym] = useState(null);
   const [addSymbol, setAddSymbol] = useState('');
 
   const symbols = list.symbols || [];
@@ -112,9 +115,15 @@ export default function WatchlistTable({ list }) {
                         + Alert
                       </button>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <button onClick={() => removeSymbol.mutate(sym)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#52525b', fontSize: 14 }}>✕</button>
+                    <td style={{ padding: '8px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => setResearchSym(sym)}
+                          style={{ background: 'rgba(34,255,136,0.08)', border: '1px solid rgba(34,255,136,0.2)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 11, color: '#22ff88', fontWeight: 600 }}>
+                          Research
+                        </button>
+                        <button onClick={() => removeSymbol.mutate(sym)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#52525b', fontSize: 14 }}>✕</button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -127,6 +136,12 @@ export default function WatchlistTable({ list }) {
       {alertFor && (
         <AlertForm symbol={alertFor} onClose={() => setAlertFor(null)}
           onSave={({ symbol, type, price }) => addAlert.mutate({ symbol, type, price })} />
+      )}
+
+      {researchSym && (
+        <Modal title={`Research: ${researchSym}`} onClose={() => setResearchSym(null)} width={640}>
+          <SymbolResearch symbol={researchSym} onClose={() => setResearchSym(null)} />
+        </Modal>
       )}
     </div>
   );

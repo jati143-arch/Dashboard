@@ -4,6 +4,7 @@ import IndexCard from '../components/market/IndexCard.jsx';
 import SectorHeatmap from '../components/market/SectorHeatmap.jsx';
 import TopMovers from '../components/market/TopMovers.jsx';
 import EventStrip from '../components/market/EventStrip.jsx';
+import FiiDiiFlows from '../components/market/FiiDiiFlows.jsx';
 
 const CARD = {
   background: '#111111',
@@ -88,6 +89,10 @@ export default function MarketHub() {
 
       <Section title="Upcoming Economic Events (14 days)">
         <EventStrip events={events?.events} missing={events?.missing} />
+      </Section>
+
+      <Section title="FII / DII Daily Flows (India)">
+        <FiiDiiFlows />
       </Section>
     </div>
   );

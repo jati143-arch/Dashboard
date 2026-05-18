@@ -4,6 +4,7 @@ import { stagger } from '../utils/anim.js';
 import { tradesApi, dailyApi, statsApi, pricesApi } from '../api/client.js';
 import OpenPositions from '../components/dashboard/OpenPositions.jsx';
 import MarketPulse from '../components/dashboard/MarketPulse.jsx';
+import SmartNewsFeed from '../components/dashboard/SmartNewsFeed.jsx';
 import HeroCard from '../components/dashboard/HeroCard.jsx';
 import PnlSummary from '../components/dashboard/PnlSummary.jsx';
 import BestSetups from '../components/dashboard/BestSetups.jsx';
@@ -141,7 +142,10 @@ export default function DailyDashboard() {
       {/* 2. Market Pulse */}
       <MarketPulse />
 
-      {/* 3. Portfolio News */}
+      {/* 3. Smart News Feed */}
+      <SmartNewsFeed symbols={openSymbols} />
+
+      {/* 4. Portfolio News (legacy widget) */}
       <NewsWidget symbols={openSymbols} />
 
       {/* 3. Open Positions */}
