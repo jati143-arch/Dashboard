@@ -28,6 +28,27 @@ import Modal from './components/shared/Modal.jsx';
 import { useQuery } from '@tanstack/react-query';
 import { alertsApi } from './api/client.js';
 
+const BOTTOM_NAV_TABS = [
+  { to: '/', label: 'Overview', icon: TrendingUp },
+  { to: '/trades', label: 'Trades', icon: BarChart3 },
+  { to: '/performance', label: 'Analytics', icon: PieChart },
+  { to: '/watchlist', label: 'Watchlist', icon: Star },
+  { to: '/market', label: 'Market', icon: Activity },
+];
+
+function MobileBottomNav() {
+  return (
+    <nav className="mobile-bottom-nav">
+      {BOTTOM_NAV_TABS.map(({ to, label, icon: Icon }) => (
+        <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `mobile-nav-item${isActive ? ' active' : ''}`}>
+          <Icon size={20} />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
+
 function TopNav({ onToggle }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -45,17 +66,9 @@ function TopNav({ onToggle }) {
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-  const tabs = [
-    { to: '/', label: 'Overview', icon: TrendingUp },
-    { to: '/trades', label: 'Trade Log', icon: BarChart3 },
-    { to: '/performance', label: 'Analytics', icon: PieChart },
-    { to: '/watchlist', label: 'Watchlist', icon: Star },
-    { to: '/market', label: 'Market', icon: Activity },
-  ];
-
   return (
     <>
-    <header style={{
+    <header className="top-nav-header" style={{
       height: 64,
       background: 'var(--surface-topnav)',
       backdropFilter: 'blur(24px)',
@@ -69,15 +82,15 @@ function TopNav({ onToggle }) {
       top: 0,
       zIndex: 50,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
         <button onClick={onToggle} style={{
           background: 'transparent', border: 'none', color: 'var(--color-text-secondary)',
-          fontSize: 20, cursor: 'pointer', padding: '4px', lineHeight: 1,
+          fontSize: 20, cursor: 'pointer', padding: '4px', lineHeight: 1, flexShrink: 0,
         }}>
           <span style={{ display: 'inline-block', fontSize: 22 }}>&#9776;</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
             background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary))',
@@ -94,13 +107,14 @@ function TopNav({ onToggle }) {
           }}>LIVE</span>
         </div>
 
-        <div style={{
+        {/* Desktop-only tab pills */}
+        <div className="desktop-nav-tabs" style={{
           display: 'flex', alignItems: 'center', gap: 4,
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid var(--color-border)',
           borderRadius: 9999, padding: '4px',
         }}>
-          {tabs.map(({ to, label, icon: Icon }) => (
+          {BOTTOM_NAV_TABS.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'} style={({ isActive }) => ({
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 20px', borderRadius: 9999,
@@ -117,14 +131,17 @@ function TopNav({ onToggle }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-green)', display: 'inline-block', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
-          <span style={{ color: 'var(--color-green)', letterSpacing: '0.08em' }}>MARKET OPEN</span>
+      <div className="top-nav-actions" style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+        {/* Desktop-only: market status + date */}
+        <div className="desktop-meta" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-green)', display: 'inline-block', animation: 'pulse-dot 2.5s ease-in-out infinite' }} />
+            <span style={{ color: 'var(--color-green)', letterSpacing: '0.08em' }}>MARKET OPEN</span>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>{dateStr} · {timeStr}</span>
         </div>
-        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)' }}>{dateStr} · {timeStr}</span>
 
-        {/* Alerts bell */}
+        {/* Alerts bell — always visible */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setAlertsOpen(true)}
@@ -155,6 +172,7 @@ function TopNav({ onToggle }) {
           )}
         </div>
 
+        {/* Theme toggle — always visible (this is what was missing on mobile) */}
         <button
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -178,7 +196,7 @@ function TopNav({ onToggle }) {
             <button onClick={() => setMenuOpen(o => !o)} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               background: 'transparent', border: '1px solid var(--color-border-bright)',
-              borderRadius: 9999, padding: '4px 12px 4px 4px', cursor: 'pointer',
+              borderRadius: 9999, padding: '4px 4px', cursor: 'pointer',
               color: 'var(--color-text-primary)',
             }}>
               {user.photo ? <img src={user.photo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} /> : (
@@ -191,7 +209,8 @@ function TopNav({ onToggle }) {
                   {(user.name || user.email || '?')[0].toUpperCase()}
                 </div>
               )}
-              <span style={{ fontSize: 12, fontWeight: 500 }}>{user.name || user.email}</span>
+              {/* Hide name on mobile — avatar only */}
+              <span className="desktop-meta" style={{ fontSize: 12, fontWeight: 500 }}>{user.name || user.email}</span>
             </button>
 
             {menuOpen && (
@@ -240,7 +259,7 @@ function AppShell() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <TopNav onToggle={() => setSidebarOpen(o => !o)} />
         <main style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg-base)' }}>
-          <div style={{ maxWidth: 1480, margin: '0 auto', padding: '32px 36px 48px' }}>
+          <div className="main-content-inner" style={{ maxWidth: 1480, margin: '0 auto', padding: '32px 36px 48px' }}>
             <Routes>
               <Route path="/"            element={<DailyDashboard />} />
               <Route path="/market"      element={<MarketHub />} />
@@ -259,6 +278,7 @@ function AppShell() {
           </div>
         </main>
         <StatusBar />
+        <MobileBottomNav />
       </div>
       {chartState && <ChartModal symbol={chartState.symbol} entryPrice={chartState.entryPrice} onClose={closeChart} />}
       <MigrationBanner />

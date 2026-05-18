@@ -312,10 +312,61 @@ tr:last-child td { border-bottom: none; }
   .sidebar-backdrop { display: block; }
   table { font-size: 12px; }
   .card { padding: 16px; border-radius: 16px; }
+
+  /* Hide desktop-only nav elements */
+  .desktop-nav-tabs { display: none !important; }
+  .desktop-meta     { display: none !important; }
+
+  /* Tighten top nav header */
+  .top-nav-header { padding: 0 12px !important; }
+
+  /* Shrink main content padding, leave room for bottom nav */
+  .main-content-inner { padding: 16px 14px 84px !important; }
+
+  /* Hide status bar — bottom nav replaces it on mobile */
+  .status-bar { display: none !important; }
+
+  /* Mobile bottom nav bar */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--surface-topnav);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--color-border);
+    z-index: 50;
+    align-items: center;
+    justify-content: space-around;
+  }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 8px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    flex: 1;
+    min-width: 0;
+    transition: color 0.15s;
+  }
+  .mobile-nav-item.active { color: var(--color-accent); }
+  .mobile-nav-item:hover  { text-decoration: none; }
+
+  /* Mobile theme / action buttons – shrink slightly */
+  .top-nav-actions { gap: 8px !important; }
 }
 
 @media (min-width: 769px) {
   .sidebar { position: relative; height: 100vh; flex-shrink: 0; }
+  .mobile-bottom-nav { display: none; }
 }
 @keyframes fadeSlideUp  { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
 @keyframes scalePop     { from{opacity:0;transform:scale(0.93)} to{opacity:1;transform:scale(1)} }
